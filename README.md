@@ -101,15 +101,18 @@ Vercel publica la rama `main` sola. **No usar `cleanUrls`** en `vercel.json`: si
 
 ## Pendiente de configurar
 
-- [ ] **Envío de correos.** El servicio interno de Supabase solo manda a las direcciones del equipo y con un tope de un par por hora: registrarse con un correo cualquiera **no recibe nada**. Hay que conectar un SMTP propio (Resend o similar) antes de que lo pruebe alguien de afuera.
+- [ ] **Comprar el dominio.** `proa.app` estaba libre al 2 de septiembre de 2026 (sin DNS, sin app de entrenamiento con ese nombre). Desbloquea el punto siguiente.
+- [ ] **Envío de correos.** Supabase **no tiene** servicio de correo propio: el remitente de fábrica solo manda a las direcciones del equipo y con un tope de un par por hora. Hay que cargar un SMTP externo (Resend, Postmark, SES) en Authentication · Emails · SMTP; la app no cambia. Para mandar desde una dirección propia hace falta el dominio verificado.
+- [ ] **Volver a prender la confirmación por correo** (`mailer_autoconfirm = false`) junto con el SMTP, antes de que lo use alguien de afuera.
 - [ ] **Textos de los correos** de confirmación y recuperación, con la voz de Proa.
-- [ ] **Comprar el dominio.** `proa.app` estaba libre al 2 de septiembre de 2026 (sin DNS, sin app de entrenamiento con ese nombre).
 - [ ] **Entrar con Google.** Falta dar de alta las credenciales en Supabase. La clave `auth.google` ya está en los tres idiomas esperando.
 
 ## Hecho
 
 - [x] Repo en GitHub y proyecto en Vercel, con despliegue automático de `main`.
 - [x] **Direcciones de retorno en Supabase** (Authentication · URL Configuration): *Site URL* apunta a Vercel y la lista de retorno incluye `https://proa-lake.vercel.app/**` y `http://localhost:4173/**`. Sin esto el correo de confirmación devuelve al lugar equivocado — es lo mismo que rompió el ingreso con Google en ClavaMetrics al cambiar de dominio.
+- [x] **Confirmación por correo apagada mientras se desarrolla.** El registro entra directo. Es temporal, por lo del correo de arriba.
+- [x] **Mínimo de contraseña en 8** también del lado del servidor, igual que el formulario.
 
 ---
 
