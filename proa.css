@@ -1,0 +1,659 @@
+/* =============================================================
+   Proa — Design System
+   Entrenamiento individual: un entrenador, un atleta.
+   Hermano de ClavaMetrics, deliberadamente distinto:
+   donde Clava es azul institucional, Proa es naranja de
+   señalización marina sobre casco y agua profunda.
+   ============================================================= */
+
+/* ─── Archivo (UI) + Source Serif 4 (prosa) + IBM Plex Mono (datos) ─── */
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap');
+
+/* ─── Tabler Icons (mismo vocabulario de iconos que ClavaMetrics) ─── */
+@import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.24.0/dist/tabler-icons.min.css');
+
+/* ============================================================
+   Root — escalas que no dependen del tema.
+   ============================================================ */
+:root {
+  /* Tipografía --------------------------------------------------
+     Tres roles, no dos:
+       sans  = toda la interfaz (Archivo, grotesca de señalética)
+       serif = lo que escribe una persona (notas del entrenador,
+               comentarios del atleta). Es el detalle que hace que
+               Proa se sienta personal y no un panel de control.
+       mono  = números que se alinean en columna (series, cargas,
+               horarios, macros).
+     ------------------------------------------------------------ */
+  --pr-font-sans:  'Archivo', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --pr-font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --pr-font-mono:  'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Escala tipográfica */
+  --pr-display: 700 40px/1.04 var(--pr-font-sans);
+  --pr-h1:      700 28px/1.14 var(--pr-font-sans);
+  --pr-h2:      600 22px/1.2  var(--pr-font-sans);
+  --pr-h3:      600 18px/1.3  var(--pr-font-sans);
+  --pr-title:   600 15px/1.4  var(--pr-font-sans);
+  --pr-body:    400 14px/1.5  var(--pr-font-sans);
+  --pr-body-sm: 400 13px/1.5  var(--pr-font-sans);
+  --pr-meta:    500 12px/1.4  var(--pr-font-sans);
+  --pr-eyebrow: 600 11px/1.2  var(--pr-font-sans);
+  --pr-prose:   400 15px/1.6  var(--pr-font-serif);
+  --pr-mono:    500 12px/1.4  var(--pr-font-mono);
+  --pr-mono-lg: 600 14px/1.4  var(--pr-font-mono);
+
+  /* Tracking — Archivo es ancha, los títulos piden apretarse */
+  --pr-tr-eyebrow: 0.1em;
+  --pr-tr-display: -0.03em;
+  --pr-tr-h:       -0.02em;
+
+  /* Espaciado — grilla de 4px */
+  --pr-s-0:  2px;  --pr-s-1:  4px;  --pr-s-2:  8px;
+  --pr-s-3: 12px;  --pr-s-4: 16px;  --pr-s-5: 20px;
+  --pr-s-6: 24px;  --pr-s-7: 32px;  --pr-s-8: 40px;
+  --pr-s-9: 48px;  --pr-s-10:64px;  --pr-s-11:80px;
+
+  /* Radios — un punto más rectos que Clava: casco, no burbuja */
+  --pr-r-1:  3px;
+  --pr-r-2:  5px;
+  --pr-r-3:  7px;
+  --pr-r-4:  9px;
+  --pr-r-5: 12px;
+  --pr-r-6: 16px;
+  --pr-r-pill: 999px;
+
+  --pr-bw: 1px;
+  --pr-bw-2: 1.5px;
+
+  /* Motion */
+  --pr-ease: cubic-bezier(.2,.7,.2,1);
+  --pr-ease-out: cubic-bezier(.16,1,.3,1);
+  --pr-dur-1: 120ms;
+  --pr-dur-2: 200ms;
+  --pr-dur-3: 320ms;
+
+  /* Capas */
+  --pr-z-base: 1;
+  --pr-z-sticky: 50;
+  --pr-z-overlay: 200;
+  --pr-z-popover: 400;
+  --pr-z-modal: 800;
+  --pr-z-toast: 900;
+}
+
+/* ============================================================
+   TEMA — CLARO (por defecto)
+   Vela cruda, tinta de casco, naranja de señal.
+
+   REGLA DE COLOR: el naranja es la marca y la acción principal.
+   NUNCA se usa como estado. Por eso los estados se corren al lado
+   frío o claramente amarillo — si "peligro" fuera rojo-naranja se
+   confundiría con el botón de guardar.
+   ============================================================ */
+:root,
+[data-theme="light"] {
+  /* Superficies */
+  --pr-bg:        #FBFAF8;
+  --pr-bg-soft:   #F4F2EE;
+  --pr-bg-sunk:   #ECE9E3;
+  --pr-surface:   #FFFFFF;
+  --pr-surface-2: #FAF9F6;
+
+  /* Texto */
+  --pr-fg:           #131A21;
+  --pr-fg-strong:    #070C11;
+  --pr-fg-muted:     #5D6B76;
+  --pr-fg-faint:     #8B959D;
+  --pr-fg-on-accent: #FFFFFF;
+
+  /* Bordes */
+  --pr-border:        #E4E0D8;
+  --pr-border-soft:   #EEEBE5;
+  --pr-border-strong: #CEC8BD;
+  --pr-focus-ring:    rgba(216,80,28,0.22);
+
+  /* Acento — naranja de señalización marina */
+  --pr-accent:       #D8501C;
+  --pr-accent-hover: #C04716;
+  --pr-accent-press: #A63A0F;
+  --pr-accent-soft:  #FBEBE2;
+  --pr-accent-bd:    #F2CDBB;
+
+  /* Agua profunda — segundo color de marca, para el riel lateral */
+  --pr-deep:      #2C4A5E;
+  --pr-deep-soft: #E6ECF0;
+
+  /* Estados */
+  --pr-success: #0E7C57;  --pr-success-bg: #E7F6F0;  --pr-success-bd: #B6E2D2;
+  --pr-warning: #A47708;  --pr-warning-bg: #FCF6E4;  --pr-warning-bd: #EBD9A2;
+  --pr-danger:  #B42318;  --pr-danger-bg:  #FDECEA;  --pr-danger-bd:  #F3C4BF;
+  --pr-info:    #2C4A5E;  --pr-info-bg:    #E6ECF0;  --pr-info-bd:    #C3D2DB;
+  --pr-neutral: #5D6B76;  --pr-neutral-bg: #F0EEE9;  --pr-neutral-bd: #E4E0D8;
+
+  /* Tipos de evento de la semana — cada uno su color, fijo en toda la app */
+  --pr-ev-match:    #B42318;   /* partido */
+  --pr-ev-team:     #2C4A5E;   /* entrenamiento con su club */
+  --pr-ev-gym:      #D8501C;   /* gimnasio */
+  --pr-ev-field:    #0E7C57;   /* campo / técnica */
+  --pr-ev-recovery: #7C5BAF;   /* recuperación */
+  --pr-ev-meal:     #A47708;   /* comida */
+  --pr-ev-commit:   #8B959D;   /* estudio / trabajo */
+  --pr-ev-travel:   #4A6B7C;   /* viaje */
+  --pr-ev-rest:     #B0A99E;   /* descanso */
+
+  /* Sombras — bajas, en capas */
+  --pr-shadow-1: 0 1px 0 rgba(19,26,33,0.04), 0 1px 2px rgba(19,26,33,0.05);
+  --pr-shadow-2: 0 2px 4px rgba(19,26,33,0.04), 0 4px 12px rgba(19,26,33,0.07);
+  --pr-shadow-3: 0 4px 8px rgba(19,26,33,0.04), 0 12px 32px rgba(19,26,33,0.09);
+  --pr-shadow-pop: 0 8px 32px rgba(19,26,33,0.14);
+
+  --pr-atmo: none;
+
+  /* Riel lateral — agua profunda SIEMPRE, en los dos temas.
+     Es la firma visual de Proa: el casco oscuro a la izquierda. */
+  --pr-side-bg:              #1B2E3B;
+  --pr-side-fg:              #E7EDF1;
+  --pr-side-fg-muted:        #8FA4B1;
+  --pr-side-border:          rgba(255,255,255,0.08);
+  --pr-side-item-active-bg:  rgba(216,80,28,0.18);
+  --pr-side-item-active-fg:  #FF9670;
+  --pr-side-accent:          #FF7A4D;
+}
+
+/* ============================================================
+   TEMA — OSCURO
+   El agua de noche. Mismo naranja, aclarado para que respire.
+   ============================================================ */
+[data-theme="dark"] {
+  --pr-bg:        #0C1218;
+  --pr-bg-soft:   #111920;
+  --pr-bg-sunk:   #070C11;
+  --pr-surface:   #141C24;
+  --pr-surface-2: #1A242E;
+
+  --pr-fg:           #E9EDF0;
+  --pr-fg-strong:    #FFFFFF;
+  --pr-fg-muted:     #9AA9B4;
+  --pr-fg-faint:     #6E7D88;
+  --pr-fg-on-accent: #0C1218;
+
+  --pr-border:        rgba(255,255,255,0.09);
+  --pr-border-soft:   rgba(255,255,255,0.05);
+  --pr-border-strong: rgba(255,255,255,0.17);
+  --pr-focus-ring:    rgba(255,122,77,0.28);
+
+  --pr-accent:       #FF7A4D;
+  --pr-accent-hover: #FF8F68;
+  --pr-accent-press: #FF6633;
+  --pr-accent-soft:  rgba(255,122,77,0.13);
+  --pr-accent-bd:    rgba(255,122,77,0.30);
+
+  --pr-deep:      #84A8BE;
+  --pr-deep-soft: rgba(132,168,190,0.12);
+
+  --pr-success: #35C48F;  --pr-success-bg: rgba(53,196,143,0.11);  --pr-success-bd: rgba(53,196,143,0.30);
+  --pr-warning: #E0B341;  --pr-warning-bg: rgba(224,179,65,0.11);  --pr-warning-bd: rgba(224,179,65,0.30);
+  --pr-danger:  #F1706A;  --pr-danger-bg:  rgba(241,112,106,0.11); --pr-danger-bd:  rgba(241,112,106,0.30);
+  --pr-info:    #84A8BE;  --pr-info-bg:    rgba(132,168,190,0.11); --pr-info-bd:    rgba(132,168,190,0.30);
+  --pr-neutral: #9AA9B4;  --pr-neutral-bg: rgba(255,255,255,0.05); --pr-neutral-bd: rgba(255,255,255,0.10);
+
+  --pr-ev-match:    #F1706A;
+  --pr-ev-team:     #84A8BE;
+  --pr-ev-gym:      #FF7A4D;
+  --pr-ev-field:    #35C48F;
+  --pr-ev-recovery: #A48BE0;
+  --pr-ev-meal:     #E0B341;
+  --pr-ev-commit:   #8394A0;
+  --pr-ev-travel:   #6E96AC;
+  --pr-ev-rest:     #7A8188;
+
+  --pr-shadow-1: 0 1px 0 rgba(0,0,0,0.35);
+  --pr-shadow-2: 0 4px 12px rgba(0,0,0,0.45);
+  --pr-shadow-3: 0 12px 40px rgba(0,0,0,0.6);
+  --pr-shadow-pop: 0 12px 40px rgba(0,0,0,0.65);
+
+  /* Un halo tenue arriba, como luz sobre el agua */
+  --pr-atmo: radial-gradient(ellipse 60% 45% at 50% -8%, rgba(255,122,77,0.05) 0%, transparent 62%);
+
+  --pr-side-bg:              #0A1016;
+  --pr-side-fg:              #E9EDF0;
+  --pr-side-fg-muted:        #7D8C97;
+  --pr-side-border:          rgba(255,255,255,0.07);
+  --pr-side-item-active-bg:  rgba(255,122,77,0.14);
+  --pr-side-item-active-fg:  #FF9670;
+  --pr-side-accent:          #FF7A4D;
+}
+
+/* ============================================================
+   Base
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+body.pr {
+  font: var(--pr-body);
+  color: var(--pr-fg);
+  background: var(--pr-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+body.pr::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: var(--pr-atmo);
+  pointer-events: none;
+  z-index: 0;
+}
+
+::selection { background: var(--pr-accent); color: #fff; }
+
+/* ============================================================
+   Tipografía — clases utilitarias
+   ============================================================ */
+.pr-display  { font: var(--pr-display); letter-spacing: var(--pr-tr-display); color: var(--pr-fg-strong); }
+.pr-h1       { font: var(--pr-h1);      letter-spacing: var(--pr-tr-h); color: var(--pr-fg-strong); }
+.pr-h2       { font: var(--pr-h2);      letter-spacing: var(--pr-tr-h); color: var(--pr-fg-strong); }
+.pr-h3       { font: var(--pr-h3);      color: var(--pr-fg-strong); }
+.pr-title    { font: var(--pr-title);   color: var(--pr-fg-strong); }
+.pr-body     { font: var(--pr-body);    color: var(--pr-fg); }
+.pr-body-sm  { font: var(--pr-body-sm); color: var(--pr-fg); }
+.pr-meta     { font: var(--pr-meta);    color: var(--pr-fg-muted); }
+.pr-eyebrow  { font: var(--pr-eyebrow); letter-spacing: var(--pr-tr-eyebrow); text-transform: uppercase; color: var(--pr-fg-muted); }
+.pr-mono     { font: var(--pr-mono);    color: var(--pr-fg-muted); }
+.pr-mono-lg  { font: var(--pr-mono-lg); color: var(--pr-fg); }
+
+/* Prosa: notas del entrenador y comentarios del atleta. La serifa
+   es intencional — separa lo que escribió una persona de lo que
+   generó el sistema. */
+.pr-prose { font: var(--pr-prose); color: var(--pr-fg); max-width: 68ch; }
+.pr-prose p { margin: 0 0 0.8em; }
+.pr-prose p:last-child { margin-bottom: 0; }
+
+/* Números que se comparan en columna */
+.pr-num { font-family: var(--pr-font-mono); font-variant-numeric: tabular-nums; }
+
+/* ============================================================
+   Botones
+   ============================================================ */
+.pr-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pr-s-2);
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--pr-r-3);
+  font: 600 14px/1 var(--pr-font-sans);
+  border: var(--pr-bw) solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition: background var(--pr-dur-1) var(--pr-ease),
+              border-color var(--pr-dur-1) var(--pr-ease),
+              color var(--pr-dur-1) var(--pr-ease),
+              box-shadow var(--pr-dur-1) var(--pr-ease),
+              transform var(--pr-dur-1) var(--pr-ease);
+}
+.pr-btn:focus-visible { outline: 2px solid var(--pr-accent); outline-offset: 2px; }
+.pr-btn[disabled], .pr-btn.is-busy { opacity: .45; cursor: not-allowed; pointer-events: none; }
+
+.pr-btn.is-sm    { height: 28px; padding: 0 10px; font-size: 13px; border-radius: var(--pr-r-2); gap: 6px; }
+.pr-btn.is-lg    { height: 44px; padding: 0 20px; font-size: 15px; }
+.pr-btn.is-block { width: 100%; }
+
+.pr-btn.is-primary {
+  background: var(--pr-accent);
+  color: var(--pr-fg-on-accent);
+  box-shadow: var(--pr-shadow-1);
+}
+.pr-btn.is-primary:hover  { background: var(--pr-accent-hover); }
+.pr-btn.is-primary:active { background: var(--pr-accent-press); transform: translateY(0.5px); }
+
+.pr-btn.is-secondary {
+  background: var(--pr-surface);
+  color: var(--pr-fg);
+  border-color: var(--pr-border);
+  box-shadow: var(--pr-shadow-1);
+}
+.pr-btn.is-secondary:hover { background: var(--pr-surface-2); border-color: var(--pr-border-strong); }
+
+.pr-btn.is-ghost {
+  background: transparent;
+  color: var(--pr-fg-muted);
+}
+.pr-btn.is-ghost:hover { color: var(--pr-fg); background: var(--pr-bg-soft); }
+
+.pr-btn.is-outline {
+  background: transparent;
+  color: var(--pr-accent);
+  border-color: var(--pr-accent-bd);
+}
+.pr-btn.is-outline:hover { background: var(--pr-accent-soft); }
+
+.pr-btn.is-danger { background: var(--pr-danger); color: #fff; }
+.pr-btn.is-danger:hover { filter: brightness(0.94); }
+
+.pr-icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px;
+  border-radius: var(--pr-r-2);
+  border: var(--pr-bw) solid var(--pr-border);
+  background: transparent;
+  color: var(--pr-fg-muted);
+  cursor: pointer;
+  transition: background var(--pr-dur-1), color var(--pr-dur-1), border-color var(--pr-dur-1);
+}
+.pr-icon-btn:hover { color: var(--pr-fg); background: var(--pr-bg-soft); border-color: var(--pr-border-strong); }
+.pr-icon-btn.is-flush { border: none; }
+.pr-icon-btn:focus-visible { outline: 2px solid var(--pr-accent); outline-offset: 2px; }
+
+/* ============================================================
+   Campos de formulario
+   ============================================================ */
+.pr-field { display: flex; flex-direction: column; gap: 6px; }
+.pr-label { font: 600 12.5px/1.2 var(--pr-font-sans); color: var(--pr-fg); }
+.pr-hint  { font: var(--pr-meta); color: var(--pr-fg-muted); }
+.pr-error { font: var(--pr-meta); color: var(--pr-danger); }
+
+.pr-input,
+.pr-select,
+.pr-textarea {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  background: var(--pr-surface);
+  color: var(--pr-fg);
+  border: var(--pr-bw) solid var(--pr-border);
+  border-radius: var(--pr-r-3);
+  font: var(--pr-body);
+  outline: none;
+  transition: border-color var(--pr-dur-1), box-shadow var(--pr-dur-1), background var(--pr-dur-1);
+}
+.pr-textarea { height: auto; padding: 10px 12px; min-height: 96px; resize: vertical; }
+
+.pr-input::placeholder,
+.pr-textarea::placeholder { color: var(--pr-fg-faint); }
+
+.pr-input:hover, .pr-select:hover, .pr-textarea:hover { border-color: var(--pr-border-strong); }
+
+.pr-input:focus, .pr-select:focus, .pr-textarea:focus {
+  border-color: var(--pr-accent);
+  box-shadow: 0 0 0 3px var(--pr-focus-ring);
+}
+.pr-input[aria-invalid="true"] { border-color: var(--pr-danger); }
+
+.pr-input-affix {
+  display: flex; align-items: center; gap: 8px;
+  height: 38px; padding: 0 12px;
+  background: var(--pr-surface);
+  border: var(--pr-bw) solid var(--pr-border);
+  border-radius: var(--pr-r-3);
+  transition: border-color var(--pr-dur-1), box-shadow var(--pr-dur-1);
+}
+.pr-input-affix:focus-within { border-color: var(--pr-accent); box-shadow: 0 0 0 3px var(--pr-focus-ring); }
+.pr-input-affix > input {
+  flex: 1; min-width: 0; height: 100%;
+  border: 0; background: transparent; outline: none;
+  font: var(--pr-body); color: var(--pr-fg);
+}
+.pr-input-affix .ti { color: var(--pr-fg-muted); font-size: 16px; }
+
+/* ============================================================
+   Tarjetas
+   ============================================================ */
+.pr-card {
+  background: var(--pr-surface);
+  border: var(--pr-bw) solid var(--pr-border);
+  border-radius: var(--pr-r-5);
+  box-shadow: var(--pr-shadow-1);
+}
+.pr-card.is-elevated { box-shadow: var(--pr-shadow-2); }
+.pr-card.is-flat     { box-shadow: none; }
+.pr-card-pad         { padding: var(--pr-s-6); }
+.pr-card-pad-lg      { padding: var(--pr-s-7); }
+
+/* ============================================================
+   Pastillas y estados
+   ============================================================ */
+.pr-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 22px; padding: 0 8px;
+  border-radius: var(--pr-r-pill);
+  font: 600 11.5px/1 var(--pr-font-sans);
+  background: var(--pr-neutral-bg);
+  color: var(--pr-neutral);
+  border: var(--pr-bw) solid var(--pr-neutral-bd);
+  white-space: nowrap;
+}
+.pr-pill.is-success { background: var(--pr-success-bg); color: var(--pr-success); border-color: var(--pr-success-bd); }
+.pr-pill.is-warning { background: var(--pr-warning-bg); color: var(--pr-warning); border-color: var(--pr-warning-bd); }
+.pr-pill.is-danger  { background: var(--pr-danger-bg);  color: var(--pr-danger);  border-color: var(--pr-danger-bd); }
+.pr-pill.is-info    { background: var(--pr-info-bg);    color: var(--pr-info);    border-color: var(--pr-info-bd); }
+.pr-pill.is-accent  { background: var(--pr-accent-soft);color: var(--pr-accent);  border-color: var(--pr-accent-bd); }
+
+.pr-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+.pr-kbd {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 6px;
+  border-radius: 4px;
+  border: 1px solid var(--pr-border);
+  background: var(--pr-bg-soft);
+  color: var(--pr-fg-muted);
+  font: 500 11px/1 var(--pr-font-mono);
+}
+
+/* ============================================================
+   Primitivas de layout
+   ============================================================ */
+.pr-stack   { display: flex; flex-direction: column; }
+.pr-row     { display: flex; align-items: center; }
+.pr-grow    { flex: 1; min-width: 0; }
+.pr-divider { height: 1px; background: var(--pr-border); }
+
+.pr-shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+  background: var(--pr-bg);
+}
+.pr-shell-side {
+  background: var(--pr-side-bg);
+  border-right: var(--pr-bw) solid var(--pr-side-border);
+  color: var(--pr-side-fg);
+  display: flex; flex-direction: column;
+  position: sticky; top: 0; height: 100vh;
+}
+.pr-shell-main {
+  display: flex; flex-direction: column;
+  min-width: 0;
+  background: var(--pr-bg);
+}
+
+@media (max-width: 900px) {
+  .pr-shell { grid-template-columns: 1fr; }
+  .pr-shell-side {
+    position: fixed; inset: 0 auto 0 0; width: 260px;
+    transform: translateX(-100%);
+    transition: transform var(--pr-dur-2) var(--pr-ease);
+    z-index: var(--pr-z-modal);
+  }
+  .pr-shell.is-side-open .pr-shell-side { transform: none; }
+}
+
+/* Riel lateral */
+.pr-side-brand { display: flex; align-items: center; gap: 10px; padding: 18px 16px 14px; }
+.pr-side-brand-name { font: 700 16px/1 var(--pr-font-sans); letter-spacing: -0.03em; color: var(--pr-side-fg); }
+.pr-side-brand-meta { font: 500 11px/1 var(--pr-font-mono); color: var(--pr-side-fg-muted); margin-top: 3px; }
+
+.pr-side-group { padding: 6px 10px 4px; }
+.pr-side-group-label {
+  font: 600 10.5px/1 var(--pr-font-sans);
+  letter-spacing: var(--pr-tr-eyebrow);
+  text-transform: uppercase;
+  color: var(--pr-side-fg-muted);
+  padding: 10px 8px 6px;
+}
+.pr-side-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px;
+  border-radius: var(--pr-r-3);
+  color: var(--pr-side-fg-muted);
+  text-decoration: none;
+  font: 500 13.5px/1 var(--pr-font-sans);
+  cursor: pointer;
+  transition: background var(--pr-dur-1), color var(--pr-dur-1);
+}
+.pr-side-item:hover { background: rgba(255,255,255,0.06); color: var(--pr-side-fg); }
+.pr-side-item .ti { font-size: 17px; flex-shrink: 0; opacity: .9; }
+.pr-side-item.is-active {
+  background: var(--pr-side-item-active-bg);
+  color: var(--pr-side-item-active-fg);
+  font-weight: 600;
+}
+.pr-side-item .pr-side-count { margin-left: auto; font: var(--pr-mono); color: var(--pr-side-fg-muted); }
+.pr-side-foot { margin-top: auto; padding: 12px 10px 16px; border-top: 1px solid var(--pr-side-border); }
+
+/* Botones dentro del riel (tema, salir): se ven igual que un enlace. */
+.pr-side-item.is-button {
+  width: 100%; border: 0; background: none; text-align: left;
+  font: 500 13.5px/1 var(--pr-font-sans);
+}
+
+/* Página que todavía no existe: se muestra apagada y no lleva a ningún lado.
+   Es preferible a un enlace que devuelve un 404. */
+.pr-side-item.is-soon { opacity: .42; cursor: default; }
+.pr-side-item.is-soon:hover { background: none; color: var(--pr-side-fg-muted); }
+.pr-side-item.is-soon .pr-side-count { font: var(--pr-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+
+/* Barra superior */
+.pr-topbar {
+  display: flex; align-items: center; gap: 12px;
+  height: 56px; padding: 0 24px;
+  border-bottom: var(--pr-bw) solid var(--pr-border);
+  background: color-mix(in srgb, var(--pr-bg) 92%, transparent);
+  backdrop-filter: saturate(140%) blur(8px);
+  position: sticky; top: 0; z-index: var(--pr-z-sticky);
+}
+.pr-topbar h1 { font: var(--pr-h3); color: var(--pr-fg-strong); margin: 0; }
+
+.pr-page { padding: 28px 32px 64px; max-width: 1280px; margin: 0 auto; width: 100%; }
+.pr-page-header { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 24px; }
+.pr-page-header h1 { font: var(--pr-h1); letter-spacing: var(--pr-tr-h); color: var(--pr-fg-strong); margin: 0; }
+.pr-page-header p  { font: var(--pr-body); color: var(--pr-fg-muted); margin: 4px 0 0; }
+
+/* Estado vacío */
+.pr-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; text-align: center;
+  padding: 56px 24px;
+  border: 1px dashed var(--pr-border-strong);
+  border-radius: var(--pr-r-5);
+  background: var(--pr-bg-soft);
+}
+.pr-empty .ti { font-size: 28px; color: var(--pr-fg-faint); }
+.pr-empty h3 { font: var(--pr-h3); color: var(--pr-fg-strong); margin: 0; }
+.pr-empty p  { font: var(--pr-body); color: var(--pr-fg-muted); margin: 0; max-width: 44ch; }
+
+/* ============================================================
+   Avatares
+   ============================================================ */
+.pr-avatar {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--pr-bg-sunk);
+  color: var(--pr-fg);
+  font: 600 11px/1 var(--pr-font-sans);
+  border: 1px solid var(--pr-border);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.pr-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.pr-avatar.is-md { width: 36px; height: 36px; font-size: 13px; }
+.pr-avatar.is-lg { width: 48px; height: 48px; font-size: 16px; }
+
+/* ============================================================
+   Enlaces
+   ============================================================ */
+.pr-link { color: var(--pr-accent); text-decoration: none; }
+.pr-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.pr-link.is-quiet { color: var(--pr-fg-muted); }
+.pr-link.is-quiet:hover { color: var(--pr-fg); }
+
+/* ============================================================
+   Marca — la proa
+   Un casco visto de frente que corta el agua: dos planos en
+   diagonal sobre una línea de flotación.
+   ============================================================ */
+.pr-logo-mark {
+  width: 32px; height: 32px;
+  border-radius: var(--pr-r-4);
+  background: var(--pr-accent);
+  color: var(--pr-fg-on-accent);
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.pr-logo-mark.is-lg { width: 40px; height: 40px; border-radius: 11px; }
+.pr-logo-mark svg { width: 60%; height: 60%; display: block; }
+
+.pr-wordmark {
+  font: 700 20px/1 var(--pr-font-sans);
+  letter-spacing: -0.04em;
+  color: var(--pr-fg-strong);
+}
+
+/* ============================================================
+   Avisos flotantes
+   ============================================================ */
+.pr-toast-host {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+  display: flex; flex-direction: column; gap: 8px;
+  z-index: var(--pr-z-toast);
+  pointer-events: none;
+}
+.pr-toast {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--pr-r-3);
+  background: var(--pr-fg-strong);
+  color: var(--pr-bg);
+  font: 500 13.5px/1.3 var(--pr-font-sans);
+  box-shadow: var(--pr-shadow-pop);
+  pointer-events: auto;
+  animation: pr-toast-in var(--pr-dur-2) var(--pr-ease-out);
+}
+.pr-toast.is-danger  { background: var(--pr-danger);  color: #fff; }
+.pr-toast.is-success { background: var(--pr-success); color: #fff; }
+@keyframes pr-toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* ============================================================
+   IMPRESIÓN — siempre clara y legible, sea cual sea el tema.
+   ============================================================ */
+@media print {
+  @page { size: A4; margin: 12mm; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; box-shadow: none !important; }
+  :root, [data-theme="dark"] {
+    --pr-bg:#fff; --pr-bg-soft:#f6f6f6; --pr-bg-sunk:#f0f0f0; --pr-surface:#fff; --pr-surface-2:#fafafa;
+    --pr-fg:#111; --pr-fg-strong:#000; --pr-fg-muted:#444; --pr-fg-faint:#666;
+    --pr-border:#cfcfcf; --pr-border-soft:#e6e6e6; --pr-border-strong:#bdbdbd;
+    --pr-atmo:none;
+  }
+  html, body, body.pr { background:#fff !important; color:#111 !important; }
+  .pr-shell-side, .pr-topbar, .no-print, [data-noprint] { display:none !important; }
+  .pr-shell { display:block !important; }
+  .pr-shell-main { margin:0 !important; padding:0 !important; width:100% !important; max-width:100% !important; }
+  input, select, textarea { background:#fff !important; color:#111 !important; border:1px solid #ccc !important; }
+  .pr-card, section, table, tr, thead { break-inside: avoid; page-break-inside: avoid; }
+  body.pr { font-size: 11px; }
+}

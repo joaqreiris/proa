@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="auth.signin.pageTitle">Entrar — Proa</title>
+<meta name="theme-color" content="#1B2E3B">
+<link rel="stylesheet" href="proa.css">
+<link rel="stylesheet" href="auth.css">
+<script src="assets/brand.js"></script>
+<script src="assets/vendor/supabase-js-2.112.4.min.js"></script>
+<script src="assets/supabase-init.js"></script>
+<script src="assets/i18n.js" defer></script>
+</head>
+<body class="pr">
+
+<div class="auth-shell">
+
+  <aside class="auth-brand">
+    <div class="auth-brand-top">
+      <span class="pr-logo-mark is-lg" data-brand-mark></span>
+      <span>
+        <span class="auth-brand-name">Proa</span>
+        <span class="auth-brand-meta" data-i18n="brand.tagline">Entrenamiento individual</span>
+      </span>
+    </div>
+
+    <div class="auth-brand-hero">
+      <span class="auth-brand-eyebrow">Un entrenador, un atleta</span>
+      <h2>La semana de tu atleta, <em>completa</em>.</h2>
+      <p>Gimnasio, campo, comidas y recuperación en un solo lugar. Tu atleta la ve en su teléfono y te devuelve cómo le fue.</p>
+
+      <div class="auth-brand-week" aria-hidden="true">
+        <div class="auth-brand-day"><span>Lun</span><i style="background:var(--pr-ev-gym);width:34%"></i><i style="background:var(--pr-ev-meal);width:16%"></i></div>
+        <div class="auth-brand-day"><span>Mar</span><i style="background:var(--pr-ev-team);width:46%"></i><i style="background:var(--pr-ev-recovery);width:14%"></i></div>
+        <div class="auth-brand-day"><span>Mié</span><i style="background:var(--pr-ev-field);width:30%"></i><i style="background:var(--pr-ev-gym);width:26%"></i></div>
+        <div class="auth-brand-day"><span>Jue</span><i style="background:var(--pr-ev-team);width:46%"></i></div>
+        <div class="auth-brand-day"><span>Vie</span><i style="background:var(--pr-ev-gym);width:22%"></i><i style="background:var(--pr-ev-meal);width:16%"></i></div>
+        <div class="auth-brand-day"><span>Sáb</span><i style="background:var(--pr-ev-match);width:58%"></i></div>
+        <div class="auth-brand-day"><span>Dom</span><i style="background:var(--pr-ev-rest);width:24%"></i></div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="auth-form-wrap">
+    <div class="auth-form">
+
+      <div class="auth-mobile-brand">
+        <span class="pr-logo-mark" data-brand-mark></span>
+        <span class="pr-wordmark">Proa</span>
+      </div>
+
+      <h1 data-i18n="auth.signin.title">Entra a tu espacio</h1>
+      <p class="sub" data-i18n="auth.signin.sub">La semana de cada uno de tus atletas, en un solo lugar.</p>
+
+      <form id="login-form" novalidate>
+        <div class="auth-fields">
+          <div class="pr-field">
+            <label class="pr-label" for="email" data-i18n="auth.email">Correo</label>
+            <input class="pr-input" type="email" id="email" name="email" autocomplete="email"
+                   required data-i18n-ph="auth.emailPh" placeholder="tu@correo.com">
+          </div>
+          <div class="pr-field">
+            <div class="auth-row">
+              <label class="pr-label" for="password" data-i18n="auth.password">Contraseña</label>
+              <a class="pr-link is-quiet" href="#" id="forgot" style="font-size:12.5px" data-i18n="auth.forgot">¿Olvidaste tu contraseña?</a>
+            </div>
+            <input class="pr-input" type="password" id="password" name="password"
+                   autocomplete="current-password" required>
+          </div>
+        </div>
+
+        <div class="auth-actions">
+          <button class="pr-btn is-primary is-lg is-block" type="submit" id="submit" data-i18n="auth.signIn">Entrar</button>
+        </div>
+
+        <p class="auth-msg" id="msg" role="status" aria-live="polite" hidden></p>
+      </form>
+
+      <p class="auth-foot">
+        <span data-i18n="auth.noAccount">¿Todavía no tienes cuenta?</span>
+        <a class="pr-link" href="Register.html" data-i18n="auth.createOne">Crea una</a>
+      </p>
+
+      <p class="auth-note" data-i18n="auth.athleteNote">
+        ¿Eres atleta? Tu entrenador te enviará una invitación por correo.
+      </p>
+    </div>
+  </main>
+
+</div>
+
+<script>
+(function () {
+  const form = document.getElementById('login-form');
+  const btn  = document.getElementById('submit');
+  const msg  = document.getElementById('msg');
+  const t = (k, fb) => (window.PR_I18N ? window.PR_I18N.t(k) : null) || fb;
+
+  function show(text, kind) {
+    msg.textContent = text;
+    msg.className = 'auth-msg is-' + (kind || 'error');
+    msg.hidden = false;
+  }
+
+  // Si ya hay sesión, no tiene sentido mostrar el formulario.
+  (async () => {
+    const { data: { session } } = await window.sb.auth.getSession();
+    if (!session) return;
+    const profile = await window.getProfile();
+    window.location.replace(window.landingFor(profile));
+  })();
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msg.hidden = true;
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    if (!email) { show(t('auth.err.emailRequired', 'Escribe tu correo.')); return; }
+
+    btn.classList.add('is-busy');
+    const { error } = await window.sb.auth.signInWithPassword({ email, password });
+    btn.classList.remove('is-busy');
+
+    if (error) { show(window.prAuthError(error)); return; }
+
+    window.resetContextCache();
+    const profile = await window.getProfile();
+    window.location.replace(window.landingFor(profile));
+  });
+
+  document.getElementById('forgot').addEventListener('click', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('email').value.trim();
+    if (!email) { show(t('auth.err.emailRequired', 'Escribe tu correo.')); return; }
+    await window.sb.auth.resetPasswordForEmail(email, {
+      redirectTo: location.origin + '/set-password.html'
+    });
+    show(t('auth.resetSent', 'Si ese correo existe, te llegará un enlace para cambiar la contraseña.'), 'ok');
+  });
+})();
+</script>
+</body>
+</html>

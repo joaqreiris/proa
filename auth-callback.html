@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proa</title>
+<meta name="theme-color" content="#1B2E3B">
+<link rel="stylesheet" href="proa.css">
+<script src="assets/brand.js"></script>
+<script src="assets/vendor/supabase-js-2.112.4.min.js"></script>
+<script src="assets/supabase-init.js"></script>
+<style>
+  .cb { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+  .cb-inner { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; }
+  .cb-inner p { font: var(--pr-body); color: var(--pr-fg-muted); margin: 0; max-width: 34ch; }
+  .cb-spin {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid var(--pr-border-strong);
+    border-top-color: var(--pr-accent);
+    animation: cb-spin 700ms linear infinite;
+  }
+  @keyframes cb-spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body class="pr">
+  <div class="cb">
+    <div class="cb-inner">
+      <span class="pr-logo-mark is-lg" data-brand-mark></span>
+      <div class="cb-spin" id="spin" role="status" aria-label="Cargando"></div>
+      <p id="cb-msg">Confirmando tu cuenta…</p>
+    </div>
+  </div>
+
+<script>
+(function () {
+  const msg  = document.getElementById('cb-msg');
+  const spin = document.getElementById('spin');
+
+  function fail(text) {
+    spin.style.display = 'none';
+    msg.innerHTML = text + ' <a class="pr-link" href="Login.html">Volver a entrar</a>';
+  }
+
+  // Supabase deja la sesión en el fragmento de la URL (#access_token=…) o como
+  // ?code= para el flujo PKCE. El cliente la levanta solo al arrancar; acá solo
+  // hay que esperar a que aparezca y mandar a cada quien a donde le toca.
+  (async () => {
+    const params = new URLSearchParams(location.hash.slice(1));
+    if (params.get('error_description')) {
+      fail(decodeURIComponent(params.get('error_description')) + '.');
+      return;
+    }
+
+    // El enlace de recuperación de contraseña va a otra pantalla.
+    if (params.get('type') === 'recovery') {
+      window.location.replace('set-password.html' + location.hash);
+      return;
+    }
+
+    for (let i = 0; i < 25; i++) {
+      const { data: { session } } = await window.sb.auth.getSession();
+      if (session) {
+        const profile = await window.getProfile();
+        window.location.replace(window.landingFor(profile));
+        return;
+      }
+      await new Promise(r => setTimeout(r, 200));
+    }
+    fail('No pudimos confirmar tu cuenta. El enlace puede haber vencido.');
+  })();
+})();
+</script>
+</body>
+</html>

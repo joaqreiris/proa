@@ -1,0 +1,9 @@
+{
+  "name": "proa",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Proa by Clava — entrenamiento individual: un entrenador, un atleta.",
+  "scripts": {
+    "dev": "python3 -m http.server 4173"
+  }
+}

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="onb.pageTitle">Configura tu espacio — Proa</title>
+<meta name="theme-color" content="#1B2E3B">
+<link rel="stylesheet" href="proa.css">
+<script src="assets/brand.js"></script>
+<script src="assets/vendor/supabase-js-2.112.4.min.js"></script>
+<script src="assets/supabase-init.js"></script>
+<script src="assets/i18n.js" defer></script>
+<style>
+  .onb { min-height: 100vh; display: grid; place-items: center; padding: 40px 24px; }
+  .onb-card { width: 100%; max-width: 480px; }
+  .onb-head { display: flex; align-items: center; gap: 11px; margin-bottom: 28px; }
+  .onb-card h1 { font: var(--pr-h1); letter-spacing: var(--pr-tr-h); color: var(--pr-fg-strong); margin: 0; }
+  .onb-card > p.sub { font: var(--pr-body); color: var(--pr-fg-muted); margin: 8px 0 26px; }
+  .onb-fields { display: flex; flex-direction: column; gap: 18px; }
+  .onb-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .onb-seats {
+    margin-top: 22px; padding: 13px 15px;
+    border: 1px solid var(--pr-accent-bd);
+    background: var(--pr-accent-soft);
+    border-radius: var(--pr-r-3);
+    display: flex; gap: 11px; align-items: flex-start;
+  }
+  .onb-seats .ti { color: var(--pr-accent); font-size: 18px; flex: none; margin-top: 1px; }
+  .onb-seats strong { font: 600 13.5px/1.4 var(--pr-font-sans); color: var(--pr-fg-strong); display: block; }
+  .onb-seats span { font: var(--pr-body-sm); color: var(--pr-fg-muted); }
+  .onb-actions { margin-top: 26px; }
+  .onb-msg { margin-top: 14px; font: var(--pr-body-sm); color: var(--pr-danger); }
+  @media (max-width: 520px) { .onb-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body class="pr">
+
+<div class="onb">
+  <div class="onb-card pr-card pr-card-pad-lg">
+
+    <div class="onb-head">
+      <span class="pr-logo-mark is-lg" data-brand-mark></span>
+      <span class="pr-wordmark">Proa</span>
+    </div>
+
+    <h1 data-i18n="onb.title">Configura tu espacio</h1>
+    <p class="sub" data-i18n="onb.sub">Tres datos y empiezas. Todo esto lo puedes cambiar después.</p>
+
+    <form id="onb-form" novalidate>
+      <div class="onb-fields">
+
+        <div class="pr-field">
+          <label class="pr-label" for="ws-name" data-i18n="onb.name">¿Cómo se llama tu espacio?</label>
+          <input class="pr-input" type="text" id="ws-name" required maxlength="80"
+                 data-i18n-ph="onb.namePh" placeholder="Preparación Física Martínez">
+          <span class="pr-hint" data-i18n="onb.nameHint">Tu nombre, o el de tu marca. Es lo que verán tus atletas.</span>
+        </div>
+
+        <div class="onb-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="ws-sport" data-i18n="onb.sport">Deporte principal</label>
+            <select class="pr-select" id="ws-sport">
+              <option value="football"   data-i18n="sport.football">Fútbol</option>
+              <option value="futsal"     data-i18n="sport.futsal">Futsal</option>
+              <option value="basketball" data-i18n="sport.basketball">Baloncesto</option>
+              <option value="rugby"      data-i18n="sport.rugby">Rugby</option>
+              <option value="hockey"     data-i18n="sport.hockey">Hockey</option>
+              <option value="athletics"  data-i18n="sport.athletics">Atletismo</option>
+              <option value="tennis"     data-i18n="sport.tennis">Tenis</option>
+              <option value="other"      data-i18n="sport.other">Otro</option>
+            </select>
+          </div>
+
+          <div class="pr-field">
+            <label class="pr-label" for="ws-lang" data-i18n="onb.language">Idioma</label>
+            <select class="pr-select" id="ws-lang">
+              <option value="es">Español</option>
+              <option value="en">English</option>
+              <option value="pt">Português</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="pr-field">
+          <label class="pr-label" for="ws-tz" data-i18n="onb.timezone">Zona horaria</label>
+          <select class="pr-select" id="ws-tz"></select>
+          <span class="pr-hint" data-i18n="onb.timezoneHint">Con esto calculamos los horarios de tus atletas.</span>
+        </div>
+
+      </div>
+
+      <div class="onb-seats">
+        <i class="ti ti-users"></i>
+        <span>
+          <strong id="seat-line">Tu plan incluye 5 atletas activos</strong>
+          <span data-i18n="onb.seatsHint">Los atletas en pausa o archivados no ocupan lugar.</span>
+        </span>
+      </div>
+
+      <div class="onb-actions">
+        <button class="pr-btn is-primary is-lg is-block" type="submit" id="submit" data-i18n="onb.create">Crear mi espacio</button>
+      </div>
+
+      <p class="onb-msg" id="msg" role="alert" hidden></p>
+    </form>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  const form = document.getElementById('onb-form');
+  const btn  = document.getElementById('submit');
+  const msg  = document.getElementById('msg');
+  const t = (k, fb, vars) => (window.PR_I18N ? window.PR_I18N.t(k, vars) : null) || fb;
+
+  const DEFAULT_SEATS = 5;
+
+  function show(text) { msg.textContent = text; msg.hidden = false; }
+
+  // Zonas horarias: la del navegador primero, y después una lista corta de las
+  // más usadas. No hace falta el catálogo completo para empezar.
+  function fillTimezones() {
+    const sel = document.getElementById('ws-tz');
+    let local = 'UTC';
+    try { local = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch (e) {}
+    const common = [
+      'Europe/Madrid', 'Europe/Lisbon', 'Europe/London', 'Europe/Berlin', 'Europe/Rome',
+      'America/Argentina/Buenos_Aires', 'America/Montevideo', 'America/Sao_Paulo',
+      'America/Santiago', 'America/Bogota', 'America/Mexico_City', 'America/New_York',
+      'America/Los_Angeles', 'UTC'
+    ];
+    const list = [local].concat(common.filter(z => z !== local));
+    sel.innerHTML = list.map(z => `<option value="${z}">${z.replace(/_/g, ' ')}</option>`).join('');
+    sel.value = local;
+  }
+
+  async function boot() {
+    if (!(await window.requireAuth())) return;
+    if (window.PR_I18N && window.PR_I18N.ready) { try { await window.PR_I18N.ready; } catch (e) {} }
+
+    const profile = await window.getProfile();
+    if (!profile) { window.location.replace('Login.html'); return; }
+    if (profile.role === 'athlete') { window.location.replace('athlete/Week.html'); return; }
+    if (profile.onboarded_at) { window.location.replace('Home.html'); return; }
+
+    fillTimezones();
+
+    // Sugerencias a partir de lo que ya sabemos del usuario.
+    if (profile.full_name) document.getElementById('ws-name').value = profile.full_name;
+    const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
+    const langSel = document.getElementById('ws-lang');
+    if ([...langSel.options].some(o => o.value === lang)) langSel.value = lang;
+
+    document.getElementById('seat-line').textContent =
+      t('onb.seats', `Tu plan incluye ${DEFAULT_SEATS} atletas activos`, { n: DEFAULT_SEATS });
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msg.hidden = true;
+
+    const name = document.getElementById('ws-name').value.trim();
+    if (!name) { show(t('onb.err.name', 'Ponle un nombre a tu espacio.')); return; }
+
+    const sport    = document.getElementById('ws-sport').value;
+    const language = document.getElementById('ws-lang').value;
+    const timezone = document.getElementById('ws-tz').value;
+
+    const { data: { user } } = await window.sb.auth.getUser();
+    if (!user) { window.location.replace('Login.html'); return; }
+
+    btn.classList.add('is-busy');
+    btn.textContent = t('onb.creating', 'Creando…');
+
+    // 1. El espacio. La regla de acceso exige que owner_id sea uno mismo, y un
+    //    disparador de la base registra al dueño como miembro en el acto: si eso
+    //    fuera una segunda llamada desde acá, un corte de red entre las dos
+    //    dejaría un espacio que su propio dueño no puede ver.
+    const { data: ws, error: wsErr } = await window.sb.from('workspaces')
+      .insert({ name, sport, language, timezone, owner_id: user.id, seat_limit: DEFAULT_SEATS })
+      .select('id').single();
+
+    if (wsErr) {
+      btn.classList.remove('is-busy');
+      btn.textContent = t('onb.create', 'Crear mi espacio');
+      show(wsErr.message);
+      return;
+    }
+
+    // 2. El alta queda marcada en el perfil: es el corte que decide si se
+    //    muestra esta pantalla o el inicio.
+    await window.sb.from('profiles')
+      .update({ onboarded_at: new Date().toISOString(), language, timezone })
+      .eq('id', user.id);
+
+    window.resetContextCache();
+    window.location.replace('Home.html');
+  });
+
+  // i18n.js viaja con defer: corre antes de DOMContentLoaded.
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>
