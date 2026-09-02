@@ -89,13 +89,27 @@ Tablas del Tramo 0: `profiles`, `workspaces`, `workspace_members`, `athletes`, `
 
 ---
 
+## Dónde vive
+
+| | |
+|---|---|
+| Producción | https://proa-lake.vercel.app |
+| Repo | https://github.com/joaqreiris/proa |
+| Base de datos | Supabase `lryftqfhztzhawplljsu` · eu-central-1 |
+
+Vercel publica la rama `main` sola. **No usar `cleanUrls`** en `vercel.json`: sirve las páginas sin extensión y manda un 308 desde `/Login.html`, con lo que la raíz deja de resolver y todos los enlaces internos (que llevan `.html`) rebotan.
+
 ## Pendiente de configurar
 
-- [ ] **Comprar el dominio.** `proa.app` estaba libre al 2 de septiembre de 2026 (sin DNS, sin app de entrenamiento con ese nombre). Mientras tanto se trabaja con el dominio de Vercel.
-- [ ] **Direcciones de retorno en Supabase** → Authentication · URL Configuration. Cargar la *Site URL* y la lista de *Redirect URLs* con el dominio de Vercel y con `http://localhost:4173`. Sin esto, el correo de confirmación devuelve al lugar equivocado. Es exactamente lo que rompió el ingreso con Google en ClavaMetrics al cambiar de dominio.
-- [ ] **Textos de los correos** de confirmación y recuperación, en Supabase, con la voz de Proa.
-- [ ] **Entrar con Google.** No está puesto todavía: hay que dar de alta las credenciales en Supabase. La clave `auth.google` ya está en los tres idiomas esperando.
-- [ ] **Repo en GitHub y proyecto en Vercel.** El repo local ya existe; falta crearlo en GitHub, agregar el remoto y hacer el primer push.
+- [ ] **Envío de correos.** El servicio interno de Supabase solo manda a las direcciones del equipo y con un tope de un par por hora: registrarse con un correo cualquiera **no recibe nada**. Hay que conectar un SMTP propio (Resend o similar) antes de que lo pruebe alguien de afuera.
+- [ ] **Textos de los correos** de confirmación y recuperación, con la voz de Proa.
+- [ ] **Comprar el dominio.** `proa.app` estaba libre al 2 de septiembre de 2026 (sin DNS, sin app de entrenamiento con ese nombre).
+- [ ] **Entrar con Google.** Falta dar de alta las credenciales en Supabase. La clave `auth.google` ya está en los tres idiomas esperando.
+
+## Hecho
+
+- [x] Repo en GitHub y proyecto en Vercel, con despliegue automático de `main`.
+- [x] **Direcciones de retorno en Supabase** (Authentication · URL Configuration): *Site URL* apunta a Vercel y la lista de retorno incluye `https://proa-lake.vercel.app/**` y `http://localhost:4173/**`. Sin esto el correo de confirmación devuelve al lugar equivocado — es lo mismo que rompió el ingreso con Google en ClavaMetrics al cambiar de dominio.
 
 ---
 
