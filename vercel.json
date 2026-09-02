@@ -1,6 +1,5 @@
 {
   "outputDirectory": ".",
-  "cleanUrls": true,
   "rewrites": [
     { "source": "/", "destination": "/Login.html" }
   ]
