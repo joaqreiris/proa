@@ -90,6 +90,9 @@ supabase db push -p '<contraseña de la base>'
 ```
 
 Tablas del Tramo 0: `profiles`, `workspaces`, `workspace_members`, `athletes`, `athlete_accounts`.
+Tramo 1: `athlete_invites`, `athlete_intake`, `availability_slots`, más las funciones `create_athlete_invite`, `invite_preview` y `accept_athlete_invite`.
+
+**`invite_preview` es anónima a propósito.** La pantalla del enlace la abre alguien que todavía no tiene cuenta, y necesita mostrar quién lo invita. Devuelve exactamente cuatro campos y nada más; `tests/invite-smoke.sh` lo verifica comparando el juego exacto de claves. Al tocarla, hay que mantener esa lista corta.
 
 ---
 
@@ -106,6 +109,7 @@ Vercel publica la rama `main` sola. **No usar `cleanUrls`** en `vercel.json`: si
 ## Pendiente de configurar
 
 - [ ] **Comprar el dominio.** `proa.app` estaba libre al 2 de septiembre de 2026 (sin DNS, sin app de entrenamiento con ese nombre). Desbloquea el punto siguiente.
+- [ ] **Invitación por correo** como canal extra. Hoy va por enlace, que además es como un preparador le pasa las cosas a su atleta.
 - [ ] **Envío de correos.** Supabase **no tiene** servicio de correo propio: el remitente de fábrica solo manda a las direcciones del equipo y con un tope de un par por hora. Hay que cargar un SMTP externo (Resend, Postmark, SES) en Authentication · Emails · SMTP; la app no cambia. Para mandar desde una dirección propia hace falta el dominio verificado.
 - [ ] **Volver a prender la confirmación por correo** (`mailer_autoconfirm = false`) junto con el SMTP, antes de que lo use alguien de afuera.
 - [ ] **Textos de los correos** de confirmación y recuperación, con la voz de Proa.
@@ -125,7 +129,7 @@ Vercel publica la rama `main` sola. **No usar `cleanUrls`** en `vercel.json`: si
 | | | |
 |---|---|---|
 | **0** | Cimientos | **hecho** — repo, base, marca, entrar, registrarse, alta del entrenador |
-| 1 | El atleta y su cuenta | alta con cupos, invitación, ingreso del atleta, anamnesis, perfil |
+| **1** | El atleta y su cuenta | **hecho** — alta con cupos, invitación por enlace, ingreso del atleta, anamnesis con la grilla de horarios, perfil y ajustes |
 | 2 | La semana | el calendario con la disponibilidad real pintada de fondo |
 | 3 | Los editores | gimnasio, campo, menú, recuperación, biblioteca de ejercicios |
 | 4 | El ida y vuelta | marcar lo hecho, esfuerzo, parte diario, video, comentarios |
