@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="set.pageTitle">Ajustes — Proa</title>
+<meta name="theme-color" content="#FF3D00">
+<link rel="stylesheet" href="proa.css">
+<script src="assets/brand.js"></script>
+<script src="assets/vendor/supabase-js-2.112.4.min.js"></script>
+<script src="assets/supabase-init.js"></script>
+<script src="assets/i18n.js" defer></script>
+<style>
+  .set-wrap { max-width: 640px; }
+  .set-sec { margin-bottom: 24px; }
+  .set-sec h2 { font: var(--pr-h3); text-transform: uppercase; letter-spacing: .05em; color: var(--pr-fg-strong); margin: 0 0 14px; }
+  .set-fields { display: flex; flex-direction: column; gap: 17px; }
+  .set-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 17px; }
+  @media (max-width: 560px) { .set-grid { grid-template-columns: 1fr; } }
+  .set-foot { display: flex; align-items: center; gap: 12px; }
+  .set-note { font: var(--pr-body-sm); color: var(--pr-fg-muted); margin: 0; }
+  .set-seats { display: flex; align-items: baseline; gap: 8px; }
+  .set-seats b { font: 700 30px/1 var(--pr-font-cond); font-variant-numeric: tabular-nums; color: var(--pr-fg-strong); }
+</style>
+</head>
+<body class="pr">
+
+<div class="pr-shell">
+  <aside class="pr-shell-side" id="pr-side-root"></aside>
+
+  <div class="pr-shell-main">
+    <header class="pr-topbar"><h1 data-i18n="nav.settings">Ajustes</h1></header>
+
+    <main class="pr-page set-wrap">
+
+      <div class="pr-page-header">
+        <div>
+          <h1 data-i18n="set.title">Tu espacio</h1>
+          <p data-i18n="set.sub">Cómo te ven tus atletas y cómo se calculan sus horarios.</p>
+        </div>
+      </div>
+
+      <form id="f-set">
+
+        <section class="pr-card pr-card-pad set-sec">
+          <h2 data-i18n="set.brand">Marca</h2>
+          <div class="set-fields">
+            <div class="pr-field">
+              <label class="pr-label" for="ws-name" data-i18n="onb.name">¿Cómo se llama tu espacio?</label>
+              <input class="pr-input" id="ws-name" required maxlength="80">
+              <span class="pr-hint" data-i18n="onb.nameHint">Tu nombre, o el de tu marca. Es lo que verán tus atletas.</span>
+            </div>
+            <div class="pr-field">
+              <span class="pr-label" id="accent-label" data-i18n="onb.accent">Color de tu marca</span>
+              <div class="pr-accent-picker" id="accent-picker" role="radiogroup" aria-labelledby="accent-label"></div>
+              <span class="pr-hint" data-i18n="onb.accentHint">Pinta los botones y el menú, y es el que va a ver tu atleta. Los colores de gimnasio, campo y partido no cambian: son iguales para todos.</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="pr-card pr-card-pad set-sec">
+          <h2 data-i18n="set.work">Trabajo</h2>
+          <div class="set-fields">
+            <div class="set-grid">
+              <div class="pr-field">
+                <label class="pr-label" for="ws-sport" data-i18n="onb.sport">Deporte principal</label>
+                <select class="pr-select" id="ws-sport">
+                  <option value="football"   data-i18n="sport.football">Fútbol</option>
+                  <option value="futsal"     data-i18n="sport.futsal">Futsal</option>
+                  <option value="basketball" data-i18n="sport.basketball">Baloncesto</option>
+                  <option value="rugby"      data-i18n="sport.rugby">Rugby</option>
+                  <option value="hockey"     data-i18n="sport.hockey">Hockey</option>
+                  <option value="athletics"  data-i18n="sport.athletics">Atletismo</option>
+                  <option value="tennis"     data-i18n="sport.tennis">Tenis</option>
+                  <option value="other"      data-i18n="sport.other">Otro</option>
+                </select>
+              </div>
+              <div class="pr-field">
+                <label class="pr-label" for="ws-lang" data-i18n="onb.language">Idioma</label>
+                <select class="pr-select" id="ws-lang">
+                  <option value="es">Español</option>
+                  <option value="en">English</option>
+                  <option value="pt">Português</option>
+                </select>
+              </div>
+            </div>
+            <div class="pr-field">
+              <label class="pr-label" for="ws-tz" data-i18n="onb.timezone">Zona horaria</label>
+              <select class="pr-select" id="ws-tz"></select>
+              <span class="pr-hint" data-i18n="onb.timezoneHint">Con esto calculamos los horarios de tus atletas.</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="pr-card pr-card-pad set-sec">
+          <h2 data-i18n="set.plan">Plan</h2>
+          <div class="set-seats">
+            <b id="seats">—</b>
+            <span class="pr-stat-label" id="seats-label" data-i18n="home.seats">Atletas</span>
+          </div>
+          <p class="set-note" style="margin-top:10px" data-i18n="set.planNote">Mientras Proa esté en construcción, todos los espacios tienen el mismo límite. Los escalones de pago llegan más adelante.</p>
+        </section>
+
+        <div class="set-foot">
+          <button class="pr-btn is-primary" type="submit" id="save" data-i18n="common.save">Guardar</button>
+          <span class="set-note" id="saved"></span>
+        </div>
+
+      </form>
+    </main>
+  </div>
+</div>
+
+<script src="assets/sidebar.js" defer></script>
+<script>
+(function () {
+  const t = (k, fb, vars) => (window.PR_I18N ? window.PR_I18N.t(k, vars) : null) || fb;
+  const esc = window.prEsc;
+  let ws = null, accent = 'orange';
+
+  function fillTimezones(current) {
+    const sel = document.getElementById('ws-tz');
+    let local = 'UTC';
+    try { local = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch (e) {}
+    const common = ['Europe/Madrid','Europe/Lisbon','Europe/London','Europe/Berlin','Europe/Rome',
+      'America/Argentina/Buenos_Aires','America/Montevideo','America/Sao_Paulo','America/Santiago',
+      'America/Bogota','America/Mexico_City','America/New_York','America/Los_Angeles','UTC'];
+    const list = [...new Set([current, local, ...common].filter(Boolean))];
+    sel.innerHTML = list.map(z => `<option value="${esc(z)}">${esc(z.replace(/_/g, ' '))}</option>`).join('');
+    sel.value = current || local;
+  }
+
+  function buildAccentPicker() {
+    const host = document.getElementById('accent-picker');
+    host.innerHTML = (window.prBrand.ACCENTS || []).map(a => {
+      const name = t('accent.' + a.id, a.id);
+      return `<button type="button" class="pr-accent-opt" role="radio" data-accent="${a.id}" data-id="${a.id}"
+               aria-label="${esc(name)}" title="${esc(name)}"><i></i></button>`;
+    }).join('');
+    host.addEventListener('click', (e) => {
+      const b = e.target.closest('.pr-accent-opt');
+      if (!b) return;
+      accent = b.dataset.id;
+      window.prBrand.applyAccent(accent);
+      mark();
+    });
+    mark();
+  }
+  function mark() {
+    document.querySelectorAll('.pr-accent-opt').forEach(b => {
+      const on = b.dataset.id === accent;
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+  }
+
+  document.getElementById('f-set').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('save');
+    const name = document.getElementById('ws-name').value.trim();
+    if (!name) { window.prToast(t('onb.err.name', 'Ponle un nombre a tu espacio.'), 'danger'); return; }
+
+    const language = document.getElementById('ws-lang').value;
+    btn.classList.add('is-busy');
+    const { error } = await window.sb.from('workspaces').update({
+      name, accent, language,
+      sport:    document.getElementById('ws-sport').value,
+      timezone: document.getElementById('ws-tz').value
+    }).eq('id', ws.id);
+    btn.classList.remove('is-busy');
+
+    if (error) { window.prToast(error.message, 'danger'); return; }
+
+    // El contexto en memoria guarda el nombre viejo: sin esto, el riel lateral
+    // seguiría mostrando el anterior hasta recargar.
+    window.resetContextCache();
+    if (window.PR_I18N && language !== window.PR_I18N.current) window.PR_I18N.setLang(language);
+    if (window.prSidebar) window.prSidebar.mount('settings');
+    document.getElementById('saved').textContent = t('set.saved', 'Guardado');
+    window.prToast(t('set.saved', 'Guardado'), 'success');
+  });
+
+  async function boot() {
+    if (!(await window.requireCoach())) return;
+    if (window.PR_I18N && window.PR_I18N.ready) { try { await window.PR_I18N.ready; } catch (e) {} }
+
+    ws = await window.getWorkspace();
+    if (!ws) { window.location.replace('Onboarding.html'); return; }
+
+    if (window.prSidebar) window.prSidebar.mount('settings');
+
+    document.getElementById('ws-name').value = ws.name || '';
+    document.getElementById('ws-sport').value = ws.sport || 'football';
+    document.getElementById('ws-lang').value = ws.language || (window.PR_I18N && window.PR_I18N.current) || 'es';
+    fillTimezones(ws.timezone);
+
+    accent = (window.prBrand.isAccent(ws.accent) ? ws.accent : window.prBrand.DEFAULT_ACCENT);
+    buildAccentPicker();
+
+    const seats = await window.getSeatUsage();
+    document.getElementById('seats').textContent = `${seats.used}/${seats.limit}`;
+
+    if (window.PR_I18N) window.PR_I18N.applyTo(document);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>

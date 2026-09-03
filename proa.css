@@ -766,6 +766,128 @@ body.pr::before {
 }
 
 /* ============================================================
+   Tablas / listados
+   ============================================================ */
+.pr-table-wrap { overflow-x: auto; border: var(--pr-bw) solid var(--pr-border); border-radius: var(--pr-r-5); background: var(--pr-surface); }
+.pr-table { border-collapse: collapse; width: 100%; min-width: 620px; }
+.pr-table th {
+  font: 700 10px/1 var(--pr-font-cond);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--pr-fg-muted);
+  text-align: left;
+  padding: 13px 16px;
+  border-bottom: var(--pr-bw) solid var(--pr-border-strong);
+  white-space: nowrap;
+}
+.pr-table td {
+  padding: 12px 16px;
+  border-bottom: var(--pr-bw) solid var(--pr-border);
+  font: var(--pr-body);
+  color: var(--pr-fg);
+  vertical-align: middle;
+}
+.pr-table tbody tr:last-child td { border-bottom: 0; }
+.pr-table tbody tr { transition: background var(--pr-dur-1); }
+.pr-table tbody tr:hover { background: var(--pr-bg-soft); }
+.pr-table .is-num { font-family: var(--pr-font-cond); font-weight: 600; font-variant-numeric: tabular-nums; }
+.pr-table .is-right { text-align: right; }
+.pr-table .is-tight { width: 1%; white-space: nowrap; }
+
+/* Nombre con inicial: el patrón de fila de persona */
+.pr-person { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.pr-person-name { font: 600 14.5px/1.25 var(--pr-font-sans); color: var(--pr-fg-strong); display: block; }
+.pr-person-meta { font: var(--pr-meta); color: var(--pr-fg-muted); display: block; margin-top: 2px; }
+
+/* ============================================================
+   Diálogos
+   ============================================================ */
+.pr-modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: grid; place-items: center;
+  padding: 20px;
+  z-index: var(--pr-z-modal);
+  animation: pr-fade var(--pr-dur-2) var(--pr-ease);
+}
+@keyframes pr-fade { from { opacity: 0 } to { opacity: 1 } }
+
+.pr-modal {
+  width: 100%; max-width: 480px;
+  max-height: calc(100vh - 40px);
+  background: var(--pr-bg);
+  border: var(--pr-bw) solid var(--pr-border-strong);
+  border-radius: var(--pr-r-6);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--pr-shadow-pop);
+}
+.pr-modal.is-wide { max-width: 680px; }
+.pr-modal-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 18px 20px 14px;
+  border-bottom: var(--pr-bw) solid var(--pr-border);
+}
+.pr-modal-head h2 {
+  font: var(--pr-h3);
+  text-transform: uppercase; letter-spacing: .05em;
+  color: var(--pr-fg-strong); margin: 0;
+}
+.pr-modal-body { padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+.pr-modal-foot {
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding: 14px 20px 18px;
+  border-top: var(--pr-bw) solid var(--pr-border);
+}
+.pr-modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 520px) { .pr-modal-grid { grid-template-columns: 1fr; } }
+
+/* Campo de solo lectura para copiar (el enlace de invitación) */
+.pr-copy {
+  display: flex; align-items: stretch; gap: 0;
+  border: var(--pr-bw) solid var(--pr-border-strong);
+  border-radius: var(--pr-r-3);
+  overflow: hidden;
+  background: var(--pr-surface);
+}
+.pr-copy input {
+  flex: 1; min-width: 0;
+  border: 0; background: transparent; outline: none;
+  padding: 0 12px; height: 42px;
+  font: 500 12.5px/1 var(--pr-font-mono);
+  color: var(--pr-fg-muted);
+  text-overflow: ellipsis;
+}
+.pr-copy button {
+  border: 0; border-left: var(--pr-bw) solid var(--pr-border-strong);
+  background: var(--pr-bg-soft);
+  color: var(--pr-fg-strong);
+  font: 700 11.5px/1 var(--pr-font-sans);
+  letter-spacing: var(--pr-tr-btn);
+  text-transform: uppercase;
+  padding: 0 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--pr-dur-1), color var(--pr-dur-1);
+}
+.pr-copy button:hover { background: var(--pr-accent); color: var(--pr-fg-on-accent); }
+
+/* Barra de filtros */
+.pr-tabs { display: flex; gap: 2px; background: var(--pr-bg-sunk); padding: 3px; border-radius: var(--pr-r-4); }
+.pr-tab {
+  border: 0; background: transparent; cursor: pointer;
+  padding: 7px 14px;
+  border-radius: var(--pr-r-3);
+  font: 700 11.5px/1 var(--pr-font-sans);
+  letter-spacing: var(--pr-tr-btn);
+  text-transform: uppercase;
+  color: var(--pr-fg-muted);
+  transition: background var(--pr-dur-1), color var(--pr-dur-1);
+}
+.pr-tab:hover { color: var(--pr-fg-strong); }
+.pr-tab.is-on { background: var(--pr-surface); color: var(--pr-fg-strong); box-shadow: var(--pr-shadow-2); }
+
+/* ============================================================
    Avisos flotantes
    ============================================================ */
 .pr-toast-host {

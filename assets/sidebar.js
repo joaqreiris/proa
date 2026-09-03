@@ -18,7 +18,7 @@
   // para no mandar a nadie a una página que todavía no existe.
   const ITEMS = [
     { key: 'home',      href: 'Home.html',      icon: 'ti-home',          label: 'nav.home' },
-    { key: 'athletes',  href: 'Athletes.html',  icon: 'ti-users',         label: 'nav.athletes',  soon: true },
+    { key: 'athletes',  href: 'Athletes.html',  icon: 'ti-users',         label: 'nav.athletes' },
     { key: 'week',      href: 'Week.html',      icon: 'ti-calendar-week', label: 'nav.week',      soon: true },
     { key: 'exercises', href: 'Exercises.html', icon: 'ti-barbell',       label: 'nav.exercises', soon: true }
   ];
@@ -72,11 +72,10 @@
       </nav>
 
       <div class="pr-side-foot">
-        <span class="pr-side-item is-soon" data-key="settings" aria-disabled="true">
+        <a class="pr-side-item${activeKey === 'settings' ? ' is-active' : ''}" href="Settings.html" data-key="settings">
           <i class="ti ti-settings"></i>
           <span data-i18n="nav.settings">${esc(t('nav.settings'))}</span>
-          <span class="pr-side-count">${esc(t('nav.soon'))}</span>
-        </span>
+        </a>
         <button class="pr-side-item is-button" type="button" id="pr-theme-toggle">
           <i class="ti ti-moon"></i><span>${esc(currentTheme() === 'dark' ? 'Claro' : 'Oscuro')}</span>
         </button>

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="inv.pageTitle">Tu invitación — Proa</title>
+<meta name="theme-color" content="#FF3D00">
+<link rel="stylesheet" href="proa.css">
+<link rel="stylesheet" href="auth.css">
+<script src="assets/brand.js"></script>
+<script src="assets/vendor/supabase-js-2.112.4.min.js"></script>
+<script src="assets/supabase-init.js"></script>
+<script src="assets/i18n.js" defer></script>
+<style>
+  .inv-badge {
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 7px 12px;
+    border: var(--pr-bw) solid var(--pr-accent-bd);
+    background: var(--pr-accent-soft);
+    border-radius: var(--pr-r-3);
+    font: 700 11px/1 var(--pr-font-cond);
+    letter-spacing: .14em; text-transform: uppercase;
+    color: var(--pr-accent-ink);
+    margin-bottom: 18px;
+  }
+  .inv-hello { font: var(--pr-h1); text-transform: uppercase; letter-spacing: var(--pr-tr-h); color: var(--pr-fg-strong); margin: 0; }
+  .inv-from { font: var(--pr-body); color: var(--pr-fg-muted); margin: 10px 0 28px; }
+  .inv-from b { color: var(--pr-fg-strong); font-weight: 700; }
+  .inv-state { text-align: center; padding: 20px 0; }
+  .inv-state .ti { font-size: 34px; color: var(--pr-fg-faint); display: block; margin-bottom: 12px; }
+  .inv-state h1 { font: var(--pr-h2); text-transform: uppercase; color: var(--pr-fg-strong); margin: 0 0 10px; }
+  .inv-state p { font: var(--pr-body); color: var(--pr-fg-muted); margin: 0 auto; max-width: 34ch; }
+  .inv-what { display: flex; flex-direction: column; gap: 9px; margin-top: 26px; }
+  .inv-what div { display: flex; gap: 11px; align-items: flex-start; font: var(--pr-body-sm); color: var(--pr-side-fg-muted); }
+  .inv-what i.dot { width: 9px; height: 9px; border-radius: 2px; margin-top: 5px; flex: none; }
+</style>
+</head>
+<body class="pr">
+
+<div class="auth-shell">
+
+  <aside class="auth-brand">
+    <div class="auth-brand-top">
+      <span class="pr-logo-mark is-lg" data-brand-mark></span>
+      <span>
+        <span class="auth-brand-name">Proa</span>
+        <span class="auth-brand-meta" data-i18n="brand.tagline">Entrenamiento individual</span>
+      </span>
+    </div>
+    <div class="auth-brand-hero">
+      <span class="auth-brand-eyebrow" data-i18n="inv.eyebrow">Tu semana, en tu teléfono</span>
+      <h2 data-i18n="inv.heroTitle">Todo lo que tienes que hacer, <em>en un solo lugar</em></h2>
+      <div class="inv-what">
+        <div><i class="dot" style="background:var(--pr-ev-gym)"></i><span data-i18n="inv.what1">Ves tu semana completa: gimnasio, campo, comidas y recuperación.</span></div>
+        <div><i class="dot" style="background:var(--pr-ev-field)"></i><span data-i18n="inv.what2">Marcas lo que hiciste y cómo te sentiste.</span></div>
+        <div><i class="dot" style="background:var(--pr-ev-match)"></i><span data-i18n="inv.what3">Le preguntas a tu entrenador sobre un ejercicio puntual.</span></div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="auth-form-wrap">
+    <div class="auth-form" id="panel">
+      <div class="inv-state">
+        <div class="pr-logo-mark is-lg" data-brand-mark style="margin:0 auto 14px"></div>
+        <p data-i18n="common.loading">Cargando…</p>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+(function () {
+  const t = (k, fb, vars) => (window.PR_I18N ? window.PR_I18N.t(k, vars) : null) || fb;
+  const esc = window.prEsc;
+  const panel = document.getElementById('panel');
+  const token = new URLSearchParams(location.search).get('t') || '';
+
+  function state(icon, titleKey, bodyKey, extra) {
+    panel.innerHTML = `<div class="inv-state">
+      <i class="ti ${icon}"></i>
+      <h1>${esc(t(titleKey))}</h1>
+      <p>${esc(t(bodyKey))}</p>
+      ${extra || ''}
+    </div>`;
+    if (window.PR_I18N) window.PR_I18N.applyTo(panel);
+  }
+
+  // Reclama la invitación con la sesión que haya y manda al atleta a su semana.
+  async function claim() {
+    const { error } = await window.sb.rpc('accept_athlete_invite', { p_token: token });
+    if (error) {
+      const m = String(error.message || '');
+      if (m.includes('coach_account')) {
+        state('ti-user-x', 'inv.coach.title', 'inv.coach.body',
+          `<p style="margin-top:16px"><a class="pr-link" href="Login.html">${esc(t('inv.signOutFirst', 'Sal de esta cuenta y vuelve a abrir el enlace'))}</a></p>`);
+        return false;
+      }
+      if (m.includes('invite_used') || m.includes('already_linked')) { state('ti-check', 'inv.used.title', 'inv.used.body'); return false; }
+      if (m.includes('invite_expired')) { state('ti-clock-x', 'inv.expired.title', 'inv.expired.body'); return false; }
+      state('ti-alert-triangle', 'inv.error.title', 'inv.error.body');
+      return false;
+    }
+    window.resetContextCache();
+    window.location.replace('athlete/Week.html');
+    return true;
+  }
+
+  function renderForm(info) {
+    panel.innerHTML = `
+      <span class="inv-badge"><i class="ti ti-mail-opened"></i>${esc(t('inv.badge', 'Invitación'))}</span>
+      <h1 class="inv-hello">${esc(t('inv.hello', 'Hola, ' + info.athlete_name, { name: info.athlete_name }))}</h1>
+      <p class="inv-from" data-i18n-html="inv.from" data-i18n-vars='${JSON.stringify({ ws: info.workspace }).replace(/'/g, '&#39;')}'>
+        <b>${esc(info.workspace)}</b> te invitó a Proa. Crea tu cuenta y ya vas a ver tu semana.
+      </p>
+
+      <form id="f-claim" novalidate>
+        <div class="auth-fields">
+          <div class="pr-field">
+            <label class="pr-label" for="email" data-i18n="auth.email">Correo</label>
+            <input class="pr-input" type="email" id="email" autocomplete="email" required
+                   data-i18n-ph="auth.emailPh" placeholder="tu@correo.com">
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="password" data-i18n="auth.password">Contraseña</label>
+            <input class="pr-input" type="password" id="password" autocomplete="new-password"
+                   minlength="8" required data-i18n-ph="auth.passwordPh" placeholder="Al menos 8 caracteres">
+          </div>
+        </div>
+        <div class="auth-actions">
+          <button class="pr-btn is-primary is-lg is-block" type="submit" id="claim" data-i18n="inv.accept">Entrar a mi semana</button>
+        </div>
+        <p class="auth-msg" id="msg" role="alert" hidden></p>
+      </form>
+
+      <p class="auth-foot">
+        <span data-i18n="inv.hasAccount">¿Ya tienes cuenta en Proa?</span>
+        <a class="pr-link" href="#" id="go-signin" data-i18n="auth.signInLink">Entra</a>
+      </p>`;
+
+    if (window.PR_I18N) window.PR_I18N.applyTo(panel);
+
+    const msg = document.getElementById('msg');
+    const show = (text) => { msg.textContent = text; msg.className = 'auth-msg is-error'; msg.hidden = false; };
+
+    document.getElementById('f-claim').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      msg.hidden = true;
+      const btn = document.getElementById('claim');
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!email) { show(t('auth.err.emailRequired', 'Escribe tu correo.')); return; }
+      if (password.length < 8) { show(t('auth.err.password', 'La contraseña tiene que tener al menos 8 caracteres.')); return; }
+
+      btn.classList.add('is-busy');
+      let { error } = await window.sb.auth.signUp({
+        email, password,
+        options: { data: { full_name: info.athlete_name, role: 'athlete' } }
+      });
+
+      // Si ya tenía cuenta, se intenta entrar con esa misma contraseña.
+      if (error && String(error.message).toLowerCase().includes('already registered')) {
+        const r = await window.sb.auth.signInWithPassword({ email, password });
+        error = r.error;
+      }
+      if (error) { btn.classList.remove('is-busy'); show(window.prAuthError(error)); return; }
+
+      await claim();
+      btn.classList.remove('is-busy');
+    });
+
+    document.getElementById('go-signin').addEventListener('click', (e) => {
+      e.preventDefault();
+      // Se vuelve acá después de entrar, para no perder el enlace.
+      sessionStorage.setItem('pr_pending_invite', token);
+      window.location.href = 'Login.html';
+    });
+  }
+
+  async function boot() {
+    if (window.PR_I18N && window.PR_I18N.ready) { try { await window.PR_I18N.ready; } catch (e) {} }
+
+    if (!token) { state('ti-link-off', 'inv.notFound.title', 'inv.notFound.body'); return; }
+
+    // Se lee SIN sesión: la función devuelve solo el nombre del atleta, el del
+    // espacio y el color. Nada más sale de la base hasta que haya cuenta.
+    const { data: info, error } = await window.sb.rpc('invite_preview', { p_token: token });
+    if (error || !info) { state('ti-alert-triangle', 'inv.error.title', 'inv.error.body'); return; }
+
+    if (info.status === 'not_found') { state('ti-link-off', 'inv.notFound.title', 'inv.notFound.body'); return; }
+    if (info.status === 'expired')   { state('ti-clock-x', 'inv.expired.title', 'inv.expired.body'); return; }
+    if (info.status === 'accepted')  { state('ti-check', 'inv.used.title', 'inv.used.body'); return; }
+
+    // La pantalla se pinta con el color del entrenador desde el primer momento.
+    if (info.accent && window.prBrand) window.prBrand.applyAccent(info.accent, false);
+
+    // Si ya venía con sesión, se reclama directo.
+    const { data: { session } } = await window.sb.auth.getSession();
+    if (session) { await claim(); return; }
+
+    renderForm(info);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>

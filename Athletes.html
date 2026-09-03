@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="ath.pageTitle">Atletas — Proa</title>
+<meta name="theme-color" content="#FF3D00">
+<link rel="stylesheet" href="proa.css">
+<script src="assets/brand.js"></script>
+<script src="assets/vendor/supabase-js-2.112.4.min.js"></script>
+<script src="assets/supabase-init.js"></script>
+<script src="assets/i18n.js" defer></script>
+<style>
+  .ath-bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+  .ath-seats {
+    display: flex; align-items: baseline; gap: 7px;
+    font: 700 13px/1 var(--pr-font-cond);
+    letter-spacing: .1em; text-transform: uppercase;
+    color: var(--pr-fg-muted);
+  }
+  .ath-seats b { font-size: 19px; color: var(--pr-fg-strong); font-variant-numeric: tabular-nums; }
+  .ath-seats.is-full b { color: var(--pr-danger); }
+  .ath-link { display: inline-flex; align-items: center; gap: 7px; }
+  .ath-state { display: inline-flex; align-items: center; gap: 6px; }
+  .ath-row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+  .ath-hint { font: var(--pr-body-sm); color: var(--pr-fg-muted); margin: 0; }
+  .ath-full {
+    display: flex; gap: 11px; align-items: flex-start;
+    padding: 13px 15px; margin-bottom: 18px;
+    border-left: 3px solid var(--pr-warning);
+    background: var(--pr-warning-bg);
+    border-radius: 0 var(--pr-r-3) var(--pr-r-3) 0;
+  }
+  .ath-full .ti { color: var(--pr-warning); font-size: 18px; flex: none; margin-top: 1px; }
+  .ath-full p { margin: 0; font: var(--pr-body-sm); color: var(--pr-fg); }
+</style>
+</head>
+<body class="pr">
+
+<div class="pr-shell">
+  <aside class="pr-shell-side" id="pr-side-root"></aside>
+
+  <div class="pr-shell-main">
+    <header class="pr-topbar">
+      <h1 data-i18n="nav.athletes">Atletas</h1>
+    </header>
+
+    <main class="pr-page">
+
+      <div class="pr-page-header">
+        <div class="pr-grow">
+          <h1 data-i18n="ath.title">Mis atletas</h1>
+          <p data-i18n="ath.sub">Cada atleta activo ocupa un cupo. Los pausados y archivados no.</p>
+        </div>
+        <button class="pr-btn is-primary" id="btn-new" data-i18n="ath.new">Nuevo atleta</button>
+      </div>
+
+      <div class="ath-full" id="seats-full" hidden>
+        <i class="ti ti-alert-triangle"></i>
+        <p id="seats-full-text"></p>
+      </div>
+
+      <div class="ath-bar">
+        <div class="pr-tabs" role="tablist">
+          <button class="pr-tab is-on" data-filter="active"   data-i18n="ath.f.active">Activos</button>
+          <button class="pr-tab"       data-filter="paused"   data-i18n="ath.f.paused">En pausa</button>
+          <button class="pr-tab"       data-filter="archived" data-i18n="ath.f.archived">Archivados</button>
+          <button class="pr-tab"       data-filter="all"      data-i18n="ath.f.all">Todos</button>
+        </div>
+        <span class="pr-grow"></span>
+        <span class="ath-seats" id="seats"></span>
+      </div>
+
+      <div id="list"></div>
+
+    </main>
+  </div>
+</div>
+
+<!-- Alta de atleta -->
+<div class="pr-modal-backdrop" id="m-new" hidden>
+  <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-new-title">
+    <div class="pr-modal-head">
+      <h2 id="m-new-title" data-i18n="ath.new">Nuevo atleta</h2>
+      <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
+    </div>
+    <form id="f-new">
+      <div class="pr-modal-body">
+        <div class="pr-modal-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="n-first" data-i18n="ath.firstName">Nombre</label>
+            <input class="pr-input" id="n-first" required maxlength="60">
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="n-last" data-i18n="ath.lastName">Apellido</label>
+            <input class="pr-input" id="n-last" maxlength="60">
+          </div>
+        </div>
+        <div class="pr-modal-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="n-birth" data-i18n="ath.birthDate">Fecha de nacimiento</label>
+            <input class="pr-input" id="n-birth" type="date">
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="n-position" data-i18n="ath.position">Posición</label>
+            <input class="pr-input" id="n-position" maxlength="40">
+          </div>
+        </div>
+        <div class="pr-field">
+          <label class="pr-label" for="n-club" data-i18n="ath.club">Club al que pertenece</label>
+          <input class="pr-input" id="n-club" maxlength="80">
+          <span class="pr-hint" data-i18n="ath.clubHint">Si entrena con un equipo, esos horarios se cargan después en la anamnesis.</span>
+        </div>
+        <p class="auth-msg" id="new-msg" role="alert" hidden style="margin:0;color:var(--pr-danger);font:600 13px/1.45 var(--pr-font-sans)"></p>
+      </div>
+      <div class="pr-modal-foot">
+        <button class="pr-btn is-ghost" type="button" data-close data-i18n="common.cancel">Cancelar</button>
+        <button class="pr-btn is-primary" type="submit" id="new-save" data-i18n="ath.create">Dar de alta</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Enlace de invitación -->
+<div class="pr-modal-backdrop" id="m-invite" hidden>
+  <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-inv-title">
+    <div class="pr-modal-head">
+      <h2 id="m-inv-title" data-i18n="ath.invite.title">Invitar al atleta</h2>
+      <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="pr-modal-body">
+      <p class="ath-hint" id="inv-lead"></p>
+      <div class="pr-copy">
+        <input id="inv-url" readonly>
+        <button type="button" id="inv-copy" data-i18n="ath.invite.copy">Copiar</button>
+      </div>
+      <p class="ath-hint" data-i18n="ath.invite.hint">Pásaselo por donde te escribas con él. Sirve una sola vez y vence a los 30 días. Si lo vuelves a generar, el anterior deja de funcionar.</p>
+    </div>
+    <div class="pr-modal-foot">
+      <button class="pr-btn is-ghost" type="button" id="inv-regen" data-i18n="ath.invite.regen">Generar otro</button>
+      <button class="pr-btn is-secondary" type="button" data-close data-i18n="common.close">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script src="assets/sidebar.js" defer></script>
+<script>
+(function () {
+  const t = (k, fb, vars) => (window.PR_I18N ? window.PR_I18N.t(k, vars) : null) || fb;
+  const esc = window.prEsc;
+
+  let wsId = null, seats = null, filter = 'active', rows = [], inviteFor = null;
+
+  // ── Datos ────────────────────────────────────────────────────────────────
+  async function load() {
+    // Una sola consulta trae los atletas y, de paso, si ya tienen cuenta y si
+    // hay una invitación viva. Con consultas separadas la lista parpadearía.
+    const { data, error } = await window.sb.from('athletes')
+      .select('id,first_name,last_name,birth_date,position,club_name,status,created_at,'
+            + 'athlete_accounts(user_id),'
+            + 'athlete_invites(id,accepted_at,expires_at)')
+      .eq('workspace_id', wsId)
+      .order('first_name', { ascending: true });
+
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    rows = data || [];
+    seats = await window.getSeatUsage();
+    paintSeats();
+    paint();
+  }
+
+  // Estado de la cuenta del atleta: vinculada, invitación pendiente, o nada.
+  function linkState(a) {
+    if (a.athlete_accounts && a.athlete_accounts.length) return 'linked';
+    const live = (a.athlete_invites || []).some(i => !i.accepted_at && new Date(i.expires_at) > new Date());
+    return live ? 'pending' : 'none';
+  }
+
+  // ── Pintado ──────────────────────────────────────────────────────────────
+  function paintSeats() {
+    const el = document.getElementById('seats');
+    el.innerHTML = `<b>${seats.used}</b>/${seats.limit} <span>${esc(t('ath.seats', 'cupos'))}</span>`;
+    el.classList.toggle('is-full', seats.left <= 0);
+
+    const box = document.getElementById('seats-full');
+    box.hidden = seats.left > 0;
+    if (seats.left <= 0) {
+      document.getElementById('seats-full-text').textContent =
+        t('ath.seatsFull', `Llegaste a ${seats.limit} atletas activos. Pausa a alguno para dar de alta a otro.`, { limit: seats.limit });
+    }
+    document.getElementById('btn-new').disabled = seats.left <= 0;
+  }
+
+  function paint() {
+    const host = document.getElementById('list');
+    const list = filter === 'all' ? rows : rows.filter(a => a.status === filter);
+
+    if (!list.length) {
+      host.innerHTML = `<section class="pr-empty">
+        <i class="ti ti-users"></i>
+        <h3>${esc(t(rows.length ? 'ath.emptyFilter.title' : 'ath.empty.title'))}</h3>
+        <p>${esc(t(rows.length ? 'ath.emptyFilter.body' : 'ath.empty.body'))}</p>
+      </section>`;
+      return;
+    }
+
+    const statePill = {
+      linked:  `<span class="pr-pill is-success"><i class="ti ti-check"></i>${esc(t('ath.st.linked'))}</span>`,
+      pending: `<span class="pr-pill is-accent"><i class="ti ti-link"></i>${esc(t('ath.st.pending'))}</span>`,
+      none:    `<span class="pr-pill">${esc(t('ath.st.none'))}</span>`
+    };
+    const statusPill = {
+      active:   `<span class="pr-pill is-success">${esc(t('ath.f.active'))}</span>`,
+      paused:   `<span class="pr-pill is-warning">${esc(t('ath.f.paused'))}</span>`,
+      archived: `<span class="pr-pill">${esc(t('ath.f.archived'))}</span>`
+    };
+
+    host.innerHTML = `<div class="pr-table-wrap"><table class="pr-table">
+      <thead><tr>
+        <th data-i18n="ath.th.name">Atleta</th>
+        <th data-i18n="ath.th.club">Club</th>
+        <th data-i18n="ath.th.status">Estado</th>
+        <th data-i18n="ath.th.account">Cuenta</th>
+        <th class="is-tight"></th>
+      </tr></thead>
+      <tbody>${list.map(a => {
+        const full = `${a.first_name} ${a.last_name || ''}`.trim();
+        const st = linkState(a);
+        return `<tr data-id="${a.id}">
+          <td><a class="pr-person" href="Athlete.html?id=${a.id}" style="text-decoration:none">
+                <span class="pr-avatar">${esc(window.prInitials(full))}</span>
+                <span><span class="pr-person-name">${esc(full)}</span>
+                ${a.position ? `<span class="pr-person-meta">${esc(a.position)}</span>` : ''}</span>
+              </a></td>
+          <td>${a.club_name ? esc(a.club_name) : '<span style="color:var(--pr-fg-faint)">—</span>'}</td>
+          <td>${statusPill[a.status] || ''}</td>
+          <td>${statePill[st]}</td>
+          <td class="is-tight"><div class="ath-row-actions">
+            ${st !== 'linked'
+              ? `<button class="pr-btn is-sm is-secondary" data-act="invite" title="${esc(t('ath.invite.title'))}"><i class="ti ti-link"></i></button>` : ''}
+            ${a.status === 'active'
+              ? `<button class="pr-btn is-sm is-ghost" data-act="pause" title="${esc(t('ath.act.pause'))}"><i class="ti ti-player-pause"></i></button>`
+              : `<button class="pr-btn is-sm is-ghost" data-act="activate" title="${esc(t('ath.act.activate'))}"><i class="ti ti-player-play"></i></button>`}
+            <a class="pr-btn is-sm is-secondary" href="Intake.html?id=${a.id}" title="${esc(t('ath.act.intake'))}"><i class="ti ti-clipboard-text"></i></a>
+          </div></td>
+        </tr>`;
+      }).join('')}</tbody></table></div>`;
+
+    if (window.PR_I18N) window.PR_I18N.applyTo(host);
+  }
+
+  // ── Acciones ─────────────────────────────────────────────────────────────
+  function openModal(id) { document.getElementById(id).hidden = false; }
+  function closeModal(id) { document.getElementById(id).hidden = true; }
+
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-close]')) {
+      const back = e.target.closest('.pr-modal-backdrop');
+      if (back) back.hidden = true;
+      return;
+    }
+    // Clic fuera del diálogo lo cierra.
+    if (e.target.classList.contains('pr-modal-backdrop')) e.target.hidden = true;
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.querySelectorAll('.pr-modal-backdrop').forEach(m => m.hidden = true);
+  });
+
+  document.getElementById('btn-new').addEventListener('click', () => {
+    document.getElementById('f-new').reset();
+    document.getElementById('new-msg').hidden = true;
+    openModal('m-new');
+    document.getElementById('n-first').focus();
+  });
+
+  document.querySelector('.pr-tabs').addEventListener('click', (e) => {
+    const tab = e.target.closest('.pr-tab');
+    if (!tab) return;
+    filter = tab.dataset.filter;
+    document.querySelectorAll('.pr-tab').forEach(b => b.classList.toggle('is-on', b === tab));
+    paint();
+  });
+
+  document.getElementById('f-new').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('new-msg');
+    const btn = document.getElementById('new-save');
+    msg.hidden = true;
+
+    const first = document.getElementById('n-first').value.trim();
+    if (!first) { msg.textContent = t('ath.err.firstName', 'Escribe al menos el nombre.'); msg.hidden = false; return; }
+
+    btn.classList.add('is-busy');
+    const { error } = await window.sb.from('athletes').insert({
+      workspace_id: wsId,
+      first_name: first,
+      last_name:  document.getElementById('n-last').value.trim(),
+      birth_date: document.getElementById('n-birth').value || null,
+      position:   document.getElementById('n-position').value.trim() || null,
+      club_name:  document.getElementById('n-club').value.trim() || null
+    });
+    btn.classList.remove('is-busy');
+
+    if (error) {
+      // El tope de cupos lo pone la base, no la pantalla: si alguien saltea la
+      // validación de acá, la fila igual no entra.
+      msg.textContent = String(error.message || '').includes('seat_limit_reached')
+        ? t('ath.err.seats', 'Llegaste al límite de atletas activos de tu plan.')
+        : error.message;
+      msg.hidden = false;
+      return;
+    }
+
+    closeModal('m-new');
+    window.prToast(t('ath.created', 'Atleta dado de alta.'), 'success');
+    await load();
+  });
+
+  document.getElementById('list').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    const id = btn.closest('tr').dataset.id;
+    const act = btn.dataset.act;
+
+    if (act === 'invite') { await showInvite(id); return; }
+
+    const status = act === 'pause' ? 'paused' : 'active';
+    const { error } = await window.sb.from('athletes').update({ status }).eq('id', id);
+    if (error) {
+      window.prToast(String(error.message).includes('seat_limit_reached')
+        ? t('ath.err.seats', 'Llegaste al límite de atletas activos de tu plan.')
+        : error.message, 'danger');
+      return;
+    }
+    await load();
+  });
+
+  async function showInvite(athleteId, regen) {
+    inviteFor = athleteId;
+    const a = rows.find(r => r.id === athleteId);
+    const name = a ? a.first_name : '';
+
+    // Si ya hay una invitación viva y no se pidió otra, se reusa: generar una
+    // nueva invalidaría el enlace que el entrenador ya mandó.
+    const live = (a && a.athlete_invites || []).find(i => !i.accepted_at && new Date(i.expires_at) > new Date());
+    let token = null;
+
+    if (live && !regen) {
+      const { data } = await window.sb.from('athlete_invites').select('token').eq('id', live.id).maybeSingle();
+      token = data && data.token;
+    }
+    if (!token) {
+      const { data, error } = await window.sb.rpc('create_athlete_invite', { p_athlete_id: athleteId });
+      if (error) { window.prToast(error.message, 'danger'); return; }
+      token = data;
+    }
+
+    document.getElementById('inv-lead').textContent =
+      t('ath.invite.lead', `Este es el enlace de ${name}.`, { name });
+    document.getElementById('inv-url').value = location.origin + '/invite.html?t=' + token;
+    openModal('m-invite');
+    document.getElementById('inv-url').select();
+  }
+
+  document.getElementById('inv-copy').addEventListener('click', async () => {
+    const input = document.getElementById('inv-url');
+    try {
+      await navigator.clipboard.writeText(input.value);
+    } catch (err) {
+      // Sin permiso de portapapeles (o sin https) queda seleccionado para copiar a mano.
+      input.select();
+    }
+    window.prToast(t('ath.invite.copied', 'Enlace copiado.'), 'success');
+  });
+
+  document.getElementById('inv-regen').addEventListener('click', async () => {
+    await showInvite(inviteFor, true);
+    await load();
+  });
+
+  // ── Arranque ─────────────────────────────────────────────────────────────
+  async function boot() {
+    if (!(await window.requireCoach())) return;
+    if (window.PR_I18N && window.PR_I18N.ready) { try { await window.PR_I18N.ready; } catch (e) {} }
+
+    wsId = await window.getWorkspaceId();
+    if (!wsId) { window.location.replace('Onboarding.html'); return; }
+
+    if (window.prSidebar) window.prSidebar.mount('athletes');
+    if (window.PR_I18N) window.PR_I18N.applyTo(document);
+    await load();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>

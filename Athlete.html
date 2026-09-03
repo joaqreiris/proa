@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proa</title>
+<meta name="theme-color" content="#FF3D00">
+<link rel="stylesheet" href="proa.css">
+<script src="assets/brand.js"></script>
+<script src="assets/vendor/supabase-js-2.112.4.min.js"></script>
+<script src="assets/supabase-init.js"></script>
+<script src="assets/i18n.js" defer></script>
+<style>
+  .ap-wrap { max-width: 900px; }
+  .ap-hero { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+  .ap-hero h1 { font: var(--pr-h1); text-transform: uppercase; letter-spacing: var(--pr-tr-h); color: var(--pr-fg-strong); margin: 0; }
+  .ap-hero-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .ap-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; margin-bottom: 22px; }
+  .ap-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .ap-card-head h2 { font: var(--pr-h3); text-transform: uppercase; letter-spacing: .05em; color: var(--pr-fg-strong); margin: 0; }
+  .ap-dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px 20px; }
+  .ap-dl dt { font: 700 10px/1 var(--pr-font-cond); letter-spacing: .16em; text-transform: uppercase; color: var(--pr-fg-muted); margin-bottom: 5px; }
+  .ap-dl dd { margin: 0; font: 500 14.5px/1.4 var(--pr-font-sans); color: var(--pr-fg-strong); }
+  .ap-dl dd.is-empty { color: var(--pr-fg-faint); font-weight: 400; }
+  .ap-prose { font: var(--pr-body); color: var(--pr-fg); white-space: pre-wrap; margin: 0; }
+  .ap-prose.is-empty { color: var(--pr-fg-faint); }
+  .ap-block { margin-bottom: 22px; }
+
+  /* Semana en modo lectura: misma línea de tiempo que la anamnesis */
+  .wk { display: flex; flex-direction: column; gap: 5px; }
+  .wk-scale { display: flex; padding-left: 46px; margin-bottom: 2px; }
+  .wk-scale span { flex: 1; font: 600 9.5px/1 var(--pr-font-cond); letter-spacing: .1em; color: var(--pr-fg-faint); }
+  .wk-row { display: flex; align-items: center; gap: 8px; }
+  .wk-day { width: 38px; flex: none; font: 700 11px/1 var(--pr-font-cond); letter-spacing: .12em; text-transform: uppercase; color: var(--pr-fg-muted); }
+  .wk-track { position: relative; flex: 1; height: 26px; background: var(--pr-bg-sunk); border-radius: var(--pr-r-2); overflow: hidden; }
+  .wk-track::before {
+    content: ""; position: absolute; inset: 0;
+    background: repeating-linear-gradient(to right, transparent 0, transparent calc(16.666% - 1px),
+      var(--pr-border) calc(16.666% - 1px), var(--pr-border) 16.666%);
+  }
+  .wk-slot {
+    position: absolute; top: 3px; bottom: 3px; border-radius: var(--pr-r-1);
+    display: flex; align-items: center; padding: 0 6px;
+    font: 600 10px/1 var(--pr-font-sans); color: #fff; overflow: hidden; white-space: nowrap;
+  }
+  .wk-free {
+    font: var(--pr-body-sm); color: var(--pr-fg-muted); margin: 14px 0 0;
+  }
+  .wk-free b { color: var(--pr-fg-strong); font-family: var(--pr-font-cond); font-size: 16px; }
+</style>
+</head>
+<body class="pr">
+
+<div class="pr-shell">
+  <aside class="pr-shell-side" id="pr-side-root"></aside>
+
+  <div class="pr-shell-main">
+    <header class="pr-topbar">
+      <a class="pr-icon-btn is-flush" href="Athletes.html" aria-label="Volver"><i class="ti ti-arrow-left"></i></a>
+      <h1 id="top-name">&nbsp;</h1>
+    </header>
+
+    <main class="pr-page ap-wrap" id="main" hidden>
+
+      <div class="ap-hero">
+        <span class="pr-avatar is-lg" id="av"></span>
+        <div class="pr-grow">
+          <h1 id="name">&nbsp;</h1>
+          <div class="ap-hero-meta" id="meta"></div>
+        </div>
+        <a class="pr-btn is-primary" id="btn-intake" href="#" data-i18n="ap.editIntake">Editar anamnesis</a>
+      </div>
+
+      <div class="ap-cards">
+        <section class="pr-card pr-card-pad has-strip" style="--pr-strip:var(--pr-ev-gym)">
+          <dl class="ap-dl" id="basics"></dl>
+        </section>
+        <section class="pr-card pr-card-pad">
+          <dl class="ap-dl" id="numbers"></dl>
+        </section>
+      </div>
+
+      <section class="pr-card pr-card-pad ap-block">
+        <div class="ap-card-head"><h2 data-i18n="in.week">Su semana ocupada</h2></div>
+        <div class="wk">
+          <div class="wk-scale" aria-hidden="true"><span>06</span><span>09</span><span>12</span><span>15</span><span>18</span><span>21</span></div>
+          <div id="wk-rows"></div>
+        </div>
+        <p class="wk-free" id="free"></p>
+      </section>
+
+      <section class="pr-card pr-card-pad ap-block" id="goal-card">
+        <div class="ap-card-head"><h2 data-i18n="in.goal">Objetivo</h2></div>
+        <p class="ap-prose" id="goals"></p>
+      </section>
+
+      <section class="pr-card pr-card-pad ap-block" id="hist-card">
+        <div class="ap-card-head"><h2 data-i18n="in.history">Historial</h2></div>
+        <dl class="ap-dl">
+          <div><dt data-i18n="in.injuries">Lesiones previas</dt><dd id="injuries"></dd></div>
+          <div><dt data-i18n="in.current">Molestias actuales</dt><dd id="current"></dd></div>
+        </dl>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<script src="assets/sidebar.js" defer></script>
+<script>
+(function () {
+  const t = (k, fb, vars) => (window.PR_I18N ? window.PR_I18N.t(k, vars) : null) || fb;
+  const esc = window.prEsc;
+  const id = new URLSearchParams(location.search).get('id');
+
+  const DAY_KEYS = ['day.mon','day.tue','day.wed','day.thu','day.fri','day.sat','day.sun'];
+  const FALLBACK_DAYS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  const H0 = 6, H1 = 24, SPAN = H1 - H0;
+  const KIND_COLOR = {
+    commitment: 'var(--pr-ev-commit)', team_training: 'var(--pr-ev-team)',
+    match: 'var(--pr-ev-match)', unavailable: 'var(--pr-ev-rest)'
+  };
+  const toMin = (v) => { const [h, m] = String(v).split(':').map(Number); return h * 60 + (m || 0); };
+
+  const val = (v, empty) => v === null || v === undefined || v === ''
+    ? `<span class="is-empty">${esc(empty || t('ap.noData', 'Sin cargar'))}</span>` : esc(String(v));
+
+  function age(birth) {
+    if (!birth) return null;
+    const [y, m, d] = birth.split('-').map(Number);
+    const today = new Date();
+    let a = today.getFullYear() - y;
+    if (today.getMonth() + 1 < m || (today.getMonth() + 1 === m && today.getDate() < d)) a--;
+    return a;
+  }
+
+  function paintWeek(slots) {
+    document.getElementById('wk-rows').innerHTML = DAY_KEYS.map((k, d) => {
+      const blocks = slots.filter(s => s.weekday === d).map(s => {
+        const a = Math.max(toMin(s.start_time), H0 * 60);
+        const b = Math.min(toMin(s.end_time), H1 * 60);
+        if (b <= a) return '';
+        const label = s.label || t('in.k.' + (s.kind === 'team_training' ? 'team' : s.kind), '');
+        return `<span class="wk-slot" style="left:${((a - H0*60)/(SPAN*60))*100}%;width:${((b-a)/(SPAN*60))*100}%;
+                background:${KIND_COLOR[s.kind] || 'var(--pr-ev-commit)'}">${esc(label)}</span>`;
+      }).join('');
+      return `<div class="wk-row"><span class="wk-day">${esc(t(k, FALLBACK_DAYS[d]))}</span><span class="wk-track">${blocks}</span></div>`;
+    }).join('');
+
+    // Cuántas horas quedan libres en la semana. Es el número que le dice al
+    // entrenador con cuánto margen cuenta antes de empezar a planificar.
+    // Se fusionan las franjas superpuestas: si no, dos que se pisan restarían
+    // el doble y el hueco quedaría más chico de lo que es.
+    let busy = 0;
+    for (let d = 0; d < 7; d++) {
+      const ranges = slots.filter(s => s.weekday === d)
+        .map(s => [Math.max(toMin(s.start_time), H0*60), Math.min(toMin(s.end_time), H1*60)])
+        .filter(r => r[1] > r[0])
+        .sort((x, y) => x[0] - y[0]);
+      let end = -1;
+      ranges.forEach(([a, b]) => {
+        const from = Math.max(a, end);
+        if (b > from) { busy += b - from; end = b; }
+      });
+    }
+    const total = 7 * SPAN * 60;
+    const freeH = Math.round((total - busy) / 60);
+    document.getElementById('free').innerHTML =
+      slots.length
+        ? t('ap.free', `Le quedan <b>${freeH} h</b> libres en la semana, entre las 06:00 y las 24:00.`, { hours: freeH })
+        : `<span style="color:var(--pr-fg-faint)">${esc(t('ap.noWeek', 'Todavía no cargaste sus horarios fijos.'))}</span>`;
+  }
+
+  async function boot() {
+    if (!(await window.requireCoach())) return;
+    if (window.PR_I18N && window.PR_I18N.ready) { try { await window.PR_I18N.ready; } catch (e) {} }
+    if (!id) { window.location.replace('Athletes.html'); return; }
+    if (window.prSidebar) window.prSidebar.mount('athletes');
+
+    const { data: a } = await window.sb.from('athletes')
+      .select('*, athlete_accounts(user_id), athlete_intake(*)')
+      .eq('id', id).maybeSingle();
+    if (!a) { window.location.replace('Athletes.html'); return; }
+
+    const intake = Array.isArray(a.athlete_intake) ? a.athlete_intake[0] : a.athlete_intake;
+    const full = `${a.first_name} ${a.last_name || ''}`.trim();
+
+    document.title = full + ' — Proa';
+    document.getElementById('top-name').textContent = full;
+    document.getElementById('name').textContent = full;
+    document.getElementById('av').textContent = window.prInitials(full);
+    document.getElementById('btn-intake').href = 'Intake.html?id=' + id;
+
+    const linked = a.athlete_accounts && a.athlete_accounts.length;
+    document.getElementById('meta').innerHTML = [
+      `<span class="pr-pill ${a.status === 'active' ? 'is-success' : a.status === 'paused' ? 'is-warning' : ''}">${esc(t('ath.f.' + a.status))}</span>`,
+      linked ? `<span class="pr-pill is-success"><i class="ti ti-check"></i>${esc(t('ath.st.linked'))}</span>`
+             : `<span class="pr-pill">${esc(t('ath.st.none'))}</span>`,
+      a.club_name ? `<span class="pr-pill">${esc(a.club_name)}</span>` : ''
+    ].join('');
+
+    const yrs = age(a.birth_date);
+    document.getElementById('basics').innerHTML = [
+      ['ap.position', a.position],
+      ['ap.age', yrs !== null ? t('ap.years', yrs + ' años', { n: yrs }) : null],
+      ['ap.club', a.club_name],
+      ['in.gymAccess', intake && intake.gym_access ? t('in.gym.' + intake.gym_access) : null]
+    ].map(([k, v]) => `<div><dt data-i18n="${k}">${esc(t(k))}</dt><dd>${val(v)}</dd></div>`).join('');
+
+    document.getElementById('numbers').innerHTML = [
+      ['in.height', intake && intake.height_cm ? intake.height_cm + ' cm' : null],
+      ['in.weight', intake && intake.weight_kg ? intake.weight_kg + ' kg' : null],
+      ['in.sleepHours', intake && intake.sleep_hours ? intake.sleep_hours + ' h' : null],
+      ['in.sessions', intake && intake.sessions_per_week]
+    ].map(([k, v]) => `<div><dt data-i18n="${k}">${esc(t(k))}</dt><dd class="${v ? '' : 'is-empty'}">${val(v)}</dd></div>`).join('');
+
+    const goals = intake && intake.goals;
+    const goalEl = document.getElementById('goals');
+    goalEl.textContent = goals || t('ap.noData', 'Sin cargar');
+    goalEl.classList.toggle('is-empty', !goals);
+
+    document.getElementById('injuries').innerHTML = val(intake && intake.injury_history);
+    document.getElementById('current').innerHTML  = val(intake && intake.current_issues);
+
+    const { data: slots } = await window.sb.from('availability_slots')
+      .select('weekday,start_time,end_time,kind,label')
+      .eq('athlete_id', id).order('weekday').order('start_time');
+    paintWeek(slots || []);
+
+    document.getElementById('main').hidden = false;
+    if (window.PR_I18N) window.PR_I18N.applyTo(document);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>

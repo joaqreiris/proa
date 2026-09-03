@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="in.pageTitle">Anamnesis — Proa</title>
+<meta name="theme-color" content="#FF3D00">
+<link rel="stylesheet" href="proa.css">
+<script src="assets/brand.js"></script>
+<script src="assets/vendor/supabase-js-2.112.4.min.js"></script>
+<script src="assets/supabase-init.js"></script>
+<script src="assets/i18n.js" defer></script>
+<style>
+  .in-wrap { max-width: 860px; }
+
+  .in-sec { margin-bottom: 26px; }
+  .in-sec-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+  .in-sec-num { font: 700 12px/1 var(--pr-font-cond); letter-spacing: .16em; color: var(--pr-accent-ink); }
+  .in-sec h2 { font: var(--pr-h3); text-transform: uppercase; letter-spacing: .05em; color: var(--pr-fg-strong); margin: 0; }
+  .in-sec-note { font: var(--pr-body-sm); color: var(--pr-fg-muted); margin: 0 0 14px; max-width: 70ch; }
+
+  .in-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .in-grid.is-3 { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 640px) { .in-grid, .in-grid.is-3 { grid-template-columns: 1fr; } }
+
+  /* ── Línea de tiempo de la semana ──
+     Cada día es una franja de 06:00 a 24:00. Lo ocupado se pinta; lo que queda
+     en blanco es donde de verdad se puede meter carga. Es la razón de ser de
+     toda esta pantalla. */
+  .wk { display: flex; flex-direction: column; gap: 5px; }
+  .wk-scale { display: flex; padding-left: 46px; margin-bottom: 2px; }
+  .wk-scale span {
+    flex: 1;
+    font: 600 9.5px/1 var(--pr-font-cond);
+    letter-spacing: .1em;
+    color: var(--pr-fg-faint);
+  }
+  .wk-row { display: flex; align-items: center; gap: 8px; }
+  .wk-day {
+    width: 38px; flex: none;
+    font: 700 11px/1 var(--pr-font-cond);
+    letter-spacing: .12em; text-transform: uppercase;
+    color: var(--pr-fg-muted);
+  }
+  .wk-track {
+    position: relative; flex: 1;
+    height: 30px;
+    background: var(--pr-bg-sunk);
+    border-radius: var(--pr-r-2);
+    overflow: hidden;
+  }
+  /* Rayas cada 3 horas, para poder leer la hora sin números */
+  .wk-track::before {
+    content: ""; position: absolute; inset: 0;
+    background: repeating-linear-gradient(to right,
+      transparent 0, transparent calc(16.666% - 1px),
+      var(--pr-border) calc(16.666% - 1px), var(--pr-border) 16.666%);
+    pointer-events: none;
+  }
+  .wk-slot {
+    position: absolute; top: 3px; bottom: 3px;
+    border-radius: var(--pr-r-1);
+    display: flex; align-items: center;
+    padding: 0 6px;
+    font: 600 10px/1 var(--pr-font-sans);
+    color: #fff;
+    overflow: hidden; white-space: nowrap;
+    cursor: pointer;
+    border: 0;
+  }
+  .wk-slot:hover { filter: brightness(1.12); }
+  .wk-add {
+    flex: none;
+    width: 30px; height: 30px;
+    border: var(--pr-bw) dashed var(--pr-border-strong);
+    background: transparent;
+    border-radius: var(--pr-r-2);
+    color: var(--pr-fg-muted);
+    cursor: pointer;
+    display: grid; place-items: center;
+  }
+  .wk-add:hover { border-color: var(--pr-accent); color: var(--pr-accent-ink); border-style: solid; }
+
+  .wk-legend { margin-top: 14px; }
+
+  .in-foot {
+    position: sticky; bottom: 0;
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 0;
+    background: linear-gradient(to top, var(--pr-bg) 68%, transparent);
+    margin-top: 8px;
+  }
+  .in-saved { font: var(--pr-body-sm); color: var(--pr-fg-muted); }
+</style>
+</head>
+<body class="pr">
+
+<div class="pr-shell">
+  <aside class="pr-shell-side" id="pr-side-root"></aside>
+
+  <div class="pr-shell-main">
+    <header class="pr-topbar">
+      <a class="pr-icon-btn is-flush" href="Athletes.html" aria-label="Volver"><i class="ti ti-arrow-left"></i></a>
+      <h1 id="top-name">&nbsp;</h1>
+    </header>
+
+    <main class="pr-page in-wrap">
+
+      <div class="pr-page-header">
+        <div>
+          <h1 data-i18n="in.title">Anamnesis</h1>
+          <p data-i18n="in.sub">Todo lo que el atleta te cuenta. Los horarios de abajo son los que después arman su semana.</p>
+        </div>
+      </div>
+
+      <form id="f-intake">
+
+        <!-- 1. Objetivo -->
+        <section class="in-sec">
+          <div class="in-sec-head"><span class="in-sec-num">01</span><h2 data-i18n="in.goal">Objetivo</h2></div>
+          <div class="in-grid">
+            <div class="pr-field">
+              <label class="pr-label" for="main_goal" data-i18n="in.mainGoal">Objetivo principal</label>
+              <select class="pr-select" id="main_goal">
+                <option value="" data-i18n="in.choose">Elegir…</option>
+                <option value="performance" data-i18n="in.goal.performance">Rendimiento</option>
+                <option value="return"      data-i18n="in.goal.return">Volver de una lesión</option>
+                <option value="body"        data-i18n="in.goal.body">Composición corporal</option>
+                <option value="health"      data-i18n="in.goal.health">Salud general</option>
+                <option value="other"       data-i18n="in.goal.other">Otro</option>
+              </select>
+            </div>
+            <div class="pr-field">
+              <label class="pr-label" for="sessions_per_week" data-i18n="in.sessions">Sesiones por semana que puede</label>
+              <input class="pr-input" id="sessions_per_week" type="number" min="0" max="21" step="1">
+            </div>
+          </div>
+          <div class="pr-field" style="margin-top:16px">
+            <label class="pr-label" for="goals" data-i18n="in.goalsDetail">En sus palabras</label>
+            <textarea class="pr-textarea" id="goals" rows="3"
+                      data-i18n-ph="in.goalsPh" placeholder="Qué quiere lograr y para cuándo."></textarea>
+          </div>
+        </section>
+
+        <!-- 2. Historial -->
+        <section class="in-sec">
+          <div class="in-sec-head"><span class="in-sec-num">02</span><h2 data-i18n="in.history">Historial</h2></div>
+          <div class="in-grid">
+            <div class="pr-field">
+              <label class="pr-label" for="injury_history" data-i18n="in.injuries">Lesiones previas</label>
+              <textarea class="pr-textarea" id="injury_history" rows="3"
+                        data-i18n-ph="in.injuriesPh" placeholder="Qué, cuándo y cómo se recuperó."></textarea>
+            </div>
+            <div class="pr-field">
+              <label class="pr-label" for="current_issues" data-i18n="in.current">Molestias actuales</label>
+              <textarea class="pr-textarea" id="current_issues" rows="3"
+                        data-i18n-ph="in.currentPh" placeholder="Dolores o limitaciones de hoy."></textarea>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. Hábitos -->
+        <section class="in-sec">
+          <div class="in-sec-head"><span class="in-sec-num">03</span><h2 data-i18n="in.habits">Hábitos</h2></div>
+          <div class="in-grid is-3">
+            <div class="pr-field">
+              <label class="pr-label" for="sleep_hours" data-i18n="in.sleepHours">Horas de sueño</label>
+              <input class="pr-input" id="sleep_hours" type="number" min="0" max="14" step="0.5">
+            </div>
+            <div class="pr-field">
+              <label class="pr-label" for="sleep_quality" data-i18n="in.sleepQuality">Calidad del sueño</label>
+              <select class="pr-select" id="sleep_quality">
+                <option value="" data-i18n="in.choose">Elegir…</option>
+                <option value="1" data-i18n="in.q1">Muy mala</option>
+                <option value="2" data-i18n="in.q2">Mala</option>
+                <option value="3" data-i18n="in.q3">Normal</option>
+                <option value="4" data-i18n="in.q4">Buena</option>
+                <option value="5" data-i18n="in.q5">Muy buena</option>
+              </select>
+            </div>
+            <div class="pr-field">
+              <label class="pr-label" for="gym_access" data-i18n="in.gymAccess">Acceso a gimnasio</label>
+              <select class="pr-select" id="gym_access">
+                <option value="" data-i18n="in.choose">Elegir…</option>
+                <option value="full"  data-i18n="in.gym.full">Completo</option>
+                <option value="basic" data-i18n="in.gym.basic">Básico</option>
+                <option value="home"  data-i18n="in.gym.home">En casa</option>
+                <option value="none"  data-i18n="in.gym.none">Ninguno</option>
+              </select>
+            </div>
+          </div>
+          <div class="in-grid" style="margin-top:16px">
+            <div class="pr-field">
+              <label class="pr-label" for="diet_notes" data-i18n="in.diet">Alimentación</label>
+              <textarea class="pr-textarea" id="diet_notes" rows="3"
+                        data-i18n-ph="in.dietPh" placeholder="Cómo come, restricciones, alergias."></textarea>
+            </div>
+            <div class="pr-field">
+              <label class="pr-label" for="equipment" data-i18n="in.equipment">Material disponible</label>
+              <textarea class="pr-textarea" id="equipment" rows="3"
+                        data-i18n-ph="in.equipmentPh" placeholder="Bandas, mancuernas, barra, TRX…"></textarea>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. Medidas -->
+        <section class="in-sec">
+          <div class="in-sec-head"><span class="in-sec-num">04</span><h2 data-i18n="in.measures">Medidas de partida</h2></div>
+          <div class="in-grid is-3">
+            <div class="pr-field">
+              <label class="pr-label" for="height_cm" data-i18n="in.height">Altura (cm)</label>
+              <input class="pr-input" id="height_cm" type="number" min="80" max="250" step="0.5">
+            </div>
+            <div class="pr-field">
+              <label class="pr-label" for="weight_kg" data-i18n="in.weight">Peso (kg)</label>
+              <input class="pr-input" id="weight_kg" type="number" min="25" max="250" step="0.1">
+            </div>
+            <div class="pr-field">
+              <label class="pr-label" for="training_years" data-i18n="in.years">Años entrenando</label>
+              <input class="pr-input" id="training_years" type="number" min="0" max="60" step="0.5">
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. La semana ocupada -->
+        <section class="in-sec">
+          <div class="in-sec-head"><span class="in-sec-num">05</span><h2 data-i18n="in.week">Su semana ocupada</h2></div>
+          <p class="in-sec-note" data-i18n="in.weekNote">Estudio, trabajo y el entrenamiento con su club. Lo que queda en blanco es donde de verdad se puede meter carga: de acá sale la planificación.</p>
+
+          <div class="wk">
+            <div class="wk-scale" aria-hidden="true">
+              <span>06</span><span>09</span><span>12</span><span>15</span><span>18</span><span>21</span>
+            </div>
+            <div id="wk-rows"></div>
+          </div>
+
+          <div class="pr-legend wk-legend">
+            <span class="pr-legend-item"><i style="background:var(--pr-ev-commit)"></i><span data-i18n="in.k.commitment">Estudio o trabajo</span></span>
+            <span class="pr-legend-item"><i style="background:var(--pr-ev-team)"></i><span data-i18n="in.k.team">Con su club</span></span>
+            <span class="pr-legend-item"><i style="background:var(--pr-ev-match)"></i><span data-i18n="in.k.match">Partido</span></span>
+            <span class="pr-legend-item"><i style="background:var(--pr-ev-rest)"></i><span data-i18n="in.k.unavailable">No disponible</span></span>
+          </div>
+        </section>
+
+        <!-- 6. Notas -->
+        <section class="in-sec">
+          <div class="in-sec-head"><span class="in-sec-num">06</span><h2 data-i18n="in.notes">Notas</h2></div>
+          <div class="pr-field">
+            <textarea class="pr-textarea" id="notes" rows="3"
+                      data-i18n-ph="in.notesPh" placeholder="Cualquier otra cosa que valga la pena recordar."></textarea>
+          </div>
+        </section>
+
+        <div class="in-foot">
+          <button class="pr-btn is-primary" type="submit" id="save" data-i18n="common.save">Guardar</button>
+          <span class="in-saved" id="saved"></span>
+        </div>
+
+      </form>
+    </main>
+  </div>
+</div>
+
+<!-- Alta de franja horaria -->
+<div class="pr-modal-backdrop" id="m-slot" hidden>
+  <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-slot-title">
+    <div class="pr-modal-head">
+      <h2 id="m-slot-title" data-i18n="in.slot.title">Franja ocupada</h2>
+      <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
+    </div>
+    <form id="f-slot">
+      <div class="pr-modal-body">
+        <div class="pr-modal-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="s-day" data-i18n="in.slot.day">Día</label>
+            <select class="pr-select" id="s-day"></select>
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="s-kind" data-i18n="in.slot.kind">Tipo</label>
+            <select class="pr-select" id="s-kind">
+              <option value="commitment"    data-i18n="in.k.commitment">Estudio o trabajo</option>
+              <option value="team_training" data-i18n="in.k.team">Con su club</option>
+              <option value="match"         data-i18n="in.k.match">Partido</option>
+              <option value="unavailable"   data-i18n="in.k.unavailable">No disponible</option>
+            </select>
+          </div>
+        </div>
+        <div class="pr-modal-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="s-start" data-i18n="in.slot.from">Desde</label>
+            <input class="pr-input" id="s-start" type="time" value="08:00" required>
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="s-end" data-i18n="in.slot.to">Hasta</label>
+            <input class="pr-input" id="s-end" type="time" value="13:00" required>
+          </div>
+        </div>
+        <div class="pr-field">
+          <label class="pr-label" for="s-label" data-i18n="in.slot.label">Etiqueta</label>
+          <input class="pr-input" id="s-label" maxlength="40" data-i18n-ph="in.slot.labelPh" placeholder="Facultad, trabajo, entrenamiento…">
+        </div>
+        <p id="slot-msg" role="alert" hidden style="margin:0;color:var(--pr-danger);font:600 13px/1.45 var(--pr-font-sans)"></p>
+      </div>
+      <div class="pr-modal-foot">
+        <button class="pr-btn is-ghost" type="button" data-close data-i18n="common.cancel">Cancelar</button>
+        <button class="pr-btn is-primary" type="submit" data-i18n="in.slot.add">Añadir</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="assets/sidebar.js" defer></script>
+<script>
+(function () {
+  const t = (k, fb, vars) => (window.PR_I18N ? window.PR_I18N.t(k, vars) : null) || fb;
+  const esc = window.prEsc;
+
+  const athleteId = new URLSearchParams(location.search).get('id');
+  const DAY_KEYS = ['day.mon','day.tue','day.wed','day.thu','day.fri','day.sat','day.sun'];
+  const FALLBACK_DAYS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+
+  // La franja va de las 06:00 a las 24:00: fuera de ahí no se planifica nada.
+  const H0 = 6, H1 = 24, SPAN = H1 - H0;
+
+  const FIELDS = ['main_goal','goals','injury_history','current_issues','sleep_hours',
+                  'sleep_quality','diet_notes','equipment','training_years','gym_access',
+                  'sessions_per_week','height_cm','weight_kg','notes'];
+  const NUMERIC = ['sleep_hours','sleep_quality','training_years','sessions_per_week','height_cm','weight_kg'];
+
+  const KIND_COLOR = {
+    commitment:    'var(--pr-ev-commit)',
+    team_training: 'var(--pr-ev-team)',
+    match:         'var(--pr-ev-match)',
+    unavailable:   'var(--pr-ev-rest)'
+  };
+
+  let slots = [];
+
+  const toMin = (hhmm) => { const [h, m] = String(hhmm).split(':').map(Number); return h * 60 + (m || 0); };
+
+  function paintWeek() {
+    const host = document.getElementById('wk-rows');
+    host.innerHTML = DAY_KEYS.map((k, d) => {
+      const mine = slots.filter(s => s.weekday === d);
+      const blocks = mine.map(s => {
+        const a = Math.max(toMin(s.start_time), H0 * 60);
+        const b = Math.min(toMin(s.end_time), H1 * 60);
+        if (b <= a) return '';
+        const left  = ((a - H0 * 60) / (SPAN * 60)) * 100;
+        const width = ((b - a) / (SPAN * 60)) * 100;
+        const label = s.label || t('in.k.' + (s.kind === 'team_training' ? 'team' : s.kind), '');
+        return `<button type="button" class="wk-slot" data-slot="${s.id}"
+                  style="left:${left}%;width:${width}%;background:${KIND_COLOR[s.kind] || 'var(--pr-ev-commit)'}"
+                  title="${esc(label)} · ${esc(String(s.start_time).slice(0,5))}–${esc(String(s.end_time).slice(0,5))} · ${esc(t('in.slot.remove','Quitar'))}">${esc(label)}</button>`;
+      }).join('');
+
+      return `<div class="wk-row">
+        <span class="wk-day">${esc(t(k, FALLBACK_DAYS[d]))}</span>
+        <span class="wk-track">${blocks}</span>
+        <button type="button" class="wk-add" data-add="${d}" aria-label="${esc(t('in.slot.add','Añadir'))}"><i class="ti ti-plus"></i></button>
+      </div>`;
+    }).join('');
+  }
+
+  async function loadSlots() {
+    const { data, error } = await window.sb.from('availability_slots')
+      .select('id,weekday,start_time,end_time,kind,label')
+      .eq('athlete_id', athleteId)
+      .order('weekday').order('start_time');
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    slots = data || [];
+    paintWeek();
+  }
+
+  // ── Franjas ──────────────────────────────────────────────────────────────
+  document.getElementById('wk-rows').addEventListener('click', async (e) => {
+    const add = e.target.closest('[data-add]');
+    if (add) { openSlot(Number(add.dataset.add)); return; }
+
+    const slot = e.target.closest('[data-slot]');
+    if (!slot) return;
+    if (!confirm(t('in.slot.confirmRemove', '¿Quitar esta franja?'))) return;
+    const { error } = await window.sb.from('availability_slots').delete().eq('id', slot.dataset.slot);
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    await loadSlots();
+  });
+
+  function openSlot(day) {
+    document.getElementById('s-day').value = String(day);
+    document.getElementById('slot-msg').hidden = true;
+    document.getElementById('m-slot').hidden = false;
+    document.getElementById('s-start').focus();
+  }
+
+  document.getElementById('f-slot').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('slot-msg');
+    msg.hidden = true;
+
+    const start = document.getElementById('s-start').value;
+    const end   = document.getElementById('s-end').value;
+    if (!start || !end) { msg.textContent = t('in.slot.errTimes', 'Pon las dos horas.'); msg.hidden = false; return; }
+    if (toMin(end) <= toMin(start)) { msg.textContent = t('in.slot.errOrder', 'La hora de fin tiene que ser posterior a la de inicio.'); msg.hidden = false; return; }
+
+    const { error } = await window.sb.from('availability_slots').insert({
+      athlete_id: athleteId,
+      weekday:    Number(document.getElementById('s-day').value),
+      start_time: start,
+      end_time:   end,
+      kind:       document.getElementById('s-kind').value,
+      label:      document.getElementById('s-label').value.trim() || null
+    });
+    if (error) { msg.textContent = error.message; msg.hidden = false; return; }
+
+    document.getElementById('m-slot').hidden = true;
+    document.getElementById('s-label').value = '';
+    await loadSlots();
+  });
+
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-close]') || e.target.classList.contains('pr-modal-backdrop')) {
+      document.querySelectorAll('.pr-modal-backdrop').forEach(m => m.hidden = true);
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.querySelectorAll('.pr-modal-backdrop').forEach(m => m.hidden = true);
+  });
+
+  // ── Anamnesis ────────────────────────────────────────────────────────────
+  document.getElementById('f-intake').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('save');
+    btn.classList.add('is-busy');
+
+    const row = { athlete_id: athleteId, completed_at: new Date().toISOString() };
+    FIELDS.forEach(f => {
+      const v = document.getElementById(f).value.trim();
+      // Vacío se guarda como nulo, no como cadena vacía: un cero y un «no
+      // contestó» no son lo mismo para un preparador.
+      row[f] = v === '' ? null : (NUMERIC.includes(f) ? Number(v) : v);
+    });
+
+    const { error } = await window.sb.from('athlete_intake').upsert(row, { onConflict: 'athlete_id' });
+    btn.classList.remove('is-busy');
+
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    document.getElementById('saved').textContent = t('in.savedAt', 'Guardado');
+    window.prToast(t('in.saved', 'Anamnesis guardada.'), 'success');
+  });
+
+  // ── Arranque ─────────────────────────────────────────────────────────────
+  async function boot() {
+    if (!(await window.requireCoach())) return;
+    if (window.PR_I18N && window.PR_I18N.ready) { try { await window.PR_I18N.ready; } catch (e) {} }
+    if (!athleteId) { window.location.replace('Athletes.html'); return; }
+
+    if (window.prSidebar) window.prSidebar.mount('athletes');
+
+    document.getElementById('s-day').innerHTML =
+      DAY_KEYS.map((k, i) => `<option value="${i}">${esc(t(k, FALLBACK_DAYS[i]))}</option>`).join('');
+
+    const { data: ath } = await window.sb.from('athletes')
+      .select('first_name,last_name').eq('id', athleteId).maybeSingle();
+    if (!ath) { window.location.replace('Athletes.html'); return; }
+    const full = `${ath.first_name} ${ath.last_name || ''}`.trim();
+    document.getElementById('top-name').textContent = full;
+    document.title = full + ' — Proa';
+
+    const { data: intake } = await window.sb.from('athlete_intake')
+      .select('*').eq('athlete_id', athleteId).maybeSingle();
+    if (intake) {
+      FIELDS.forEach(f => { if (intake[f] !== null && intake[f] !== undefined) document.getElementById(f).value = intake[f]; });
+      if (intake.completed_at) {
+        const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
+        document.getElementById('saved').textContent =
+          t('in.lastSaved', 'Última vez guardada') + ' · ' +
+          new Date(intake.completed_at).toLocaleDateString(lang, { day: 'numeric', month: 'short' });
+      }
+    }
+
+    await loadSlots();
+    if (window.PR_I18N) window.PR_I18N.applyTo(document);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>

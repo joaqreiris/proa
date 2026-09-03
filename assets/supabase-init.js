@@ -177,8 +177,17 @@
   };
 
   // A dónde va cada quien después de entrar.
+  // Si venía de un enlace de invitación y se desvió a entrar, vuelve al enlace:
+  // perderlo significaría pedirle otro al entrenador.
   window.landingFor = function (profile) {
     if (!profile) return 'Login.html';
+    try {
+      const pending = sessionStorage.getItem('pr_pending_invite');
+      if (pending) {
+        sessionStorage.removeItem('pr_pending_invite');
+        return 'invite.html?t=' + encodeURIComponent(pending);
+      }
+    } catch (e) { /* navegación privada */ }
     if (profile.role === 'athlete') return 'athlete/Week.html';
     return profile.onboarded_at ? 'Home.html' : 'Onboarding.html';
   };

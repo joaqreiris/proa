@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="aw.pageTitle">Mi semana — Proa</title>
+<meta name="theme-color" content="#FF3D00">
+<link rel="stylesheet" href="../proa.css">
+<script src="../assets/brand.js"></script>
+<script src="../assets/vendor/supabase-js-2.112.4.min.js"></script>
+<script src="../assets/supabase-init.js"></script>
+<script src="../assets/i18n.js" defer></script>
+<style>
+  /* La app del atleta se usa de parado en un gimnasio: una sola columna,
+     todo grande, sin menú lateral. */
+  .aw { max-width: 560px; margin: 0 auto; padding: 0 18px 64px; }
+  .aw-top {
+    display: flex; align-items: center; gap: 11px;
+    padding: 18px 0 22px;
+  }
+  .aw-top .pr-grow { min-width: 0; }
+  .aw-ws { font: 700 10px/1 var(--pr-font-cond); letter-spacing: .18em; text-transform: uppercase; color: var(--pr-fg-muted); display: block; }
+  .aw-name { font: var(--pr-h2); text-transform: uppercase; letter-spacing: var(--pr-tr-h); color: var(--pr-fg-strong); margin: 4px 0 0; }
+  .aw-date { font: 700 11px/1 var(--pr-font-cond); letter-spacing: .16em; text-transform: uppercase; color: var(--pr-accent-ink); margin-bottom: 14px; display: block; }
+  .aw-soon { display: flex; flex-direction: column; gap: 14px; }
+  .aw-soon .pr-card { padding: 18px; }
+  .aw-soon h3 { font: var(--pr-h3); text-transform: uppercase; letter-spacing: .04em; color: var(--pr-fg-strong); margin: 0 0 8px; }
+  .aw-soon p { font: var(--pr-body); color: var(--pr-fg-muted); margin: 0; }
+  .aw-foot { margin-top: 28px; display: flex; justify-content: center; }
+</style>
+</head>
+<body class="pr">
+
+<div class="aw">
+
+  <header class="aw-top">
+    <span class="pr-logo-mark" data-brand-mark></span>
+    <span class="pr-grow">
+      <span class="aw-ws" id="ws-name">&nbsp;</span>
+      <h1 class="aw-name" id="hello">&nbsp;</h1>
+    </span>
+    <button class="pr-icon-btn" id="theme" aria-label="Cambiar tema"><i class="ti ti-moon"></i></button>
+  </header>
+
+  <span class="aw-date" id="today"></span>
+
+  <div class="aw-soon">
+    <section class="pr-card has-strip" style="--pr-strip:var(--pr-ev-gym)">
+      <h3 data-i18n="aw.soon.title">Tu semana llega en breve</h3>
+      <p data-i18n="aw.soon.body">Tu entrenador está armando tu planificación. Cuando la publique, la vas a ver acá: gimnasio, campo, comidas y recuperación, día por día.</p>
+    </section>
+
+    <section class="pr-card">
+      <h3 data-i18n="aw.ready.title">Tu cuenta está lista</h3>
+      <p data-i18n="aw.ready.body">Ya puedes entrar con tu correo y tu contraseña desde cualquier teléfono. Guarda esta página en tu pantalla de inicio para tenerla a mano.</p>
+    </section>
+  </div>
+
+  <div class="aw-foot">
+    <button class="pr-btn is-ghost is-sm" id="logout" data-i18n="nav.logout">Salir</button>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  const t = (k, fb, vars) => (window.PR_I18N ? window.PR_I18N.t(k, vars) : null) || fb;
+
+  document.getElementById('theme').addEventListener('click', () => window.prBrand.toggleTheme());
+  document.getElementById('logout').addEventListener('click', () => window.logout('../Login.html'));
+
+  async function boot() {
+    if (!(await window.requireAthlete())) return;
+    if (window.PR_I18N && window.PR_I18N.ready) { try { await window.PR_I18N.ready; } catch (e) {} }
+
+    // El atleta solo ve su propia fila: las reglas de acceso ya lo garantizan,
+    // así que no hace falta filtrar por nada acá.
+    const { data } = await window.sb.from('athletes')
+      .select('first_name,last_name,workspaces(name,accent)')
+      .limit(1).maybeSingle();
+
+    const first = (data && data.first_name) || '';
+    document.getElementById('hello').textContent = t('aw.hello', 'Hola, ' + first, { name: first });
+
+    if (data && data.workspaces) {
+      document.getElementById('ws-name').textContent = data.workspaces.name;
+      if (window.prBrand) window.prBrand.applyAccent(data.workspaces.accent);
+    }
+
+    // Fecha en el idioma del atleta, y local: prToday() da su día, no el de UTC.
+    const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
+    const [y, m, d] = window.prToday().split('-').map(Number);
+    document.getElementById('today').textContent =
+      new Date(y, m - 1, d).toLocaleDateString(lang, { weekday: 'long', day: 'numeric', month: 'long' });
+
+    if (window.PR_I18N) window.PR_I18N.applyTo(document);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>
