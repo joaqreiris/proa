@@ -320,6 +320,13 @@
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 
+/* El atributo `hidden` tiene que ganar SIEMPRE.
+   El navegador lo aplica con `[hidden]{display:none}`, que tiene la misma
+   fuerza que una clase: cualquier `.lo-que-sea{display:grid}` nuestra lo pisa
+   y el elemento queda visible aunque el código lo haya ocultado. Fue lo que
+   dejó los diálogos abiertos y sin forma de cerrarlos. */
+[hidden] { display: none !important; }
+
 body.pr {
   font: var(--pr-body);
   color: var(--pr-fg);

@@ -140,6 +140,7 @@
   "ath.err.seats": "Você chegou ao limite de atletas ativos do seu plano.",
   "ath.invite.title": "Convidar o atleta",
   "ath.invite.lead": "Este é o link de {name}.",
+  "ath.invite.leadNew": "{name} já está cadastrado. Mande este link para ele entrar com a própria conta.",
   "ath.invite.copy": "Copiar",
   "ath.invite.copied": "Link copiado.",
   "ath.invite.regen": "Gerar outro",

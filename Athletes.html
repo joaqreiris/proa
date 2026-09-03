@@ -291,14 +291,14 @@
     if (!first) { msg.textContent = t('ath.err.firstName', 'Escribe al menos el nombre.'); msg.hidden = false; return; }
 
     btn.classList.add('is-busy');
-    const { error } = await window.sb.from('athletes').insert({
+    const { data: created, error } = await window.sb.from('athletes').insert({
       workspace_id: wsId,
       first_name: first,
       last_name:  document.getElementById('n-last').value.trim(),
       birth_date: document.getElementById('n-birth').value || null,
       position:   document.getElementById('n-position').value.trim() || null,
       club_name:  document.getElementById('n-club').value.trim() || null
-    });
+    }).select('id').single();
     btn.classList.remove('is-busy');
 
     if (error) {
@@ -314,6 +314,10 @@
     closeModal('m-new');
     window.prToast(t('ath.created', 'Atleta dado de alta.'), 'success');
     await load();
+
+    // Dado de alta, lo que sigue es invitarlo: se ofrece el enlace en el acto
+    // en vez de obligar a buscar la fila y apretar otro botón.
+    if (created && created.id) await showInvite(created.id, false, true);
   });
 
   document.getElementById('list').addEventListener('click', async (e) => {
@@ -335,7 +339,7 @@
     await load();
   });
 
-  async function showInvite(athleteId, regen) {
+  async function showInvite(athleteId, regen, justCreated) {
     inviteFor = athleteId;
     const a = rows.find(r => r.id === athleteId);
     const name = a ? a.first_name : '';
@@ -355,8 +359,9 @@
       token = data;
     }
 
-    document.getElementById('inv-lead').textContent =
-      t('ath.invite.lead', `Este es el enlace de ${name}.`, { name });
+    document.getElementById('inv-lead').textContent = justCreated
+      ? t('ath.invite.leadNew', `${name} ya está dado de alta. Pásale este enlace para que entre con su cuenta.`, { name })
+      : t('ath.invite.lead', `Este es el enlace de ${name}.`, { name });
     document.getElementById('inv-url').value = location.origin + '/invite.html?t=' + token;
     openModal('m-invite');
     document.getElementById('inv-url').select();
