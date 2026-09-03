@@ -224,6 +224,7 @@
     const { data, error } = await window.sb.from('athletes')
       .select('id,first_name,last_name,birth_date,position,club_name,status,created_at,'
             + 'athlete_accounts(user_id),'
+            + 'athlete_intake(completed_at),'
             + 'athlete_invites(id,accepted_at,expires_at)')
       .eq('workspace_id', wsId)
       .order('first_name', { ascending: true });
@@ -233,6 +234,12 @@
     seats = await window.getSeatUsage();
     paintSeats();
     paint();
+  }
+
+  // ¿Tiene la anamnesis cargada? Es lo que decide si se puede planificar.
+  function intakeDone(a) {
+    const i = Array.isArray(a.athlete_intake) ? a.athlete_intake[0] : a.athlete_intake;
+    return !!(i && i.completed_at);
   }
 
   // Estado de la cuenta del atleta: vinculada, invitación pendiente, o nada.
@@ -287,6 +294,7 @@
         <th data-i18n="ath.th.club">Club</th>
         <th data-i18n="ath.th.status">Estado</th>
         <th data-i18n="ath.th.account">Cuenta</th>
+        <th data-i18n="ath.th.intake">Ficha</th>
         <th class="is-tight"></th>
       </tr></thead>
       <tbody>${list.map(a => {
@@ -301,6 +309,9 @@
           <td>${a.club_name ? esc(a.club_name) : '<span style="color:var(--pr-fg-faint)">—</span>'}</td>
           <td>${statusPill[a.status] || ''}</td>
           <td>${statePill[st]}</td>
+          <td>${intakeDone(a)
+            ? `<span class="pr-pill is-success"><i class="ti ti-check"></i>${esc(t('ath.in.done'))}</span>`
+            : `<span class="pr-pill">${esc(t('ath.in.pending'))}</span>`}</td>
           <td class="is-tight"><div class="ath-row-actions">
             ${st !== 'linked'
               ? `<button class="pr-btn is-sm is-secondary" data-act="invite" title="${esc(t('ath.invite.title'))}"><i class="ti ti-link"></i></button>` : ''}

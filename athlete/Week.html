@@ -10,6 +10,7 @@
 <script src="../assets/vendor/supabase-js-2.112.4.min.js"></script>
 <script src="../assets/supabase-init.js"></script>
 <script src="../assets/i18n.js" defer></script>
+<script src="../assets/intake-form.js" defer></script>
 <style>
   /* La app del atleta se usa de parado en un gimnasio: una sola columna,
      todo grande, sin menú lateral. */
@@ -27,6 +28,17 @@
   .aw-soon h3 { font: var(--pr-h3); text-transform: uppercase; letter-spacing: .04em; color: var(--pr-fg-strong); margin: 0 0 8px; }
   .aw-soon p { font: var(--pr-body); color: var(--pr-fg-muted); margin: 0; }
   .aw-foot { margin-top: 28px; display: flex; justify-content: center; }
+
+  /* La tarjeta de la ficha es un enlace entero: en un teléfono, cuanto más
+     grande el objetivo, mejor. */
+  .aw-cta { display: block; text-decoration: none; color: inherit; transition: border-color var(--pr-dur-1); }
+  .aw-cta:hover { border-color: var(--pr-accent); }
+  .aw-arrow {
+    display: flex; align-items: center; gap: 7px; margin-top: 14px;
+    font: 700 11.5px/1 var(--pr-font-sans);
+    letter-spacing: var(--pr-tr-btn); text-transform: uppercase;
+    color: var(--pr-accent-ink);
+  }
 </style>
 </head>
 <body class="pr">
@@ -45,14 +57,15 @@
   <span class="aw-date" id="today"></span>
 
   <div class="aw-soon">
+    <a class="pr-card has-strip aw-cta" id="intake-card" href="Intake.html" style="--pr-strip:var(--pr-accent)" hidden>
+      <h3 id="intake-title">&nbsp;</h3>
+      <p id="intake-body">&nbsp;</p>
+      <span class="aw-arrow"><span id="intake-cta"></span><i class="ti ti-arrow-right"></i></span>
+    </a>
+
     <section class="pr-card has-strip" style="--pr-strip:var(--pr-ev-gym)">
       <h3 data-i18n="aw.soon.title">Tu semana llega en breve</h3>
       <p data-i18n="aw.soon.body">Tu entrenador está armando tu planificación. Cuando la publique, la vas a ver acá: gimnasio, campo, comidas y recuperación, día por día.</p>
-    </section>
-
-    <section class="pr-card">
-      <h3 data-i18n="aw.ready.title">Tu cuenta está lista</h3>
-      <p data-i18n="aw.ready.body">Ya puedes entrar con tu correo y tu contraseña desde cualquier teléfono. Guarda esta página en tu pantalla de inicio para tenerla a mano.</p>
     </section>
   </div>
 
@@ -76,7 +89,7 @@
     // El atleta solo ve su propia fila: las reglas de acceso ya lo garantizan,
     // así que no hace falta filtrar por nada acá.
     const { data } = await window.sb.from('athletes')
-      .select('first_name,last_name,workspaces(name,accent)')
+      .select('id,first_name,last_name,workspaces(name,accent)')
       .limit(1).maybeSingle();
 
     const first = (data && data.first_name) || '';
@@ -92,6 +105,19 @@
     const [y, m, d] = window.prToday().split('-').map(Number);
     document.getElementById('today').textContent =
       new Date(y, m - 1, d).toLocaleDateString(lang, { weekday: 'long', day: 'numeric', month: 'long' });
+
+    // ¿Ya completó su ficha? Es lo primero que tiene que hacer, y lo único
+    // que puede hacer hasta que su entrenador le arme la semana.
+    const { data: intake } = await window.sb.from('athlete_intake')
+      .select('completed_at').eq('athlete_id', data && data.id).maybeSingle();
+
+    const card = document.getElementById('intake-card');
+    const done = !!(intake && intake.completed_at);
+    document.getElementById('intake-title').textContent = t(done ? 'aw.intake.doneTitle' : 'aw.intake.title');
+    document.getElementById('intake-body').textContent  = t(done ? 'aw.intake.doneBody'  : 'aw.intake.body');
+    document.getElementById('intake-cta').textContent   = t(done ? 'aw.intake.doneCta'   : 'aw.intake.cta');
+    if (done) card.style.setProperty('--pr-strip', 'var(--pr-ev-field)');
+    card.hidden = false;
 
     if (window.PR_I18N) window.PR_I18N.applyTo(document);
   }

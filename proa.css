@@ -895,6 +895,105 @@ body.pr::before {
 .pr-tab.is-on { background: var(--pr-surface); color: var(--pr-fg-strong); box-shadow: var(--pr-shadow-2); }
 
 /* ============================================================
+   Anamnesis — las usan las dos pantallas (entrenador y atleta),
+   por eso viven acá y no en cada página.
+   ============================================================ */
+.in-sec { margin-bottom: 14px; }
+.in-sec > .pr-card { padding: 22px; }
+.in-sec-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+.in-sec-num { font: 700 12px/1 var(--pr-font-cond); letter-spacing: .16em; color: var(--pr-accent-ink); }
+.in-sec h2 { font: var(--pr-h3); text-transform: uppercase; letter-spacing: .05em; color: var(--pr-fg-strong); margin: 0; }
+.in-sec-note { font: var(--pr-body-sm); color: var(--pr-fg-muted); margin: 0 0 16px; max-width: 72ch; }
+.in-sec-head + .in-fields { margin-top: 16px; }
+.in-fields { display: flex; flex-direction: column; gap: 16px; }
+
+.in-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.in-grid.is-1 { grid-template-columns: 1fr; }
+.in-grid.is-3 { grid-template-columns: repeat(3, 1fr); }
+.in-grid.is-narrow { max-width: 420px; }
+@media (max-width: 680px) {
+  .in-grid, .in-grid.is-3 { grid-template-columns: 1fr; }
+}
+
+/* La sección de salud se distingue: es la que hay que mirar antes de
+   escribir la primera serie. */
+.in-sec.is-health > .pr-card { border-color: var(--pr-danger-bd); }
+
+.in-foot {
+  position: sticky; bottom: 0; z-index: 2;
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 0 18px;
+  background: linear-gradient(to top, var(--pr-bg) 70%, transparent);
+}
+.in-saved { font: var(--pr-body-sm); color: var(--pr-fg-muted); }
+
+/* ============================================================
+   La semana ocupada — línea de tiempo de 06:00 a 24:00.
+   La usan la anamnesis (editable) y la ficha del atleta (lectura).
+   ============================================================ */
+.wk { display: flex; flex-direction: column; gap: 5px; }
+.wk-scale { display: flex; padding-left: 46px; margin-bottom: 2px; }
+.wk-scale span { flex: 1; font: 600 9.5px/1 var(--pr-font-cond); letter-spacing: .1em; color: var(--pr-fg-faint); }
+.wk-row { display: flex; align-items: center; gap: 8px; }
+.wk-day {
+  width: 38px; flex: none;
+  font: 700 11px/1 var(--pr-font-cond);
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--pr-fg-muted);
+}
+.wk-track {
+  position: relative; flex: 1;
+  height: 30px;
+  background: var(--pr-bg-sunk);
+  border-radius: var(--pr-r-2);
+  overflow: hidden;
+}
+/* Rayas cada tres horas, para leer la hora sin números */
+.wk-track::before {
+  content: ""; position: absolute; inset: 0;
+  background: repeating-linear-gradient(to right,
+    transparent 0, transparent calc(16.666% - 1px),
+    var(--pr-border) calc(16.666% - 1px), var(--pr-border) 16.666%);
+  pointer-events: none;
+}
+.wk-slot {
+  position: absolute; top: 3px; bottom: 3px;
+  border-radius: var(--pr-r-1);
+  display: flex; align-items: center;
+  padding: 0 6px;
+  font: 600 10px/1 var(--pr-font-sans);
+  color: #fff;
+  overflow: hidden; white-space: nowrap;
+  border: 0;
+}
+button.wk-slot { cursor: pointer; }
+button.wk-slot:hover { filter: brightness(1.12); }
+.wk-add {
+  flex: none; width: 30px; height: 30px;
+  border: var(--pr-bw) dashed var(--pr-border-strong);
+  background: transparent;
+  border-radius: var(--pr-r-2);
+  color: var(--pr-fg-muted);
+  cursor: pointer;
+  display: grid; place-items: center;
+}
+.wk-add:hover { border-color: var(--pr-accent); color: var(--pr-accent-ink); border-style: solid; }
+.wk-legend { margin-top: 14px; }
+.wk-free { font: var(--pr-body-sm); color: var(--pr-fg-muted); margin: 12px 0 0; }
+.wk-free b { color: var(--pr-fg-strong); font-family: var(--pr-font-cond); font-size: 16px; }
+
+/* ============================================================
+   Barra de avance
+   ============================================================ */
+.pr-progress {
+  height: 6px;
+  background: var(--pr-bg-sunk);
+  border-radius: var(--pr-r-1);
+  overflow: hidden;
+}
+.pr-progress i { display: block; height: 100%; background: var(--pr-accent); transition: width var(--pr-dur-2) var(--pr-ease); }
+
+/* ============================================================
    Avisos flotantes
    ============================================================ */
 .pr-toast-host {

@@ -3,89 +3,105 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title data-i18n="in.pageTitle">Anamnesis — Proa</title>
+<title data-i18n="ai.pageTitle">Mi ficha — Proa</title>
 <meta name="theme-color" content="#FF3D00">
-<link rel="stylesheet" href="proa.css">
-<script src="assets/brand.js"></script>
-<script src="assets/vendor/supabase-js-2.112.4.min.js"></script>
-<script src="assets/supabase-init.js"></script>
-<script src="assets/i18n.js" defer></script>
-<script src="assets/intake-form.js" defer></script>
-<script src="assets/week-grid.js" defer></script>
+<link rel="stylesheet" href="../proa.css">
+<script src="../assets/brand.js"></script>
+<script src="../assets/vendor/supabase-js-2.112.4.min.js"></script>
+<script src="../assets/supabase-init.js"></script>
+<script src="../assets/i18n.js" defer></script>
+<script src="../assets/intake-form.js" defer></script>
+<script src="../assets/week-grid.js" defer></script>
 <style>
-  .in-wrap { max-width: 880px; }
-  .in-by {
-    display: flex; gap: 10px; align-items: flex-start;
-    padding: 12px 15px; margin-bottom: 18px;
-    border-left: 3px solid var(--pr-info);
-    background: var(--pr-info-bg);
-    border-radius: 0 var(--pr-r-3) var(--pr-r-3) 0;
+  /* Una sola columna: esto se llena de parado, con el teléfono en la mano. */
+  .ai { max-width: 620px; margin: 0 auto; padding: 0 16px 40px; }
+  .ai-top { display: flex; align-items: center; gap: 11px; padding: 16px 0 18px; }
+  .ai-top .pr-grow { min-width: 0; }
+  .ai-ws { font: 700 10px/1 var(--pr-font-cond); letter-spacing: .18em; text-transform: uppercase; color: var(--pr-fg-muted); display: block; }
+  .ai-title { font: var(--pr-h2); text-transform: uppercase; letter-spacing: var(--pr-tr-h); color: var(--pr-fg-strong); margin: 4px 0 0; }
+
+  .ai-lead { font: var(--pr-body); color: var(--pr-fg-muted); margin: 0 0 18px; }
+
+  .ai-progress { margin-bottom: 20px; }
+  .ai-progress-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  .ai-progress-top b { font: 700 22px/1 var(--pr-font-cond); font-variant-numeric: tabular-nums; color: var(--pr-fg-strong); }
+  .ai-progress-top span { font: 700 10.5px/1 var(--pr-font-cond); letter-spacing: .16em; text-transform: uppercase; color: var(--pr-fg-muted); }
+
+  /* En el teléfono cada campo va a lo ancho, sin excepción. */
+  @media (max-width: 620px) {
+    .ai .in-grid, .ai .in-grid.is-3, .ai .in-grid.is-narrow { grid-template-columns: 1fr; }
   }
-  .in-by .ti { color: var(--pr-info); font-size: 17px; flex: none; margin-top: 1px; }
-  .in-by p { margin: 0; font: var(--pr-body-sm); color: var(--pr-fg); }
+  .ai .in-sec > .pr-card { padding: 18px; }
+
+  .ai-foot {
+    position: sticky; bottom: 0; z-index: 2;
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 14px 0 18px;
+    background: linear-gradient(to top, var(--pr-bg) 72%, transparent);
+  }
+  .ai-saved { font: var(--pr-body-sm); color: var(--pr-fg-muted); text-align: center; }
+  .ai-back { display: flex; justify-content: center; margin-top: 22px; }
 </style>
 </head>
 <body class="pr">
 
-<div class="pr-shell">
-  <aside class="pr-shell-side" id="pr-side-root"></aside>
+<div class="ai">
 
-  <div class="pr-shell-main">
-    <header class="pr-topbar">
-      <a class="pr-icon-btn is-flush" href="Athletes.html" aria-label="Volver"><i class="ti ti-arrow-left"></i></a>
-      <h1 id="top-name">&nbsp;</h1>
-    </header>
+  <header class="ai-top">
+    <span class="pr-logo-mark" data-brand-mark></span>
+    <span class="pr-grow">
+      <span class="ai-ws" id="ws-name">&nbsp;</span>
+      <h1 class="ai-title" data-i18n="ai.title">Mi ficha</h1>
+    </span>
+  </header>
 
-    <main class="pr-page in-wrap">
+  <p class="ai-lead" data-i18n="ai.lead">Contale a tu entrenador cómo estás. Con esto arma tu plan: cuanto más completo, mejor te va a entrenar. Podés dejarlo por la mitad y seguir después.</p>
 
-      <div class="pr-page-header">
-        <div class="pr-grow">
-          <h1 data-i18n="in.title">Anamnesis</h1>
-          <p data-i18n="in.sub">Todo lo que el atleta te cuenta. Se guarda todo junto: no hace falta completarla de una sola vez.</p>
-        </div>
-        <span class="pr-pill is-info" id="ask-pill" hidden><i class="ti ti-device-mobile"></i><span data-i18n="in.athleteCanFill">La puede completar él</span></span>
-      </div>
-
-      <div class="in-by" id="by-box" hidden>
-        <i class="ti ti-user-check"></i>
-        <p id="by-text"></p>
-      </div>
-
-      <form id="f-intake">
-
-        <!-- Las secciones las dibuja assets/intake-form.js: el formulario está
-             definido una sola vez y lo comparten esta pantalla y la del atleta. -->
-        <div id="form-host"></div>
-
-        <!-- La semana ocupada va aparte porque no son campos sino filas -->
-        <section class="in-sec">
-          <div class="pr-card has-strip" style="--pr-strip:var(--pr-ev-team)">
-            <div class="in-sec-head"><span class="in-sec-num">10</span><h2 data-i18n="in.week">Su semana ocupada</h2></div>
-            <p class="in-sec-note" data-i18n="in.weekNote">Estudio, trabajo y el entrenamiento con su club. Lo que queda en blanco es donde de verdad se puede meter carga: de acá sale la planificación.</p>
-            <div class="wk">
-              <div id="wk-scale"></div>
-              <div id="wk-rows"></div>
-            </div>
-            <p class="wk-free" id="free"></p>
-            <div id="wk-legend"></div>
-          </div>
-        </section>
-
-        <div class="in-foot">
-          <button class="pr-btn is-primary" type="submit" id="save" data-i18n="common.save">Guardar</button>
-          <span class="in-saved" id="saved"></span>
-        </div>
-
-      </form>
-    </main>
+  <div class="ai-progress">
+    <div class="ai-progress-top">
+      <b id="pct">0%</b>
+      <span id="count"></span>
+    </div>
+    <div class="pr-progress"><i id="bar" style="width:0%"></i></div>
   </div>
+
+  <form id="f-intake">
+
+    <!-- Las mismas secciones que ve el entrenador: el formulario está definido
+         una sola vez, en assets/intake-form.js. -->
+    <div id="form-host"></div>
+
+    <section class="in-sec">
+      <div class="pr-card has-strip" style="--pr-strip:var(--pr-ev-team)">
+        <div class="in-sec-head"><span class="in-sec-num">10</span><h2 data-i18n="ai.week">Mi semana</h2></div>
+        <p class="in-sec-note" data-i18n="ai.weekNote">Cargá lo que ya tenés fijo: facultad, trabajo, los entrenamientos con tu club. Lo que quede libre es donde tu entrenador va a poder ponerte trabajo.</p>
+        <div class="wk">
+          <div id="wk-scale"></div>
+          <div id="wk-rows"></div>
+        </div>
+        <p class="wk-free" id="free"></p>
+        <div id="wk-legend"></div>
+      </div>
+    </section>
+
+    <div class="ai-foot">
+      <button class="pr-btn is-primary is-lg is-block" type="submit" id="save" data-i18n="common.save">Guardar</button>
+      <span class="ai-saved" id="saved"></span>
+    </div>
+
+  </form>
+
+  <div class="ai-back">
+    <a class="pr-btn is-ghost is-sm" href="Week.html" data-i18n="ai.back">Volver a mi semana</a>
+  </div>
+
 </div>
 
 <!-- Alta de franja horaria -->
 <div class="pr-modal-backdrop" id="m-slot" hidden>
   <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-slot-title">
     <div class="pr-modal-head">
-      <h2 id="m-slot-title" data-i18n="in.slot.title">Franja ocupada</h2>
+      <h2 id="m-slot-title" data-i18n="ai.slot.title">¿Qué tenés ese día?</h2>
       <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
     </div>
     <form id="f-slot">
@@ -99,7 +115,7 @@
             <label class="pr-label" for="s-kind" data-i18n="in.slot.kind">Tipo</label>
             <select class="pr-select" id="s-kind">
               <option value="commitment"    data-i18n="in.k.commitment">Estudio o trabajo</option>
-              <option value="team_training" data-i18n="in.k.team">Con su club</option>
+              <option value="team_training" data-i18n="ai.k.team">Con mi club</option>
               <option value="match"         data-i18n="in.k.match">Partido</option>
               <option value="unavailable"   data-i18n="in.k.unavailable">No disponible</option>
             </select>
@@ -129,20 +145,25 @@
   </div>
 </div>
 
-<script src="assets/sidebar.js" defer></script>
 <script>
 (function () {
   const t = (k, fb, vars) => (window.PR_I18N ? window.PR_I18N.t(k, vars) : null) || fb;
   const esc = window.prEsc;
-  const athleteId = new URLSearchParams(location.search).get('id');
-  let slots = [];
+  let athleteId = null, slots = [];
+
+  function paintProgress() {
+    const p = window.prIntake.progress();
+    document.getElementById('pct').textContent = p.pct + '%';
+    document.getElementById('bar').style.width = p.pct + '%';
+    document.getElementById('count').textContent = t('ai.count', `${p.done} de ${p.total} respondidas`, { done: p.done, total: p.total });
+  }
 
   function paintWeek() {
     window.prWeek.render({ host: 'wk-rows', slots, editable: true });
     const h = window.prWeek.freeHours(slots);
     document.getElementById('free').innerHTML = slots.length
-      ? t('ap.free', `Le quedan <b>${h} h</b> libres en la semana, entre las 06:00 y las 24:00.`, { hours: h })
-      : `<span style="color:var(--pr-fg-faint)">${esc(t('in.weekEmpty', 'Cargá sus horarios con el + de cada día.'))}</span>`;
+      ? t('ai.free', `Te quedan <b>${h} h</b> libres en la semana.`, { hours: h })
+      : `<span style="color:var(--pr-fg-faint)">${esc(t('ai.weekEmpty', 'Tocá el + de cada día para cargar tus horarios.'))}</span>`;
   }
 
   async function loadSlots() {
@@ -161,12 +182,11 @@
       document.getElementById('s-day').value = add.dataset.add;
       document.getElementById('slot-msg').hidden = true;
       document.getElementById('m-slot').hidden = false;
-      document.getElementById('s-start').focus();
       return;
     }
     const slot = e.target.closest('[data-slot]');
     if (!slot) return;
-    if (!confirm(t('in.slot.confirmRemove', '¿Quitar esta franja?'))) return;
+    if (!confirm(t('ai.slot.confirmRemove', '¿Sacar esta franja?'))) return;
     const { error } = await window.sb.from('availability_slots').delete().eq('id', slot.dataset.slot);
     if (error) { window.prToast(error.message, 'danger'); return; }
     await loadSlots();
@@ -220,53 +240,39 @@
     const { error } = await window.sb.from('athlete_intake').upsert(row, { onConflict: 'athlete_id' });
     btn.classList.remove('is-busy');
     if (error) { window.prToast(error.message, 'danger'); return; }
-    document.getElementById('saved').textContent = t('in.savedAt', 'Guardado');
-    window.prToast(t('in.saved', 'Anamnesis guardada.'), 'success');
+    document.getElementById('saved').textContent = t('ai.saved', 'Guardado. Tu entrenador ya lo ve.');
+    window.prToast(t('ai.saved', 'Guardado. Tu entrenador ya lo ve.'), 'success');
   });
 
   // ── Arranque ─────────────────────────────────────────────────────────────
   async function boot() {
-    if (!(await window.requireCoach())) return;
+    if (!(await window.requireAthlete())) return;
     if (window.PR_I18N && window.PR_I18N.ready) { try { await window.PR_I18N.ready; } catch (e) {} }
-    if (!athleteId) { window.location.replace('Athletes.html'); return; }
-    if (window.prSidebar) window.prSidebar.mount('athletes');
 
-    window.prIntake.render('form-host', 'coach');
+    window.prIntake.render('form-host', 'athlete');
     document.getElementById('wk-scale').outerHTML = window.prWeek.scaleHtml();
     document.getElementById('wk-legend').outerHTML = window.prWeek.legendHtml();
     document.getElementById('s-day').innerHTML = window.prWeek.dayOptions();
 
-    const { data: ath } = await window.sb.from('athletes')
-      .select('first_name,last_name,athlete_accounts(user_id)').eq('id', athleteId).maybeSingle();
-    if (!ath) { window.location.replace('Athletes.html'); return; }
-    const full = `${ath.first_name} ${ath.last_name || ''}`.trim();
-    document.getElementById('top-name').textContent = full;
-    document.title = full + ' — Proa';
-
-    // Si ya tiene cuenta, al entrar a Proa le aparece sola para completar.
-    const linked = ath.athlete_accounts && ath.athlete_accounts.length;
-    document.getElementById('ask-pill').hidden = !linked;
+    // Las reglas de acceso ya limitan al atleta a su propia fila.
+    const { data: a } = await window.sb.from('athletes')
+      .select('id,workspaces(name,accent)').limit(1).maybeSingle();
+    if (!a) { window.location.replace('Week.html'); return; }
+    athleteId = a.id;
+    if (a.workspaces) {
+      document.getElementById('ws-name').textContent = a.workspaces.name;
+      if (window.prBrand) window.prBrand.applyAccent(a.workspaces.accent);
+    }
 
     const { data: intake } = await window.sb.from('athlete_intake')
       .select('*').eq('athlete_id', athleteId).maybeSingle();
+    if (intake) window.prIntake.fill(intake);
 
-    if (intake) {
-      window.prIntake.fill(intake);
-      if (intake.completed_at) {
-        const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
-        const when = new Date(intake.completed_at).toLocaleDateString(lang, { day: 'numeric', month: 'short' });
-        document.getElementById('saved').textContent = t('in.lastSaved', 'Última vez guardada') + ' · ' + when;
-
-        // Que la haya cargado el atleta cambia cómo se lee: no es lo mismo un
-        // dato que el entrenador puso de memoria.
-        const byAthlete = linked && intake.completed_by === ath.athlete_accounts[0].user_id;
-        if (byAthlete) {
-          document.getElementById('by-text').textContent =
-            t('in.byAthlete', `La completó ${ath.first_name} el ${when}.`, { name: ath.first_name, date: when });
-          document.getElementById('by-box').hidden = false;
-        }
-      }
-    }
+    // El avance se recalcula mientras escribe: ver subir el porcentaje es lo
+    // que sostiene un formulario largo.
+    document.getElementById('form-host').addEventListener('input', paintProgress);
+    document.getElementById('form-host').addEventListener('change', paintProgress);
+    paintProgress();
 
     await loadSlots();
     if (window.PR_I18N) window.PR_I18N.applyTo(document);
