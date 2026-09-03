@@ -26,6 +26,22 @@
   .ap-prose.is-empty { color: var(--pr-fg-faint); }
   .ap-block { margin-bottom: 22px; }
 
+  /* Banderas de salud: lo que un preparador tiene que ver ANTES de escribir la
+     primera serie. Va arriba de todo y con el color de peligro. */
+  .ap-flags {
+    border: var(--pr-bw) solid var(--pr-danger-bd);
+    background: var(--pr-danger-bg);
+    border-radius: var(--pr-r-5);
+    padding: 18px 20px;
+    margin-bottom: 22px;
+  }
+  .ap-flags-head { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; }
+  .ap-flags-head .ti { color: var(--pr-danger); font-size: 19px; }
+  .ap-flags-head h2 { font: var(--pr-h3); text-transform: uppercase; letter-spacing: .05em; color: var(--pr-danger); margin: 0; }
+  .ap-flags dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px 20px; margin: 0; }
+  .ap-flags dt { font: 700 10px/1 var(--pr-font-cond); letter-spacing: .16em; text-transform: uppercase; color: var(--pr-danger); margin-bottom: 5px; }
+  .ap-flags dd { margin: 0; font: 500 14px/1.45 var(--pr-font-sans); color: var(--pr-fg-strong); white-space: pre-wrap; }
+
   /* Semana en modo lectura: misma línea de tiempo que la anamnesis */
   .wk { display: flex; flex-direction: column; gap: 5px; }
   .wk-scale { display: flex; padding-left: 46px; margin-bottom: 2px; }
@@ -71,6 +87,14 @@
         <a class="pr-btn is-primary" id="btn-intake" href="#" data-i18n="ap.editIntake">Editar anamnesis</a>
       </div>
 
+      <section class="ap-flags" id="flags" hidden>
+        <div class="ap-flags-head">
+          <i class="ti ti-alert-triangle"></i>
+          <h2 data-i18n="ap.flags">Atención</h2>
+        </div>
+        <dl id="flags-list"></dl>
+      </section>
+
       <div class="ap-cards">
         <section class="pr-card pr-card-pad has-strip" style="--pr-strip:var(--pr-ev-gym)">
           <dl class="ap-dl" id="basics"></dl>
@@ -92,6 +116,11 @@
       <section class="pr-card pr-card-pad ap-block" id="goal-card">
         <div class="ap-card-head"><h2 data-i18n="in.goal">Objetivo</h2></div>
         <p class="ap-prose" id="goals"></p>
+      </section>
+
+      <section class="pr-card pr-card-pad ap-block">
+        <div class="ap-card-head"><h2 data-i18n="ap.contact">Contacto</h2></div>
+        <dl class="ap-dl" id="contact"></dl>
       </section>
 
       <section class="pr-card pr-card-pad ap-block" id="hist-card">
@@ -199,20 +228,60 @@
       a.club_name ? `<span class="pr-pill">${esc(a.club_name)}</span>` : ''
     ].join('');
 
-    const yrs = age(a.birth_date);
-    document.getElementById('basics').innerHTML = [
-      ['ap.position', a.position],
-      ['ap.age', yrs !== null ? t('ap.years', yrs + ' años', { n: yrs }) : null],
-      ['ap.club', a.club_name],
-      ['in.gymAccess', intake && intake.gym_access ? t('in.gym.' + intake.gym_access) : null]
-    ].map(([k, v]) => `<div><dt data-i18n="${k}">${esc(t(k))}</dt><dd>${val(v)}</dd></div>`).join('');
+    const dl = (rows, host) => {
+      document.getElementById(host).innerHTML = rows
+        .map(([k, v]) => `<div><dt data-i18n="${k}">${esc(t(k))}</dt><dd class="${v ? '' : 'is-empty'}">${val(v)}</dd></div>`)
+        .join('');
+    };
 
-    document.getElementById('numbers').innerHTML = [
-      ['in.height', intake && intake.height_cm ? intake.height_cm + ' cm' : null],
-      ['in.weight', intake && intake.weight_kg ? intake.weight_kg + ' kg' : null],
-      ['in.sleepHours', intake && intake.sleep_hours ? intake.sleep_hours + ' h' : null],
-      ['in.sessions', intake && intake.sessions_per_week]
-    ].map(([k, v]) => `<div><dt data-i18n="${k}">${esc(t(k))}</dt><dd class="${v ? '' : 'is-empty'}">${val(v)}</dd></div>`).join('');
+    const yrs = age(a.birth_date);
+    dl([
+      ['ap.age',      yrs !== null ? t('ap.years', yrs + ' años', { n: yrs }) : null],
+      ['ath.sex',     a.sex ? t('ath.sex.' + a.sex) : null],
+      ['ap.position', a.position],
+      ['ath.level',   a.level ? t('ath.lv.' + a.level) : null],
+      ['ath.side',    a.dominant_side ? t('ath.side.' + a.dominant_side) : null],
+      ['ap.club',     a.club_name]
+    ], 'basics');
+
+    dl([
+      ['in.height',      intake && intake.height_cm ? intake.height_cm + ' cm' : null],
+      ['in.weight',      intake && intake.weight_kg ? intake.weight_kg + ' kg' : null],
+      ['in.sleepHours',  intake && intake.sleep_hours ? intake.sleep_hours + ' h' : null],
+      ['in.sessions',    intake && intake.sessions_per_week],
+      ['in.gymAccess',   intake && intake.gym_access ? t('in.gym.' + intake.gym_access) : null],
+      ['in.lifting',     intake && intake.lifting_experience ? t('in.lift.' + intake.lifting_experience) : null]
+    ], 'numbers');
+
+    dl([
+      ['auth.email',    a.email],
+      ['ath.phone',     a.phone],
+      ['in.emName',     intake && intake.emergency_name],
+      ['in.emPhone',    intake && intake.emergency_phone],
+      ['in.emRelation', intake && intake.emergency_relation]
+    ], 'contact');
+
+    // ── Banderas de salud ──
+    // Solo aparece la tarjeta si de verdad hay algo que mirar. Un aviso rojo
+    // permanente y vacío se vuelve invisible a los dos días.
+    const flags = [
+      ['in.conditions', intake && intake.conditions],
+      ['in.medication', intake && intake.medication],
+      ['in.allergies',  intake && intake.allergies],
+      ['in.current',    intake && intake.current_issues],
+      ['in.family',     intake && intake.family_history],
+      ['in.surgeries',  intake && intake.surgeries]
+    ].filter(([, v]) => v);
+
+    if (intake && intake.medical_clearance === false) {
+      flags.unshift(['in.clearance', t('ap.noClearance', 'No tiene apto físico')]);
+    }
+    const flagBox = document.getElementById('flags');
+    flagBox.hidden = flags.length === 0;
+    if (flags.length) {
+      document.getElementById('flags-list').innerHTML = flags
+        .map(([k, v]) => `<div><dt data-i18n="${k}">${esc(t(k))}</dt><dd>${esc(v)}</dd></div>`).join('');
+    }
 
     const goals = intake && intake.goals;
     const goalEl = document.getElementById('goals');

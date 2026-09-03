@@ -11,84 +11,63 @@
 <script src="assets/supabase-init.js"></script>
 <script src="assets/i18n.js" defer></script>
 <style>
-  .in-wrap { max-width: 860px; }
+  .in-wrap { max-width: 880px; }
 
-  .in-sec { margin-bottom: 26px; }
-  .in-sec-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+  .in-sec { margin-bottom: 14px; }
+  .in-sec > .pr-card { padding: 22px; }
+  .in-sec-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
   .in-sec-num { font: 700 12px/1 var(--pr-font-cond); letter-spacing: .16em; color: var(--pr-accent-ink); }
   .in-sec h2 { font: var(--pr-h3); text-transform: uppercase; letter-spacing: .05em; color: var(--pr-fg-strong); margin: 0; }
-  .in-sec-note { font: var(--pr-body-sm); color: var(--pr-fg-muted); margin: 0 0 14px; max-width: 70ch; }
+  .in-sec-note { font: var(--pr-body-sm); color: var(--pr-fg-muted); margin: 0 0 16px; max-width: 72ch; }
+  .in-sec-head + .in-fields { margin-top: 16px; }
 
+  .in-fields { display: flex; flex-direction: column; gap: 16px; }
   .in-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .in-grid.is-3 { grid-template-columns: repeat(3, 1fr); }
-  @media (max-width: 640px) { .in-grid, .in-grid.is-3 { grid-template-columns: 1fr; } }
+  @media (max-width: 680px) { .in-grid, .in-grid.is-3 { grid-template-columns: 1fr; } }
+
+  /* La sección de salud lleva su propia franja: es la que un preparador tiene
+     que mirar antes de escribir la primera serie. */
+  .in-sec.is-health > .pr-card { border-color: var(--pr-danger-bd); }
 
   /* ── Línea de tiempo de la semana ──
-     Cada día es una franja de 06:00 a 24:00. Lo ocupado se pinta; lo que queda
-     en blanco es donde de verdad se puede meter carga. Es la razón de ser de
-     toda esta pantalla. */
+     Cada día va de 06:00 a 24:00. Lo ocupado se pinta; lo blanco es donde de
+     verdad se puede meter carga. Es la razón de ser de esta pantalla. */
   .wk { display: flex; flex-direction: column; gap: 5px; }
   .wk-scale { display: flex; padding-left: 46px; margin-bottom: 2px; }
-  .wk-scale span {
-    flex: 1;
-    font: 600 9.5px/1 var(--pr-font-cond);
-    letter-spacing: .1em;
-    color: var(--pr-fg-faint);
-  }
+  .wk-scale span { flex: 1; font: 600 9.5px/1 var(--pr-font-cond); letter-spacing: .1em; color: var(--pr-fg-faint); }
   .wk-row { display: flex; align-items: center; gap: 8px; }
-  .wk-day {
-    width: 38px; flex: none;
-    font: 700 11px/1 var(--pr-font-cond);
-    letter-spacing: .12em; text-transform: uppercase;
-    color: var(--pr-fg-muted);
-  }
-  .wk-track {
-    position: relative; flex: 1;
-    height: 30px;
-    background: var(--pr-bg-sunk);
-    border-radius: var(--pr-r-2);
-    overflow: hidden;
-  }
-  /* Rayas cada 3 horas, para poder leer la hora sin números */
+  .wk-day { width: 38px; flex: none; font: 700 11px/1 var(--pr-font-cond); letter-spacing: .12em; text-transform: uppercase; color: var(--pr-fg-muted); }
+  .wk-track { position: relative; flex: 1; height: 30px; background: var(--pr-bg-sunk); border-radius: var(--pr-r-2); overflow: hidden; }
   .wk-track::before {
     content: ""; position: absolute; inset: 0;
-    background: repeating-linear-gradient(to right,
-      transparent 0, transparent calc(16.666% - 1px),
+    background: repeating-linear-gradient(to right, transparent 0, transparent calc(16.666% - 1px),
       var(--pr-border) calc(16.666% - 1px), var(--pr-border) 16.666%);
     pointer-events: none;
   }
   .wk-slot {
-    position: absolute; top: 3px; bottom: 3px;
-    border-radius: var(--pr-r-1);
-    display: flex; align-items: center;
-    padding: 0 6px;
-    font: 600 10px/1 var(--pr-font-sans);
-    color: #fff;
-    overflow: hidden; white-space: nowrap;
-    cursor: pointer;
-    border: 0;
+    position: absolute; top: 3px; bottom: 3px; border-radius: var(--pr-r-1);
+    display: flex; align-items: center; padding: 0 6px;
+    font: 600 10px/1 var(--pr-font-sans); color: #fff;
+    overflow: hidden; white-space: nowrap; cursor: pointer; border: 0;
   }
   .wk-slot:hover { filter: brightness(1.12); }
   .wk-add {
-    flex: none;
-    width: 30px; height: 30px;
+    flex: none; width: 30px; height: 30px;
     border: var(--pr-bw) dashed var(--pr-border-strong);
-    background: transparent;
-    border-radius: var(--pr-r-2);
-    color: var(--pr-fg-muted);
-    cursor: pointer;
-    display: grid; place-items: center;
+    background: transparent; border-radius: var(--pr-r-2);
+    color: var(--pr-fg-muted); cursor: pointer; display: grid; place-items: center;
   }
   .wk-add:hover { border-color: var(--pr-accent); color: var(--pr-accent-ink); border-style: solid; }
-
   .wk-legend { margin-top: 14px; }
+  .wk-free { font: var(--pr-body-sm); color: var(--pr-fg-muted); margin: 12px 0 0; }
+  .wk-free b { color: var(--pr-fg-strong); font-family: var(--pr-font-cond); font-size: 16px; }
 
   .in-foot {
-    position: sticky; bottom: 0;
+    position: sticky; bottom: 0; z-index: 2;
     display: flex; align-items: center; gap: 12px;
-    padding: 14px 0;
-    background: linear-gradient(to top, var(--pr-bg) 68%, transparent);
-    margin-top: 8px;
+    padding: 14px 0 18px;
+    background: linear-gradient(to top, var(--pr-bg) 70%, transparent);
   }
   .in-saved { font: var(--pr-body-sm); color: var(--pr-fg-muted); }
 </style>
@@ -109,145 +88,360 @@
       <div class="pr-page-header">
         <div>
           <h1 data-i18n="in.title">Anamnesis</h1>
-          <p data-i18n="in.sub">Todo lo que el atleta te cuenta. Los horarios de abajo son los que después arman su semana.</p>
+          <p data-i18n="in.sub">Todo lo que el atleta te cuenta. Se guarda todo junto: no hace falta completarla de una sola vez.</p>
         </div>
       </div>
 
       <form id="f-intake">
 
-        <!-- 1. Objetivo -->
+        <!-- 01 · Contacto de emergencia -->
         <section class="in-sec">
-          <div class="in-sec-head"><span class="in-sec-num">01</span><h2 data-i18n="in.goal">Objetivo</h2></div>
-          <div class="in-grid">
-            <div class="pr-field">
-              <label class="pr-label" for="main_goal" data-i18n="in.mainGoal">Objetivo principal</label>
-              <select class="pr-select" id="main_goal">
-                <option value="" data-i18n="in.choose">Elegir…</option>
-                <option value="performance" data-i18n="in.goal.performance">Rendimiento</option>
-                <option value="return"      data-i18n="in.goal.return">Volver de una lesión</option>
-                <option value="body"        data-i18n="in.goal.body">Composición corporal</option>
-                <option value="health"      data-i18n="in.goal.health">Salud general</option>
-                <option value="other"       data-i18n="in.goal.other">Otro</option>
-              </select>
-            </div>
-            <div class="pr-field">
-              <label class="pr-label" for="sessions_per_week" data-i18n="in.sessions">Sesiones por semana que puede</label>
-              <input class="pr-input" id="sessions_per_week" type="number" min="0" max="21" step="1">
-            </div>
-          </div>
-          <div class="pr-field" style="margin-top:16px">
-            <label class="pr-label" for="goals" data-i18n="in.goalsDetail">En sus palabras</label>
-            <textarea class="pr-textarea" id="goals" rows="3"
-                      data-i18n-ph="in.goalsPh" placeholder="Qué quiere lograr y para cuándo."></textarea>
-          </div>
-        </section>
-
-        <!-- 2. Historial -->
-        <section class="in-sec">
-          <div class="in-sec-head"><span class="in-sec-num">02</span><h2 data-i18n="in.history">Historial</h2></div>
-          <div class="in-grid">
-            <div class="pr-field">
-              <label class="pr-label" for="injury_history" data-i18n="in.injuries">Lesiones previas</label>
-              <textarea class="pr-textarea" id="injury_history" rows="3"
-                        data-i18n-ph="in.injuriesPh" placeholder="Qué, cuándo y cómo se recuperó."></textarea>
-            </div>
-            <div class="pr-field">
-              <label class="pr-label" for="current_issues" data-i18n="in.current">Molestias actuales</label>
-              <textarea class="pr-textarea" id="current_issues" rows="3"
-                        data-i18n-ph="in.currentPh" placeholder="Dolores o limitaciones de hoy."></textarea>
+          <div class="pr-card">
+            <div class="in-sec-head"><span class="in-sec-num">01</span><h2 data-i18n="in.emergency">Contacto de emergencia</h2></div>
+            <p class="in-sec-note" data-i18n="in.emergencyNote">Trabajando uno a uno, muchas veces sos la única persona presente si pasa algo.</p>
+            <div class="in-grid is-3">
+              <div class="pr-field">
+                <label class="pr-label" for="emergency_name" data-i18n="in.emName">Nombre</label>
+                <input class="pr-input" id="emergency_name" maxlength="80">
+              </div>
+              <div class="pr-field">
+                <label class="pr-label" for="emergency_phone" data-i18n="in.emPhone">Teléfono</label>
+                <input class="pr-input" id="emergency_phone" type="tel" maxlength="40">
+              </div>
+              <div class="pr-field">
+                <label class="pr-label" for="emergency_relation" data-i18n="in.emRelation">Qué es del atleta</label>
+                <input class="pr-input" id="emergency_relation" maxlength="40" data-i18n-ph="in.emRelationPh" placeholder="Madre, pareja, hermano…">
+              </div>
             </div>
           </div>
         </section>
 
-        <!-- 3. Hábitos -->
-        <section class="in-sec">
-          <div class="in-sec-head"><span class="in-sec-num">03</span><h2 data-i18n="in.habits">Hábitos</h2></div>
-          <div class="in-grid is-3">
-            <div class="pr-field">
-              <label class="pr-label" for="sleep_hours" data-i18n="in.sleepHours">Horas de sueño</label>
-              <input class="pr-input" id="sleep_hours" type="number" min="0" max="14" step="0.5">
-            </div>
-            <div class="pr-field">
-              <label class="pr-label" for="sleep_quality" data-i18n="in.sleepQuality">Calidad del sueño</label>
-              <select class="pr-select" id="sleep_quality">
-                <option value="" data-i18n="in.choose">Elegir…</option>
-                <option value="1" data-i18n="in.q1">Muy mala</option>
-                <option value="2" data-i18n="in.q2">Mala</option>
-                <option value="3" data-i18n="in.q3">Normal</option>
-                <option value="4" data-i18n="in.q4">Buena</option>
-                <option value="5" data-i18n="in.q5">Muy buena</option>
-              </select>
-            </div>
-            <div class="pr-field">
-              <label class="pr-label" for="gym_access" data-i18n="in.gymAccess">Acceso a gimnasio</label>
-              <select class="pr-select" id="gym_access">
-                <option value="" data-i18n="in.choose">Elegir…</option>
-                <option value="full"  data-i18n="in.gym.full">Completo</option>
-                <option value="basic" data-i18n="in.gym.basic">Básico</option>
-                <option value="home"  data-i18n="in.gym.home">En casa</option>
-                <option value="none"  data-i18n="in.gym.none">Ninguno</option>
-              </select>
+        <!-- 02 · Salud -->
+        <section class="in-sec is-health">
+          <div class="pr-card has-strip" style="--pr-strip:var(--pr-danger)">
+            <div class="in-sec-head"><span class="in-sec-num">02</span><h2 data-i18n="in.health">Salud</h2></div>
+            <p class="in-sec-note" data-i18n="in.healthNote">Lo primero que hay que saber antes de escribir la primera serie. Lo que cargues acá aparece destacado en su ficha.</p>
+            <div class="in-fields">
+              <div class="in-grid">
+                <div class="pr-field">
+                  <label class="pr-label" for="conditions" data-i18n="in.conditions">Enfermedades o diagnósticos</label>
+                  <textarea class="pr-textarea" id="conditions" rows="2" data-i18n-ph="in.conditionsPh" placeholder="Asma, diabetes, hipertensión, algo cardíaco…"></textarea>
+                </div>
+                <div class="pr-field">
+                  <label class="pr-label" for="medication" data-i18n="in.medication">Medicación habitual</label>
+                  <textarea class="pr-textarea" id="medication" rows="2" data-i18n-ph="in.medicationPh" placeholder="Qué toma, para qué y desde cuándo."></textarea>
+                </div>
+              </div>
+              <div class="in-grid">
+                <div class="pr-field">
+                  <label class="pr-label" for="allergies" data-i18n="in.allergies">Alergias</label>
+                  <textarea class="pr-textarea" id="allergies" rows="2" data-i18n-ph="in.allergiesPh" placeholder="Medicamentos, alimentos, picaduras…"></textarea>
+                </div>
+                <div class="pr-field">
+                  <label class="pr-label" for="surgeries" data-i18n="in.surgeries">Cirugías</label>
+                  <textarea class="pr-textarea" id="surgeries" rows="2" data-i18n-ph="in.surgeriesPh" placeholder="Cuáles y en qué año."></textarea>
+                </div>
+              </div>
+              <div class="pr-field">
+                <label class="pr-label" for="family_history" data-i18n="in.family">Antecedentes familiares</label>
+                <textarea class="pr-textarea" id="family_history" rows="2" data-i18n-ph="in.familyPh" placeholder="Sobre todo cardíacos o muerte súbita en familiares directos."></textarea>
+              </div>
+              <div class="in-grid is-3">
+                <div class="pr-field">
+                  <label class="pr-label" for="medical_clearance" data-i18n="in.clearance">Apto físico</label>
+                  <select class="pr-select" id="medical_clearance">
+                    <option value="" data-i18n="in.choose">Elegir…</option>
+                    <option value="true"  data-i18n="in.clearance.yes">Sí, al día</option>
+                    <option value="false" data-i18n="in.clearance.no">No tiene</option>
+                  </select>
+                </div>
+                <div class="pr-field">
+                  <label class="pr-label" for="medical_clearance_date" data-i18n="in.clearanceDate">Fecha del apto</label>
+                  <input class="pr-input" id="medical_clearance_date" type="date">
+                </div>
+                <div class="pr-field">
+                  <label class="pr-label" for="smokes" data-i18n="in.smokes">Fuma</label>
+                  <select class="pr-select" id="smokes">
+                    <option value="" data-i18n="in.choose">Elegir…</option>
+                    <option value="no"         data-i18n="in.sm.no">No</option>
+                    <option value="occasional" data-i18n="in.sm.occ">De vez en cuando</option>
+                    <option value="yes"        data-i18n="in.sm.yes">Sí</option>
+                  </select>
+                </div>
+              </div>
+              <div class="pr-field" style="max-width:320px">
+                <label class="pr-label" for="alcohol" data-i18n="in.alcohol">Alcohol</label>
+                <select class="pr-select" id="alcohol">
+                  <option value="" data-i18n="in.choose">Elegir…</option>
+                  <option value="no"         data-i18n="in.al.no">No</option>
+                  <option value="occasional" data-i18n="in.al.occ">Social</option>
+                  <option value="frequent"   data-i18n="in.al.freq">Frecuente</option>
+                </select>
+              </div>
             </div>
           </div>
-          <div class="in-grid" style="margin-top:16px">
-            <div class="pr-field">
-              <label class="pr-label" for="diet_notes" data-i18n="in.diet">Alimentación</label>
-              <textarea class="pr-textarea" id="diet_notes" rows="3"
-                        data-i18n-ph="in.dietPh" placeholder="Cómo come, restricciones, alergias."></textarea>
-            </div>
-            <div class="pr-field">
-              <label class="pr-label" for="equipment" data-i18n="in.equipment">Material disponible</label>
-              <textarea class="pr-textarea" id="equipment" rows="3"
-                        data-i18n-ph="in.equipmentPh" placeholder="Bandas, mancuernas, barra, TRX…"></textarea>
+        </section>
+
+        <!-- 03 · Lesiones -->
+        <section class="in-sec">
+          <div class="pr-card">
+            <div class="in-sec-head"><span class="in-sec-num">03</span><h2 data-i18n="in.history">Historial de lesiones</h2></div>
+            <div class="in-fields" style="margin-top:16px">
+              <div class="in-grid">
+                <div class="pr-field">
+                  <label class="pr-label" for="injury_history" data-i18n="in.injuries">Lesiones previas</label>
+                  <textarea class="pr-textarea" id="injury_history" rows="3" data-i18n-ph="in.injuriesPh" placeholder="Qué, cuándo y cómo se recuperó."></textarea>
+                </div>
+                <div class="pr-field">
+                  <label class="pr-label" for="current_issues" data-i18n="in.current">Molestias actuales</label>
+                  <textarea class="pr-textarea" id="current_issues" rows="3" data-i18n-ph="in.currentPh" placeholder="Dolores o limitaciones de hoy."></textarea>
+                </div>
+              </div>
+              <div class="in-grid">
+                <div class="pr-field">
+                  <label class="pr-label" for="pain_areas" data-i18n="in.painAreas">Zonas que le molestan seguido</label>
+                  <input class="pr-input" id="pain_areas" maxlength="160" data-i18n-ph="in.painAreasPh" placeholder="Isquios derechos, zona lumbar, tobillo izquierdo…">
+                </div>
+                <div class="pr-field">
+                  <label class="pr-label" for="longest_layoff" data-i18n="in.layoff">Baja más larga que tuvo</label>
+                  <input class="pr-input" id="longest_layoff" maxlength="120" data-i18n-ph="in.layoffPh" placeholder="6 meses por rotura de ligamento cruzado.">
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        <!-- 4. Medidas -->
+        <!-- 04 · Objetivo -->
         <section class="in-sec">
-          <div class="in-sec-head"><span class="in-sec-num">04</span><h2 data-i18n="in.measures">Medidas de partida</h2></div>
-          <div class="in-grid is-3">
-            <div class="pr-field">
-              <label class="pr-label" for="height_cm" data-i18n="in.height">Altura (cm)</label>
-              <input class="pr-input" id="height_cm" type="number" min="80" max="250" step="0.5">
-            </div>
-            <div class="pr-field">
-              <label class="pr-label" for="weight_kg" data-i18n="in.weight">Peso (kg)</label>
-              <input class="pr-input" id="weight_kg" type="number" min="25" max="250" step="0.1">
-            </div>
-            <div class="pr-field">
-              <label class="pr-label" for="training_years" data-i18n="in.years">Años entrenando</label>
-              <input class="pr-input" id="training_years" type="number" min="0" max="60" step="0.5">
+          <div class="pr-card">
+            <div class="in-sec-head"><span class="in-sec-num">04</span><h2 data-i18n="in.goal">Objetivo</h2></div>
+            <div class="in-fields" style="margin-top:16px">
+              <div class="in-grid is-3">
+                <div class="pr-field">
+                  <label class="pr-label" for="main_goal" data-i18n="in.mainGoal">Objetivo principal</label>
+                  <select class="pr-select" id="main_goal">
+                    <option value="" data-i18n="in.choose">Elegir…</option>
+                    <option value="performance" data-i18n="in.goal.performance">Rendimiento</option>
+                    <option value="return"      data-i18n="in.goal.return">Volver de una lesión</option>
+                    <option value="body"        data-i18n="in.goal.body">Composición corporal</option>
+                    <option value="health"      data-i18n="in.goal.health">Salud general</option>
+                    <option value="other"       data-i18n="in.goal.other">Otro</option>
+                  </select>
+                </div>
+                <div class="pr-field">
+                  <label class="pr-label" for="target_date" data-i18n="in.targetDate">Fecha objetivo</label>
+                  <input class="pr-input" id="target_date" type="date">
+                </div>
+                <div class="pr-field">
+                  <label class="pr-label" for="sessions_per_week" data-i18n="in.sessions">Sesiones por semana que puede</label>
+                  <input class="pr-input" id="sessions_per_week" type="number" min="0" max="21" step="1">
+                </div>
+              </div>
+              <div class="pr-field">
+                <label class="pr-label" for="key_event" data-i18n="in.keyEvent">Competencia o momento clave</label>
+                <input class="pr-input" id="key_event" maxlength="120" data-i18n-ph="in.keyEventPh" placeholder="Pretemporada, torneo, vuelta a la competencia…">
+              </div>
+              <div class="pr-field">
+                <label class="pr-label" for="goals" data-i18n="in.goalsDetail">En sus palabras</label>
+                <textarea class="pr-textarea" id="goals" rows="3" data-i18n-ph="in.goalsPh" placeholder="Qué quiere lograr y para cuándo."></textarea>
+              </div>
             </div>
           </div>
         </section>
 
-        <!-- 5. La semana ocupada -->
+        <!-- 05 · Entrenamiento -->
         <section class="in-sec">
-          <div class="in-sec-head"><span class="in-sec-num">05</span><h2 data-i18n="in.week">Su semana ocupada</h2></div>
-          <p class="in-sec-note" data-i18n="in.weekNote">Estudio, trabajo y el entrenamiento con su club. Lo que queda en blanco es donde de verdad se puede meter carga: de acá sale la planificación.</p>
-
-          <div class="wk">
-            <div class="wk-scale" aria-hidden="true">
-              <span>06</span><span>09</span><span>12</span><span>15</span><span>18</span><span>21</span>
+          <div class="pr-card">
+            <div class="in-sec-head"><span class="in-sec-num">05</span><h2 data-i18n="in.training">Entrenamiento</h2></div>
+            <div class="in-fields" style="margin-top:16px">
+              <div class="in-grid is-3">
+                <div class="pr-field">
+                  <label class="pr-label" for="training_years" data-i18n="in.years">Años entrenando</label>
+                  <input class="pr-input" id="training_years" type="number" min="0" max="60" step="0.5">
+                </div>
+                <div class="pr-field">
+                  <label class="pr-label" for="lifting_experience" data-i18n="in.lifting">Experiencia en sala</label>
+                  <select class="pr-select" id="lifting_experience">
+                    <option value="" data-i18n="in.choose">Elegir…</option>
+                    <option value="none"         data-i18n="in.lift.none">Nunca entrenó</option>
+                    <option value="beginner"     data-i18n="in.lift.beginner">Principiante</option>
+                    <option value="intermediate" data-i18n="in.lift.intermediate">Intermedio</option>
+                    <option value="advanced"     data-i18n="in.lift.advanced">Avanzado</option>
+                  </select>
+                </div>
+                <div class="pr-field">
+                  <label class="pr-label" for="gym_access" data-i18n="in.gymAccess">Acceso a gimnasio</label>
+                  <select class="pr-select" id="gym_access">
+                    <option value="" data-i18n="in.choose">Elegir…</option>
+                    <option value="full"  data-i18n="in.gym.full">Completo</option>
+                    <option value="basic" data-i18n="in.gym.basic">Básico</option>
+                    <option value="home"  data-i18n="in.gym.home">En casa</option>
+                    <option value="none"  data-i18n="in.gym.none">Ninguno</option>
+                  </select>
+                </div>
+              </div>
+              <div class="in-grid">
+                <div class="pr-field">
+                  <label class="pr-label" for="equipment" data-i18n="in.equipment">Material disponible</label>
+                  <textarea class="pr-textarea" id="equipment" rows="2" data-i18n-ph="in.equipmentPh" placeholder="Bandas, mancuernas, barra, TRX…"></textarea>
+                </div>
+                <div class="pr-field">
+                  <label class="pr-label" for="current_training" data-i18n="in.currentTraining">Qué viene haciendo</label>
+                  <textarea class="pr-textarea" id="current_training" rows="2" data-i18n-ph="in.currentTrainingPh" placeholder="Cómo entrenó las últimas semanas."></textarea>
+                </div>
+              </div>
+              <div class="in-grid">
+                <div class="pr-field">
+                  <label class="pr-label" for="avoid_exercises" data-i18n="in.avoid">Ejercicios que no puede o no quiere hacer</label>
+                  <textarea class="pr-textarea" id="avoid_exercises" rows="2" data-i18n-ph="in.avoidPh" placeholder="Por dolor, por miedo o porque no le sirven."></textarea>
+                </div>
+                <div class="pr-field">
+                  <label class="pr-label" for="preferences" data-i18n="in.preferences">Qué le gusta entrenar</label>
+                  <textarea class="pr-textarea" id="preferences" rows="2" data-i18n-ph="in.preferencesPh" placeholder="Lo que disfruta se sostiene en el tiempo."></textarea>
+                </div>
+              </div>
             </div>
-            <div id="wk-rows"></div>
-          </div>
-
-          <div class="pr-legend wk-legend">
-            <span class="pr-legend-item"><i style="background:var(--pr-ev-commit)"></i><span data-i18n="in.k.commitment">Estudio o trabajo</span></span>
-            <span class="pr-legend-item"><i style="background:var(--pr-ev-team)"></i><span data-i18n="in.k.team">Con su club</span></span>
-            <span class="pr-legend-item"><i style="background:var(--pr-ev-match)"></i><span data-i18n="in.k.match">Partido</span></span>
-            <span class="pr-legend-item"><i style="background:var(--pr-ev-rest)"></i><span data-i18n="in.k.unavailable">No disponible</span></span>
           </div>
         </section>
 
-        <!-- 6. Notas -->
+        <!-- 06 · Nutrición -->
         <section class="in-sec">
-          <div class="in-sec-head"><span class="in-sec-num">06</span><h2 data-i18n="in.notes">Notas</h2></div>
-          <div class="pr-field">
-            <textarea class="pr-textarea" id="notes" rows="3"
-                      data-i18n-ph="in.notesPh" placeholder="Cualquier otra cosa que valga la pena recordar."></textarea>
+          <div class="pr-card has-strip" style="--pr-strip:var(--pr-ev-meal)">
+            <div class="in-sec-head"><span class="in-sec-num">06</span><h2 data-i18n="in.nutrition">Alimentación</h2></div>
+            <div class="in-fields" style="margin-top:16px">
+              <div class="in-grid is-3">
+                <div class="pr-field">
+                  <label class="pr-label" for="meals_per_day" data-i18n="in.meals">Comidas por día</label>
+                  <input class="pr-input" id="meals_per_day" type="number" min="1" max="10" step="1">
+                </div>
+                <div class="pr-field">
+                  <label class="pr-label" for="target_weight" data-i18n="in.targetWeight">Peso objetivo (kg)</label>
+                  <input class="pr-input" id="target_weight" type="number" min="25" max="250" step="0.1">
+                </div>
+                <div class="pr-field">
+                  <label class="pr-label" for="hydration" data-i18n="in.hydration">Hidratación</label>
+                  <input class="pr-input" id="hydration" maxlength="80" data-i18n-ph="in.hydrationPh" placeholder="Litros por día, mate, bebidas deportivas…">
+                </div>
+              </div>
+              <div class="in-grid">
+                <div class="pr-field">
+                  <label class="pr-label" for="diet_notes" data-i18n="in.diet">Cómo come</label>
+                  <textarea class="pr-textarea" id="diet_notes" rows="2" data-i18n-ph="in.dietPh" placeholder="Horarios, qué desayuna, cómo come antes y después de entrenar."></textarea>
+                </div>
+                <div class="pr-field">
+                  <label class="pr-label" for="food_restrictions" data-i18n="in.foodRestrictions">Restricciones e intolerancias</label>
+                  <textarea class="pr-textarea" id="food_restrictions" rows="2" data-i18n-ph="in.foodRestrictionsPh" placeholder="Celiaquía, vegetariano, lactosa…"></textarea>
+                </div>
+              </div>
+              <div class="pr-field">
+                <label class="pr-label" for="supplements" data-i18n="in.supplements">Suplementación</label>
+                <textarea class="pr-textarea" id="supplements" rows="2" data-i18n-ph="in.supplementsPh" placeholder="Qué toma, en qué dosis y desde cuándo."></textarea>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 07 · Sueño y recuperación -->
+        <section class="in-sec">
+          <div class="pr-card has-strip" style="--pr-strip:var(--pr-ev-recovery)">
+            <div class="in-sec-head"><span class="in-sec-num">07</span><h2 data-i18n="in.recovery">Sueño y recuperación</h2></div>
+            <div class="in-fields" style="margin-top:16px">
+              <div class="in-grid is-3">
+                <div class="pr-field">
+                  <label class="pr-label" for="bedtime" data-i18n="in.bedtime">Se acuesta a las</label>
+                  <input class="pr-input" id="bedtime" type="time">
+                </div>
+                <div class="pr-field">
+                  <label class="pr-label" for="waketime" data-i18n="in.waketime">Se levanta a las</label>
+                  <input class="pr-input" id="waketime" type="time">
+                </div>
+                <div class="pr-field">
+                  <label class="pr-label" for="sleep_hours" data-i18n="in.sleepHours">Horas de sueño</label>
+                  <input class="pr-input" id="sleep_hours" type="number" min="0" max="14" step="0.5">
+                </div>
+              </div>
+              <div class="in-grid is-3">
+                <div class="pr-field">
+                  <label class="pr-label" for="sleep_quality" data-i18n="in.sleepQuality">Calidad del sueño</label>
+                  <select class="pr-select" id="sleep_quality">
+                    <option value="" data-i18n="in.choose">Elegir…</option>
+                    <option value="1" data-i18n="in.q1">Muy mala</option>
+                    <option value="2" data-i18n="in.q2">Mala</option>
+                    <option value="3" data-i18n="in.q3">Normal</option>
+                    <option value="4" data-i18n="in.q4">Buena</option>
+                    <option value="5" data-i18n="in.q5">Muy buena</option>
+                  </select>
+                </div>
+                <div class="pr-field">
+                  <label class="pr-label" for="stress_level" data-i18n="in.stress">Nivel de estrés</label>
+                  <select class="pr-select" id="stress_level">
+                    <option value="" data-i18n="in.choose">Elegir…</option>
+                    <option value="1" data-i18n="in.s1">Muy bajo</option>
+                    <option value="2" data-i18n="in.s2">Bajo</option>
+                    <option value="3" data-i18n="in.s3">Normal</option>
+                    <option value="4" data-i18n="in.s4">Alto</option>
+                    <option value="5" data-i18n="in.s5">Muy alto</option>
+                  </select>
+                </div>
+                <div class="pr-field">
+                  <label class="pr-label" for="naps" data-i18n="in.naps">Siestas</label>
+                  <input class="pr-input" id="naps" maxlength="80" data-i18n-ph="in.napsPh" placeholder="Cuándo y cuánto.">
+                </div>
+              </div>
+              <div class="pr-field">
+                <label class="pr-label" for="recovery_methods" data-i18n="in.recoveryMethods">Qué usa para recuperar</label>
+                <textarea class="pr-textarea" id="recovery_methods" rows="2" data-i18n-ph="in.recoveryMethodsPh" placeholder="Masajes, frío, estiramientos, kinesiología…"></textarea>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 08 · Medidas -->
+        <section class="in-sec">
+          <div class="pr-card">
+            <div class="in-sec-head"><span class="in-sec-num">08</span><h2 data-i18n="in.measures">Medidas de partida</h2></div>
+            <div class="in-grid" style="margin-top:16px;max-width:420px">
+              <div class="pr-field">
+                <label class="pr-label" for="height_cm" data-i18n="in.height">Altura (cm)</label>
+                <input class="pr-input" id="height_cm" type="number" min="80" max="250" step="0.5">
+              </div>
+              <div class="pr-field">
+                <label class="pr-label" for="weight_kg" data-i18n="in.weight">Peso (kg)</label>
+                <input class="pr-input" id="weight_kg" type="number" min="25" max="250" step="0.1">
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 09 · La semana ocupada -->
+        <section class="in-sec">
+          <div class="pr-card has-strip" style="--pr-strip:var(--pr-ev-team)">
+            <div class="in-sec-head"><span class="in-sec-num">09</span><h2 data-i18n="in.week">Su semana ocupada</h2></div>
+            <p class="in-sec-note" data-i18n="in.weekNote">Estudio, trabajo y el entrenamiento con su club. Lo que queda en blanco es donde de verdad se puede meter carga: de acá sale la planificación.</p>
+
+            <div class="wk">
+              <div class="wk-scale" aria-hidden="true"><span>06</span><span>09</span><span>12</span><span>15</span><span>18</span><span>21</span></div>
+              <div id="wk-rows"></div>
+            </div>
+
+            <p class="wk-free" id="free"></p>
+
+            <div class="pr-legend wk-legend">
+              <span class="pr-legend-item"><i style="background:var(--pr-ev-commit)"></i><span data-i18n="in.k.commitment">Estudio o trabajo</span></span>
+              <span class="pr-legend-item"><i style="background:var(--pr-ev-team)"></i><span data-i18n="in.k.team">Con su club</span></span>
+              <span class="pr-legend-item"><i style="background:var(--pr-ev-match)"></i><span data-i18n="in.k.match">Partido</span></span>
+              <span class="pr-legend-item"><i style="background:var(--pr-ev-rest)"></i><span data-i18n="in.k.unavailable">No disponible</span></span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 10 · Notas -->
+        <section class="in-sec">
+          <div class="pr-card">
+            <div class="in-sec-head"><span class="in-sec-num">10</span><h2 data-i18n="in.notes">Notas</h2></div>
+            <div class="pr-field" style="margin-top:16px">
+              <textarea class="pr-textarea" id="notes" rows="3" data-i18n-ph="in.notesPh" placeholder="Cualquier otra cosa que valga la pena recordar."></textarea>
+            </div>
           </div>
         </section>
 
@@ -322,51 +516,71 @@
   // La franja va de las 06:00 a las 24:00: fuera de ahí no se planifica nada.
   const H0 = 6, H1 = 24, SPAN = H1 - H0;
 
-  const FIELDS = ['main_goal','goals','injury_history','current_issues','sleep_hours',
-                  'sleep_quality','diet_notes','equipment','training_years','gym_access',
-                  'sessions_per_week','height_cm','weight_kg','notes'];
-  const NUMERIC = ['sleep_hours','sleep_quality','training_years','sessions_per_week','height_cm','weight_kg'];
+  // Todos los campos de texto/número/fecha de la anamnesis, en un solo lugar:
+  // se leen y se escriben por identificador, que es igual al de la columna.
+  const FIELDS = [
+    'emergency_name','emergency_phone','emergency_relation',
+    'conditions','medication','allergies','surgeries','family_history',
+    'medical_clearance_date','smokes','alcohol',
+    'injury_history','current_issues','pain_areas','longest_layoff',
+    'main_goal','target_date','key_event','sessions_per_week','goals',
+    'training_years','lifting_experience','gym_access','equipment',
+    'current_training','avoid_exercises','preferences',
+    'meals_per_day','target_weight','hydration','diet_notes','food_restrictions','supplements',
+    'bedtime','waketime','sleep_hours','sleep_quality','stress_level','naps','recovery_methods',
+    'height_cm','weight_kg','notes'
+  ];
+  const NUMERIC = ['sessions_per_week','training_years','meals_per_day','target_weight',
+                   'sleep_hours','sleep_quality','stress_level','height_cm','weight_kg'];
 
   const KIND_COLOR = {
-    commitment:    'var(--pr-ev-commit)',
-    team_training: 'var(--pr-ev-team)',
-    match:         'var(--pr-ev-match)',
-    unavailable:   'var(--pr-ev-rest)'
+    commitment: 'var(--pr-ev-commit)', team_training: 'var(--pr-ev-team)',
+    match: 'var(--pr-ev-match)', unavailable: 'var(--pr-ev-rest)'
   };
 
   let slots = [];
-
-  const toMin = (hhmm) => { const [h, m] = String(hhmm).split(':').map(Number); return h * 60 + (m || 0); };
+  const toMin = (v) => { const [h, m] = String(v).split(':').map(Number); return h * 60 + (m || 0); };
 
   function paintWeek() {
     const host = document.getElementById('wk-rows');
     host.innerHTML = DAY_KEYS.map((k, d) => {
-      const mine = slots.filter(s => s.weekday === d);
-      const blocks = mine.map(s => {
+      const blocks = slots.filter(s => s.weekday === d).map(s => {
         const a = Math.max(toMin(s.start_time), H0 * 60);
         const b = Math.min(toMin(s.end_time), H1 * 60);
         if (b <= a) return '';
-        const left  = ((a - H0 * 60) / (SPAN * 60)) * 100;
-        const width = ((b - a) / (SPAN * 60)) * 100;
         const label = s.label || t('in.k.' + (s.kind === 'team_training' ? 'team' : s.kind), '');
         return `<button type="button" class="wk-slot" data-slot="${s.id}"
-                  style="left:${left}%;width:${width}%;background:${KIND_COLOR[s.kind] || 'var(--pr-ev-commit)'}"
+                  style="left:${((a - H0*60)/(SPAN*60))*100}%;width:${((b-a)/(SPAN*60))*100}%;
+                  background:${KIND_COLOR[s.kind] || 'var(--pr-ev-commit)'}"
                   title="${esc(label)} · ${esc(String(s.start_time).slice(0,5))}–${esc(String(s.end_time).slice(0,5))} · ${esc(t('in.slot.remove','Quitar'))}">${esc(label)}</button>`;
       }).join('');
-
       return `<div class="wk-row">
         <span class="wk-day">${esc(t(k, FALLBACK_DAYS[d]))}</span>
         <span class="wk-track">${blocks}</span>
         <button type="button" class="wk-add" data-add="${d}" aria-label="${esc(t('in.slot.add','Añadir'))}"><i class="ti ti-plus"></i></button>
       </div>`;
     }).join('');
+
+    // Horas libres de la semana. Se fusionan las franjas que se pisan: si no,
+    // dos superpuestas restarían el doble y el hueco parecería más chico.
+    let busy = 0;
+    for (let d = 0; d < 7; d++) {
+      const ranges = slots.filter(s => s.weekday === d)
+        .map(s => [Math.max(toMin(s.start_time), H0*60), Math.min(toMin(s.end_time), H1*60)])
+        .filter(r => r[1] > r[0]).sort((x, y) => x[0] - y[0]);
+      let end = -1;
+      ranges.forEach(([a, b]) => { const from = Math.max(a, end); if (b > from) { busy += b - from; end = b; } });
+    }
+    const freeH = Math.round((7 * SPAN * 60 - busy) / 60);
+    document.getElementById('free').innerHTML = slots.length
+      ? t('ap.free', `Le quedan <b>${freeH} h</b> libres en la semana, entre las 06:00 y las 24:00.`, { hours: freeH })
+      : `<span style="color:var(--pr-fg-faint)">${esc(t('in.weekEmpty', 'Cargá sus horarios con el + de cada día.'))}</span>`;
   }
 
   async function loadSlots() {
     const { data, error } = await window.sb.from('availability_slots')
       .select('id,weekday,start_time,end_time,kind,label')
-      .eq('athlete_id', athleteId)
-      .order('weekday').order('start_time');
+      .eq('athlete_id', athleteId).order('weekday').order('start_time');
     if (error) { window.prToast(error.message, 'danger'); return; }
     slots = data || [];
     paintWeek();
@@ -376,7 +590,6 @@
   document.getElementById('wk-rows').addEventListener('click', async (e) => {
     const add = e.target.closest('[data-add]');
     if (add) { openSlot(Number(add.dataset.add)); return; }
-
     const slot = e.target.closest('[data-slot]');
     if (!slot) return;
     if (!confirm(t('in.slot.confirmRemove', '¿Quitar esta franja?'))) return;
@@ -396,7 +609,6 @@
     e.preventDefault();
     const msg = document.getElementById('slot-msg');
     msg.hidden = true;
-
     const start = document.getElementById('s-start').value;
     const end   = document.getElementById('s-end').value;
     if (!start || !end) { msg.textContent = t('in.slot.errTimes', 'Pon las dos horas.'); msg.hidden = false; return; }
@@ -405,8 +617,7 @@
     const { error } = await window.sb.from('availability_slots').insert({
       athlete_id: athleteId,
       weekday:    Number(document.getElementById('s-day').value),
-      start_time: start,
-      end_time:   end,
+      start_time: start, end_time: end,
       kind:       document.getElementById('s-kind').value,
       label:      document.getElementById('s-label').value.trim() || null
     });
@@ -435,10 +646,13 @@
     const row = { athlete_id: athleteId, completed_at: new Date().toISOString() };
     FIELDS.forEach(f => {
       const v = document.getElementById(f).value.trim();
-      // Vacío se guarda como nulo, no como cadena vacía: un cero y un «no
-      // contestó» no son lo mismo para un preparador.
+      // Vacío se guarda como nulo, no como cadena vacía: para un preparador,
+      // un cero y un «no contestó» no son lo mismo.
       row[f] = v === '' ? null : (NUMERIC.includes(f) ? Number(v) : v);
     });
+    // El apto físico es un sí/no de verdad, no un texto.
+    const clr = document.getElementById('medical_clearance').value;
+    row.medical_clearance = clr === '' ? null : (clr === 'true');
 
     const { error } = await window.sb.from('athlete_intake').upsert(row, { onConflict: 'athlete_id' });
     btn.classList.remove('is-busy');
@@ -453,7 +667,6 @@
     if (!(await window.requireCoach())) return;
     if (window.PR_I18N && window.PR_I18N.ready) { try { await window.PR_I18N.ready; } catch (e) {} }
     if (!athleteId) { window.location.replace('Athletes.html'); return; }
-
     if (window.prSidebar) window.prSidebar.mount('athletes');
 
     document.getElementById('s-day').innerHTML =
@@ -469,7 +682,16 @@
     const { data: intake } = await window.sb.from('athlete_intake')
       .select('*').eq('athlete_id', athleteId).maybeSingle();
     if (intake) {
-      FIELDS.forEach(f => { if (intake[f] !== null && intake[f] !== undefined) document.getElementById(f).value = intake[f]; });
+      FIELDS.forEach(f => {
+        const el = document.getElementById(f);
+        if (el && intake[f] !== null && intake[f] !== undefined) {
+          // Las horas vienen como 08:00:00 y el campo de hora quiere 08:00.
+          el.value = (el.type === 'time') ? String(intake[f]).slice(0, 5) : intake[f];
+        }
+      });
+      if (intake.medical_clearance !== null && intake.medical_clearance !== undefined) {
+        document.getElementById('medical_clearance').value = intake.medical_clearance ? 'true' : 'false';
+      }
       if (intake.completed_at) {
         const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
         document.getElementById('saved').textContent =

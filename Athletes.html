@@ -79,21 +79,23 @@
 
 <!-- Alta de atleta -->
 <div class="pr-modal-backdrop" id="m-new" hidden>
-  <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-new-title">
+  <div class="pr-modal is-wide" role="dialog" aria-modal="true" aria-labelledby="m-new-title">
     <div class="pr-modal-head">
       <h2 id="m-new-title" data-i18n="ath.new">Nuevo atleta</h2>
       <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
     </div>
     <form id="f-new">
       <div class="pr-modal-body">
+
+        <span class="pr-eyebrow" data-i18n="ath.g.who">Quién es</span>
         <div class="pr-modal-grid">
           <div class="pr-field">
             <label class="pr-label" for="n-first" data-i18n="ath.firstName">Nombre</label>
-            <input class="pr-input" id="n-first" required maxlength="60">
+            <input class="pr-input" id="n-first" required maxlength="60" autocomplete="off">
           </div>
           <div class="pr-field">
             <label class="pr-label" for="n-last" data-i18n="ath.lastName">Apellido</label>
-            <input class="pr-input" id="n-last" maxlength="60">
+            <input class="pr-input" id="n-last" maxlength="60" autocomplete="off">
           </div>
         </div>
         <div class="pr-modal-grid">
@@ -102,15 +104,78 @@
             <input class="pr-input" id="n-birth" type="date">
           </div>
           <div class="pr-field">
+            <label class="pr-label" for="n-sex" data-i18n="ath.sex">Sexo</label>
+            <select class="pr-select" id="n-sex">
+              <option value="" data-i18n="in.choose">Elegir…</option>
+              <option value="m" data-i18n="ath.sex.m">Masculino</option>
+              <option value="f" data-i18n="ath.sex.f">Femenino</option>
+              <option value="x" data-i18n="ath.sex.x">Prefiere no decirlo</option>
+            </select>
+            <span class="pr-hint" data-i18n="ath.sexHint">Se usa para los valores de referencia de las evaluaciones.</span>
+          </div>
+        </div>
+
+        <span class="pr-eyebrow" data-i18n="ath.g.sport">Su deporte</span>
+        <div class="pr-modal-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="n-sport" data-i18n="ath.sport">Deporte</label>
+            <select class="pr-select" id="n-sport">
+              <option value="football"   data-i18n="sport.football">Fútbol</option>
+              <option value="futsal"     data-i18n="sport.futsal">Futsal</option>
+              <option value="basketball" data-i18n="sport.basketball">Baloncesto</option>
+              <option value="rugby"      data-i18n="sport.rugby">Rugby</option>
+              <option value="hockey"     data-i18n="sport.hockey">Hockey</option>
+              <option value="athletics"  data-i18n="sport.athletics">Atletismo</option>
+              <option value="tennis"     data-i18n="sport.tennis">Tenis</option>
+              <option value="other"      data-i18n="sport.other">Otro</option>
+            </select>
+          </div>
+          <div class="pr-field">
             <label class="pr-label" for="n-position" data-i18n="ath.position">Posición</label>
-            <input class="pr-input" id="n-position" maxlength="40">
+            <input class="pr-input" id="n-position" maxlength="40" autocomplete="off">
+          </div>
+        </div>
+        <div class="pr-modal-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="n-level" data-i18n="ath.level">Nivel</label>
+            <select class="pr-select" id="n-level">
+              <option value="" data-i18n="in.choose">Elegir…</option>
+              <option value="youth"   data-i18n="ath.lv.youth">Formativo</option>
+              <option value="amateur" data-i18n="ath.lv.amateur">Amateur</option>
+              <option value="semipro" data-i18n="ath.lv.semipro">Semiprofesional</option>
+              <option value="pro"     data-i18n="ath.lv.pro">Profesional</option>
+              <option value="other"   data-i18n="ath.lv.other">Otro</option>
+            </select>
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="n-side" data-i18n="ath.side">Lado dominante</label>
+            <select class="pr-select" id="n-side">
+              <option value="" data-i18n="in.choose">Elegir…</option>
+              <option value="right" data-i18n="ath.side.right">Derecho</option>
+              <option value="left"  data-i18n="ath.side.left">Izquierdo</option>
+              <option value="both"  data-i18n="ath.side.both">Ambidiestro</option>
+            </select>
           </div>
         </div>
         <div class="pr-field">
           <label class="pr-label" for="n-club" data-i18n="ath.club">Club al que pertenece</label>
-          <input class="pr-input" id="n-club" maxlength="80">
+          <input class="pr-input" id="n-club" maxlength="80" autocomplete="off">
           <span class="pr-hint" data-i18n="ath.clubHint">Si entrena con un equipo, esos horarios se cargan después en la anamnesis.</span>
         </div>
+
+        <span class="pr-eyebrow" data-i18n="ath.g.contact">Cómo contactarlo</span>
+        <div class="pr-modal-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="n-email" data-i18n="auth.email">Correo</label>
+            <input class="pr-input" id="n-email" type="email" maxlength="120" autocomplete="off">
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="n-phone" data-i18n="ath.phone">Teléfono</label>
+            <input class="pr-input" id="n-phone" type="tel" maxlength="40" autocomplete="off">
+          </div>
+        </div>
+
+        <p class="pr-hint" data-i18n="ath.restLater">El resto —salud, lesiones, alimentación, sueño y sus horarios— va en la anamnesis, que se abre apenas lo des de alta.</p>
         <p class="auth-msg" id="new-msg" role="alert" hidden style="margin:0;color:var(--pr-danger);font:600 13px/1.45 var(--pr-font-sans)"></p>
       </div>
       <div class="pr-modal-foot">
@@ -139,6 +204,7 @@
     <div class="pr-modal-foot">
       <button class="pr-btn is-ghost" type="button" id="inv-regen" data-i18n="ath.invite.regen">Generar otro</button>
       <button class="pr-btn is-secondary" type="button" data-close data-i18n="common.close">Cerrar</button>
+      <a class="pr-btn is-primary" id="inv-intake" href="#" data-i18n="ath.invite.toIntake">Cargar anamnesis</a>
     </div>
   </div>
 </div>
@@ -149,7 +215,7 @@
   const t = (k, fb, vars) => (window.PR_I18N ? window.PR_I18N.t(k, vars) : null) || fb;
   const esc = window.prEsc;
 
-  let wsId = null, seats = null, filter = 'active', rows = [], inviteFor = null;
+  let wsId = null, wsSport = null, seats = null, filter = 'active', rows = [], inviteFor = null;
 
   // ── Datos ────────────────────────────────────────────────────────────────
   async function load() {
@@ -269,6 +335,8 @@
   document.getElementById('btn-new').addEventListener('click', () => {
     document.getElementById('f-new').reset();
     document.getElementById('new-msg').hidden = true;
+    // Casi siempre el atleta hace el deporte del espacio: se preselecciona.
+    if (wsSport) document.getElementById('n-sport').value = wsSport;
     openModal('m-new');
     document.getElementById('n-first').focus();
   });
@@ -291,13 +359,20 @@
     if (!first) { msg.textContent = t('ath.err.firstName', 'Escribe al menos el nombre.'); msg.hidden = false; return; }
 
     btn.classList.add('is-busy');
+    const pick = (id) => document.getElementById(id).value.trim() || null;
     const { data: created, error } = await window.sb.from('athletes').insert({
-      workspace_id: wsId,
-      first_name: first,
-      last_name:  document.getElementById('n-last').value.trim(),
-      birth_date: document.getElementById('n-birth').value || null,
-      position:   document.getElementById('n-position').value.trim() || null,
-      club_name:  document.getElementById('n-club').value.trim() || null
+      workspace_id:  wsId,
+      first_name:    first,
+      last_name:     document.getElementById('n-last').value.trim(),
+      birth_date:    document.getElementById('n-birth').value || null,
+      sex:           pick('n-sex'),
+      sport:         pick('n-sport'),
+      position:      pick('n-position'),
+      level:         pick('n-level'),
+      dominant_side: pick('n-side'),
+      club_name:     pick('n-club'),
+      email:         pick('n-email'),
+      phone:         pick('n-phone')
     }).select('id').single();
     btn.classList.remove('is-busy');
 
@@ -363,6 +438,7 @@
       ? t('ath.invite.leadNew', `${name} ya está dado de alta. Pásale este enlace para que entre con su cuenta.`, { name })
       : t('ath.invite.lead', `Este es el enlace de ${name}.`, { name });
     document.getElementById('inv-url').value = location.origin + '/invite.html?t=' + token;
+    document.getElementById('inv-intake').href = 'Intake.html?id=' + athleteId;
     openModal('m-invite');
     document.getElementById('inv-url').select();
   }
@@ -388,8 +464,9 @@
     if (!(await window.requireCoach())) return;
     if (window.PR_I18N && window.PR_I18N.ready) { try { await window.PR_I18N.ready; } catch (e) {} }
 
-    wsId = await window.getWorkspaceId();
-    if (!wsId) { window.location.replace('Onboarding.html'); return; }
+    const ws = await window.getWorkspace();
+    if (!ws) { window.location.replace('Onboarding.html'); return; }
+    wsId = ws.id; wsSport = ws.sport;
 
     if (window.prSidebar) window.prSidebar.mount('athletes');
     if (window.PR_I18N) window.PR_I18N.applyTo(document);
