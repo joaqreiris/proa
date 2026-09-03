@@ -982,6 +982,51 @@ button.wk-slot:hover { filter: brightness(1.12); }
 .wk-free { font: var(--pr-body-sm); color: var(--pr-fg-muted); margin: 12px 0 0; }
 .wk-free b { color: var(--pr-fg-strong); font-family: var(--pr-font-cond); font-size: 16px; }
 
+/* ── Modo calendario: dos capas ──
+   Abajo, apagado, lo que el atleta ya tiene ocupado todas las semanas.
+   Encima, en color pleno, lo que el entrenador planificó ese día.
+   Lo que queda gris claro es el hueco real. */
+.wk-track-cal { height: 46px; }
+.wk-busy {
+  position: absolute; top: 0; bottom: 0;
+  opacity: .26;
+  display: block;
+}
+.wk-ev {
+  position: absolute;
+  border: 0;
+  border-radius: var(--pr-r-1);
+  display: flex; align-items: center;
+  padding: 0 6px;
+  font: 700 10px/1 var(--pr-font-sans);
+  color: #fff;
+  overflow: hidden; white-space: nowrap;
+  box-shadow: 0 0 0 1.5px var(--pr-surface);
+}
+button.wk-ev { cursor: pointer; }
+button.wk-ev:hover { filter: brightness(1.15); }
+.wk-ev.is-done::before {
+  content: "";
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.9);
+  margin-right: 5px;
+  flex: none;
+}
+
+/* La columna del día en modo calendario lleva también el número */
+.wk-day.is-date { display: flex; align-items: baseline; gap: 5px; width: 52px; }
+.wk-day.is-date b { font-weight: 700; }
+.wk-day.is-date em {
+  font-style: normal; font-weight: 600;
+  font-size: 13px;
+  color: var(--pr-fg-faint);
+  font-variant-numeric: tabular-nums;
+}
+.wk-row.is-today .wk-day.is-date b,
+.wk-row.is-today .wk-day.is-date em { color: var(--pr-accent-ink); }
+.wk-row.is-today .wk-track { box-shadow: inset 0 0 0 1.5px var(--pr-accent-bd); }
+
 /* ============================================================
    Barra de avance
    ============================================================ */

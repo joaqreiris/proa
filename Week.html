@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="wk.pageTitle">La semana — Proa</title>
+<meta name="theme-color" content="#FF3D00">
+<link rel="stylesheet" href="proa.css">
+<script src="assets/brand.js"></script>
+<script src="assets/vendor/supabase-js-2.112.4.min.js"></script>
+<script src="assets/supabase-init.js"></script>
+<script src="assets/i18n.js" defer></script>
+<script src="assets/week-grid.js" defer></script>
+<style>
+  .wkp { max-width: 1080px; }
+  .wkp-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+  .wkp-nav { display: flex; align-items: center; gap: 8px; }
+  .wkp-range {
+    font: 700 13px/1 var(--pr-font-cond);
+    letter-spacing: .1em; text-transform: uppercase;
+    color: var(--pr-fg-strong);
+    min-width: 190px; text-align: center;
+  }
+  .wkp-athlete { min-width: 210px; }
+
+  .wkp-sum { display: flex; gap: 22px; flex-wrap: wrap; margin: 16px 0 0; }
+  .wkp-sum div { display: flex; flex-direction: column; gap: 4px; }
+  .wkp-sum b { font: 700 26px/1 var(--pr-font-cond); font-variant-numeric: tabular-nums; color: var(--pr-fg-strong); }
+  .wkp-sum span { font: 700 10px/1 var(--pr-font-cond); letter-spacing: .16em; text-transform: uppercase; color: var(--pr-fg-muted); }
+  .wkp-sum div.is-accent b { color: var(--pr-accent-ink); }
+
+  .wkp-empty-athlete { margin-top: 20px; }
+</style>
+</head>
+<body class="pr">
+
+<div class="pr-shell">
+  <aside class="pr-shell-side" id="pr-side-root"></aside>
+
+  <div class="pr-shell-main">
+    <header class="pr-topbar"><h1 data-i18n="nav.week">La semana</h1></header>
+
+    <main class="pr-page wkp">
+
+      <div class="pr-page-header">
+        <div class="pr-grow">
+          <h1 data-i18n="wk.title">La semana</h1>
+          <p data-i18n="wk.sub">En gris, lo que ya tiene ocupado. Lo que queda claro es donde podés poner trabajo.</p>
+        </div>
+        <button class="pr-btn is-secondary" id="btn-copy" data-i18n="wk.copy">Copiar semana</button>
+        <button class="pr-btn is-primary" id="btn-new" data-i18n="wk.new">Nuevo bloque</button>
+      </div>
+
+      <div id="no-athletes" class="pr-empty wkp-empty-athlete" hidden>
+        <i class="ti ti-users"></i>
+        <h3 data-i18n="wk.noAthletes.title">Todavía no tienes atletas</h3>
+        <p data-i18n="wk.noAthletes.body">Da de alta a uno y carga su anamnesis: sin sus horarios, esta pantalla no puede ayudarte.</p>
+        <a class="pr-btn is-primary" href="Athletes.html" style="margin-top:6px" data-i18n="home.empty.cta">Dar de alta un atleta</a>
+      </div>
+
+      <div id="board" hidden>
+        <div class="wkp-bar">
+          <select class="pr-select wkp-athlete" id="athlete"></select>
+          <span class="pr-grow"></span>
+          <div class="wkp-nav">
+            <button class="pr-icon-btn" id="prev" aria-label="Semana anterior"><i class="ti ti-chevron-left"></i></button>
+            <span class="wkp-range" id="range"></span>
+            <button class="pr-icon-btn" id="next" aria-label="Semana siguiente"><i class="ti ti-chevron-right"></i></button>
+            <button class="pr-btn is-sm is-ghost" id="today" data-i18n="wk.today">Hoy</button>
+          </div>
+        </div>
+
+        <section class="pr-card pr-card-pad">
+          <div class="wk">
+            <div id="wk-scale"></div>
+            <div id="wk-rows"></div>
+          </div>
+
+          <div class="wkp-sum">
+            <div class="is-accent"><b id="n-blocks">0</b><span data-i18n="wk.blocks">Bloques</span></div>
+            <div><b id="n-hours">0 h</b><span data-i18n="wk.planned">Planificado</span></div>
+            <div><b id="n-free">0 h</b><span data-i18n="wk.free">Libre</span></div>
+          </div>
+
+          <div id="wk-legend"></div>
+        </section>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- Bloque -->
+<div class="pr-modal-backdrop" id="m-ev" hidden>
+  <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-ev-title">
+    <div class="pr-modal-head">
+      <h2 id="m-ev-title" data-i18n="wk.new">Nuevo bloque</h2>
+      <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
+    </div>
+    <form id="f-ev">
+      <div class="pr-modal-body">
+        <div class="pr-modal-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="e-type" data-i18n="wk.type">Tipo</label>
+            <select class="pr-select" id="e-type"></select>
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="e-date" data-i18n="wk.date">Día</label>
+            <input class="pr-input" id="e-date" type="date" required>
+          </div>
+        </div>
+        <div class="pr-modal-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="e-start" data-i18n="in.slot.from">Desde</label>
+            <input class="pr-input" id="e-start" type="time">
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="e-end" data-i18n="in.slot.to">Hasta</label>
+            <input class="pr-input" id="e-end" type="time">
+          </div>
+        </div>
+        <div class="pr-field">
+          <label class="pr-label" for="e-title" data-i18n="wk.blockTitle">Título</label>
+          <input class="pr-input" id="e-title" maxlength="80" data-i18n-ph="wk.titlePh" placeholder="Si lo dejas vacío se usa el tipo.">
+        </div>
+        <div class="pr-field">
+          <label class="pr-label" for="e-location" data-i18n="wk.location">Lugar</label>
+          <input class="pr-input" id="e-location" maxlength="80">
+        </div>
+        <div class="pr-field">
+          <label class="pr-label" for="e-notes" data-i18n="wk.notes">Notas</label>
+          <textarea class="pr-textarea" id="e-notes" rows="2" data-i18n-ph="wk.notesPh" placeholder="Lo que el atleta tiene que saber."></textarea>
+        </div>
+        <p id="ev-msg" role="alert" hidden style="margin:0;color:var(--pr-danger);font:600 13px/1.45 var(--pr-font-sans)"></p>
+      </div>
+      <div class="pr-modal-foot">
+        <button class="pr-btn is-danger is-sm" type="button" id="e-del" hidden data-i18n="wk.delete">Borrar</button>
+        <span class="pr-grow"></span>
+        <button class="pr-btn is-ghost" type="button" data-close data-i18n="common.cancel">Cancelar</button>
+        <button class="pr-btn is-primary" type="submit" data-i18n="common.save">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Copiar semana -->
+<div class="pr-modal-backdrop" id="m-copy" hidden>
+  <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-copy-title">
+    <div class="pr-modal-head">
+      <h2 id="m-copy-title" data-i18n="wk.copy">Copiar semana</h2>
+      <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
+    </div>
+    <form id="f-copy">
+      <div class="pr-modal-body">
+        <p class="pr-hint" id="copy-lead"></p>
+        <div class="pr-field">
+          <label class="pr-label" for="c-to" data-i18n="wk.copyTo">Copiar a la semana del</label>
+          <input class="pr-input" id="c-to" type="date" required>
+        </div>
+        <label class="pr-hint" style="display:flex;gap:9px;align-items:flex-start;cursor:pointer">
+          <input type="checkbox" id="c-replace" style="margin-top:2px">
+          <span data-i18n="wk.copyReplace">Borrar lo que ya haya en la semana destino. Si lo dejas sin marcar, los bloques se suman a lo que ya está.</span>
+        </label>
+        <p id="copy-msg" role="alert" hidden style="margin:0;color:var(--pr-danger);font:600 13px/1.45 var(--pr-font-sans)"></p>
+      </div>
+      <div class="pr-modal-foot">
+        <button class="pr-btn is-ghost" type="button" data-close data-i18n="common.cancel">Cancelar</button>
+        <button class="pr-btn is-primary" type="submit" data-i18n="wk.copyDo">Copiar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="assets/sidebar.js" defer></script>
+<script>
+(function () {
+  const t = (k, fb, vars) => (window.PR_I18N ? window.PR_I18N.t(k, vars) : null) || fb;
+  const esc = window.prEsc;
+  const W = () => window.prWeek;
+
+  let athletes = [], athleteId = null, monday = null;
+  let slots = [], events = [], editingId = null;
+
+  const LS_ATH = 'pr_last_athlete';
+
+  // ── Datos ────────────────────────────────────────────────────────────────
+  async function loadWeek() {
+    const dates = W().weekDates(monday);
+    const last = dates[6];
+
+    const [sl, ev] = await Promise.all([
+      window.sb.from('availability_slots')
+        .select('weekday,start_time,end_time,kind,label').eq('athlete_id', athleteId),
+      window.sb.from('events')
+        .select('id,date,start_time,end_time,type,title,notes,location,status')
+        .eq('athlete_id', athleteId).gte('date', monday).lte('date', last).order('start_time')
+    ]);
+    if (sl.error) { window.prToast(sl.error.message, 'danger'); return; }
+    if (ev.error) { window.prToast(ev.error.message, 'danger'); return; }
+
+    slots = sl.data || [];
+    events = ev.data || [];
+    paint();
+  }
+
+  function paint() {
+    const dates = W().weekDates(monday);
+    W().render({ host: 'wk-rows', dates, slots, events, editable: true });
+
+    const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
+    const a = W().parseYMD(dates[0]), b = W().parseYMD(dates[6]);
+    const fmt = (d, withYear) => d.toLocaleDateString(lang,
+      { day: 'numeric', month: 'short', year: withYear ? 'numeric' : undefined });
+    document.getElementById('range').textContent =
+      `${fmt(a)} – ${fmt(b, a.getFullYear() !== b.getFullYear())}`;
+
+    // Horas planificadas: la suma de lo que dura cada bloque con horario.
+    let mins = 0;
+    events.forEach(e => {
+      if (!e.start_time || !e.end_time) return;
+      mins += W().toMin(e.end_time) - W().toMin(e.start_time);
+    });
+    document.getElementById('n-blocks').textContent = events.length;
+    document.getElementById('n-hours').textContent = (Math.round(mins / 6) / 10) + ' h';
+    document.getElementById('n-free').textContent = W().freeHours(slots) + ' h';
+  }
+
+  // ── Bloques ──────────────────────────────────────────────────────────────
+  function openEvent(ev, date) {
+    editingId = ev ? ev.id : null;
+    document.getElementById('m-ev-title').textContent = t(ev ? 'wk.edit' : 'wk.new');
+    document.getElementById('e-type').value     = ev ? ev.type : 'gym';
+    document.getElementById('e-date').value     = ev ? ev.date : (date || monday);
+    document.getElementById('e-start').value    = ev && ev.start_time ? W().hhmm(ev.start_time) : '';
+    document.getElementById('e-end').value      = ev && ev.end_time ? W().hhmm(ev.end_time) : '';
+    document.getElementById('e-title').value    = (ev && ev.title) || '';
+    document.getElementById('e-location').value = (ev && ev.location) || '';
+    document.getElementById('e-notes').value    = (ev && ev.notes) || '';
+    document.getElementById('e-del').hidden     = !ev;
+    document.getElementById('ev-msg').hidden    = true;
+    document.getElementById('m-ev').hidden      = false;
+  }
+
+  document.getElementById('wk-rows').addEventListener('click', (e) => {
+    const add = e.target.closest('[data-add-date]');
+    if (add) { openEvent(null, add.dataset.addDate); return; }
+    const ev = e.target.closest('[data-event]');
+    if (ev) openEvent(events.find(x => x.id === ev.dataset.event));
+  });
+
+  document.getElementById('f-ev').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('ev-msg');
+    msg.hidden = true;
+
+    const start = document.getElementById('e-start').value || null;
+    const end   = document.getElementById('e-end').value || null;
+    if (start && end && W().toMin(end) <= W().toMin(start)) {
+      msg.textContent = t('in.slot.errOrder', 'La hora de fin tiene que ser posterior a la de inicio.');
+      msg.hidden = false; return;
+    }
+
+    const { data: { user } } = await window.sb.auth.getUser();
+    const row = {
+      athlete_id: athleteId,
+      date:       document.getElementById('e-date').value,
+      start_time: start, end_time: end,
+      type:       document.getElementById('e-type').value,
+      title:      document.getElementById('e-title').value.trim() || null,
+      location:   document.getElementById('e-location').value.trim() || null,
+      notes:      document.getElementById('e-notes').value.trim() || null
+    };
+
+    const q = editingId
+      ? window.sb.from('events').update(row).eq('id', editingId)
+      : window.sb.from('events').insert(Object.assign({ created_by: user ? user.id : null }, row));
+
+    const { error } = await q;
+    if (error) { msg.textContent = error.message; msg.hidden = false; return; }
+
+    document.getElementById('m-ev').hidden = true;
+    // La fecha guardada puede caer en otra semana: se salta a la que toca.
+    monday = W().mondayOf(row.date);
+    await loadWeek();
+  });
+
+  document.getElementById('e-del').addEventListener('click', async () => {
+    if (!editingId || !confirm(t('wk.confirmDelete', '¿Borrar este bloque?'))) return;
+    const { error } = await window.sb.from('events').delete().eq('id', editingId);
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    document.getElementById('m-ev').hidden = true;
+    await loadWeek();
+  });
+
+  // ── Copiar la semana ─────────────────────────────────────────────────────
+  document.getElementById('btn-copy').addEventListener('click', () => {
+    if (!events.length) { window.prToast(t('wk.copyEmpty', 'Esta semana no tiene nada que copiar.'), 'danger'); return; }
+    const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
+    document.getElementById('copy-lead').textContent =
+      t('wk.copyLead', `Se copian los ${events.length} bloques de esta semana.`, { n: events.length });
+    document.getElementById('c-to').value = W().addDays(monday, 7);
+    document.getElementById('copy-msg').hidden = true;
+    document.getElementById('m-copy').hidden = false;
+  });
+
+  document.getElementById('f-copy').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('copy-msg');
+    msg.hidden = true;
+    // El destino se lleva al lunes: copiar «a un miércoles» correría todo tres días.
+    const to = W().mondayOf(document.getElementById('c-to').value);
+    if (to === monday) { msg.textContent = t('wk.copySame', 'Esa es la misma semana.'); msg.hidden = false; return; }
+
+    const { data, error } = await window.sb.rpc('copy_week', {
+      p_athlete_id: athleteId, p_from: monday, p_to: to,
+      p_replace: document.getElementById('c-replace').checked
+    });
+    if (error) { msg.textContent = error.message; msg.hidden = false; return; }
+
+    document.getElementById('m-copy').hidden = true;
+    window.prToast(t('wk.copied', `${data} bloques copiados.`, { n: data }), 'success');
+    monday = to;
+    await loadWeek();
+  });
+
+  // ── Navegación ───────────────────────────────────────────────────────────
+  document.getElementById('prev').addEventListener('click', () => { monday = W().addDays(monday, -7); loadWeek(); });
+  document.getElementById('next').addEventListener('click', () => { monday = W().addDays(monday,  7); loadWeek(); });
+  document.getElementById('today').addEventListener('click', () => { monday = W().mondayOf(window.prToday()); loadWeek(); });
+
+  document.getElementById('athlete').addEventListener('change', (e) => {
+    athleteId = e.target.value;
+    try { localStorage.setItem(LS_ATH, athleteId); } catch (err) {}
+    loadWeek();
+  });
+
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-close]') || e.target.classList.contains('pr-modal-backdrop')) {
+      document.querySelectorAll('.pr-modal-backdrop').forEach(m => m.hidden = true);
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.querySelectorAll('.pr-modal-backdrop').forEach(m => m.hidden = true);
+  });
+
+  document.getElementById('btn-new').addEventListener('click', () => openEvent(null, window.prToday()));
+
+  // ── Arranque ─────────────────────────────────────────────────────────────
+  async function boot() {
+    if (!(await window.requireCoach())) return;
+    if (window.PR_I18N && window.PR_I18N.ready) { try { await window.PR_I18N.ready; } catch (e) {} }
+    if (window.prSidebar) window.prSidebar.mount('week');
+
+    document.getElementById('wk-scale').outerHTML = W().scaleHtml();
+    document.getElementById('wk-legend').outerHTML = W().eventLegendHtml();
+    document.getElementById('e-type').innerHTML = W().eventTypeOptions('gym');
+
+    const wsId = await window.getWorkspaceId();
+    const { data } = await window.sb.from('athletes')
+      .select('id,first_name,last_name')
+      .eq('workspace_id', wsId).neq('status', 'archived')
+      .order('first_name');
+    athletes = data || [];
+
+    if (!athletes.length) {
+      document.getElementById('no-athletes').hidden = false;
+      document.getElementById('btn-new').disabled = true;
+      document.getElementById('btn-copy').disabled = true;
+      if (window.PR_I18N) window.PR_I18N.applyTo(document);
+      return;
+    }
+
+    document.getElementById('athlete').innerHTML = athletes
+      .map(a => `<option value="${a.id}">${esc(`${a.first_name} ${a.last_name || ''}`.trim())}</option>`).join('');
+
+    // Se recuerda el último atleta: un entrenador vuelve al mismo varias veces
+    // seguidas y no quiere elegirlo cada vez.
+    let saved = null;
+    try { saved = localStorage.getItem(LS_ATH); } catch (e) {}
+    athleteId = athletes.some(a => a.id === saved) ? saved : athletes[0].id;
+    document.getElementById('athlete').value = athleteId;
+
+    monday = W().mondayOf(window.prToday());
+    document.getElementById('board').hidden = false;
+
+    await loadWeek();
+    if (window.PR_I18N) window.PR_I18N.applyTo(document);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>

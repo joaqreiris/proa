@@ -19,7 +19,7 @@
   const ITEMS = [
     { key: 'home',      href: 'Home.html',      icon: 'ti-home',          label: 'nav.home' },
     { key: 'athletes',  href: 'Athletes.html',  icon: 'ti-users',         label: 'nav.athletes' },
-    { key: 'week',      href: 'Week.html',      icon: 'ti-calendar-week', label: 'nav.week',      soon: true },
+    { key: 'week',      href: 'Week.html',      icon: 'ti-calendar-week', label: 'nav.week' },
     { key: 'exercises', href: 'Exercises.html', icon: 'ti-barbell',       label: 'nav.exercises', soon: true }
   ];
 
