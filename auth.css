@@ -1,94 +1,132 @@
-/* Proa — pantallas de entrada, registro y alta.
-   Panel de marca oscuro a la izquierda, formulario a la derecha.
+/* Proa — pantallas de entrada, registro y contraseña nueva.
+   Panel de marca negro a la izquierda, formulario a la derecha.
    Compartido por Login.html, Register.html y set-password.html. */
 
 .auth-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 1fr 520px;
+  grid-template-columns: 1fr 500px;
   background: var(--pr-bg);
 }
 
-/* ── Panel de marca: el casco oscuro ── */
+/* ── Panel de marca: el bloque negro ── */
 .auth-brand {
   background: var(--pr-side-bg);
   color: var(--pr-side-fg);
-  padding: 40px 48px;
+  padding: 38px 46px;
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
 }
-.auth-brand-top { display: flex; align-items: center; gap: 11px; position: relative; z-index: 1; }
-.auth-brand-name { font: 700 19px/1 var(--pr-font-sans); letter-spacing: -0.04em; display: block; }
-.auth-brand-meta { font: 500 11px/1 var(--pr-font-mono); color: var(--pr-side-fg-muted); margin-top: 4px; display: block; }
+.auth-brand-top { display: flex; align-items: center; gap: 12px; position: relative; z-index: 1; }
+.auth-brand-name {
+  font: 700 24px/1 var(--pr-font-cond);
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  display: block;
+}
+.auth-brand-meta {
+  font: 600 10px/1 var(--pr-font-cond);
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--pr-side-fg-muted);
+  margin-top: 5px;
+  display: block;
+}
 
 .auth-brand-hero { margin-top: auto; position: relative; z-index: 1; }
 .auth-brand-eyebrow {
-  font: 600 11px/1.2 var(--pr-font-sans);
-  letter-spacing: var(--pr-tr-eyebrow);
+  font: 700 11px/1.2 var(--pr-font-cond);
+  letter-spacing: .2em;
   text-transform: uppercase;
   color: var(--pr-side-accent);
-  margin-bottom: 18px;
-  display: block;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.auth-brand-eyebrow::before {
+  content: "";
+  width: 22px; height: 3px;
+  background: currentColor;
+  flex: none;
 }
 .auth-brand-hero h2 {
-  font: 700 clamp(28px, 3.4vw, 42px)/1.08 var(--pr-font-sans);
-  letter-spacing: -0.035em;
+  font: 700 clamp(38px, 5.4vw, 68px)/0.94 var(--pr-font-cond);
+  letter-spacing: .005em;
+  text-transform: uppercase;
   margin: 0;
-  max-width: 17ch;
+  max-width: 13ch;
   text-wrap: balance;
 }
 .auth-brand-hero h2 em { font-style: normal; color: var(--pr-side-accent); }
 .auth-brand-hero p {
-  margin: 16px 0 0;
-  font: var(--pr-prose);
+  margin: 18px 0 0;
+  font: 400 15px/1.55 var(--pr-font-sans);
   color: var(--pr-side-fg-muted);
-  max-width: 40ch;
+  max-width: 42ch;
 }
 
-/* Franjas de la semana: los tipos de evento que Proa organiza.
-   Es la única decoración de la página y dice algo real del producto. */
-.auth-brand-week { margin-top: 34px; display: flex; flex-direction: column; gap: 7px; max-width: 400px; }
-.auth-brand-day { display: flex; align-items: center; gap: 10px; }
+/* La semana como gráfico: cada tipo de trabajo con su color fijo.
+   Es la única decoración de la página y dice exactamente qué hace
+   el producto. */
+.auth-brand-week { margin-top: 32px; display: flex; flex-direction: column; gap: 6px; max-width: 400px; }
+.auth-brand-day { display: flex; align-items: center; gap: 11px; }
 .auth-brand-day span {
-  font: 500 10.5px/1 var(--pr-font-mono);
+  font: 700 10.5px/1 var(--pr-font-cond);
+  letter-spacing: .14em;
   color: var(--pr-side-fg-muted);
-  width: 26px;
+  width: 30px;
   flex: none;
   text-transform: uppercase;
 }
-.auth-brand-day i { height: 7px; border-radius: 2px; display: block; opacity: .82; }
+.auth-brand-day i { height: 9px; border-radius: 2px; display: block; }
 
-/* Línea de flotación en el borde inferior */
+.auth-brand-legend { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 6px 14px; max-width: 400px; }
+.auth-brand-legend span {
+  display: inline-flex; align-items: center; gap: 7px;
+  font: 700 10px/1 var(--pr-font-sans);
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--pr-side-fg-muted);
+}
+.auth-brand-legend i { width: 9px; height: 9px; border-radius: 2px; display: block; flex: none; }
+
+/* Filo naranja en el borde inferior */
 .auth-brand::after {
   content: "";
   position: absolute;
-  left: 0; right: 0; bottom: 0; height: 3px;
-  background: linear-gradient(90deg, var(--pr-side-accent), transparent 70%);
-  opacity: .5;
+  left: 0; right: 0; bottom: 0; height: 4px;
+  background: var(--pr-side-accent);
 }
 
 /* ── Panel del formulario ── */
 .auth-form-wrap {
   display: flex; flex-direction: column; justify-content: center;
-  padding: 40px 56px;
+  padding: 40px 54px;
   background: var(--pr-bg);
+  border-left: var(--pr-bw) solid var(--pr-border);
 }
-.auth-form { width: 100%; max-width: 360px; margin: 0 auto; }
-.auth-form h1 { font: var(--pr-h1); letter-spacing: var(--pr-tr-h); color: var(--pr-fg-strong); margin: 0; }
-.auth-form > p.sub { font: var(--pr-body); color: var(--pr-fg-muted); margin: 8px 0 28px; }
-.auth-fields { display: flex; flex-direction: column; gap: 16px; }
-.auth-actions { margin-top: 22px; display: flex; flex-direction: column; gap: 12px; }
-.auth-foot { margin-top: 26px; font: var(--pr-body-sm); color: var(--pr-fg-muted); text-align: center; }
+.auth-form { width: 100%; max-width: 348px; margin: 0 auto; }
+.auth-form h1 {
+  font: var(--pr-h1);
+  letter-spacing: var(--pr-tr-h);
+  text-transform: uppercase;
+  color: var(--pr-fg-strong);
+  margin: 0;
+}
+.auth-form > p.sub { font: var(--pr-body); color: var(--pr-fg-muted); margin: 9px 0 28px; }
+.auth-fields { display: flex; flex-direction: column; gap: 17px; }
+.auth-actions { margin-top: 24px; display: flex; flex-direction: column; gap: 12px; }
+.auth-foot { margin-top: 24px; font: var(--pr-body-sm); color: var(--pr-fg-muted); text-align: center; }
 .auth-note {
-  margin-top: 20px; padding: 11px 13px;
-  border: 1px solid var(--pr-border);
-  border-radius: var(--pr-r-3);
+  margin-top: 20px; padding: 12px 14px;
+  border-left: 3px solid var(--pr-border-strong);
   background: var(--pr-bg-soft);
   font: var(--pr-body-sm); color: var(--pr-fg-muted);
 }
-.auth-msg { margin-top: 14px; font: var(--pr-body-sm); }
+.auth-msg { margin-top: 15px; font: 600 13px/1.45 var(--pr-font-sans); }
 .auth-msg.is-error { color: var(--pr-danger); }
 .auth-msg.is-ok    { color: var(--pr-success); }
 .auth-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
@@ -97,6 +135,6 @@
 @media (max-width: 980px) {
   .auth-shell { grid-template-columns: 1fr; }
   .auth-brand { display: none; }
-  .auth-form-wrap { padding: 32px 24px; min-height: 100vh; }
-  .auth-mobile-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; }
+  .auth-form-wrap { padding: 32px 24px; min-height: 100vh; border-left: 0; }
+  .auth-mobile-brand { display: flex; align-items: center; gap: 11px; margin-bottom: 30px; }
 }

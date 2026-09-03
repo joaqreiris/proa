@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title data-i18n="home.pageTitle">Inicio — Proa</title>
-<meta name="theme-color" content="#1B2E3B">
+<meta name="theme-color" content="#FF3D00">
 <link rel="stylesheet" href="proa.css">
 <script src="assets/brand.js"></script>
 <script src="assets/vendor/supabase-js-2.112.4.min.js"></script>
@@ -18,24 +18,26 @@
     align-items: start;
   }
 
-  /* Tarjeta de cupos */
-  .seat-card { display: flex; flex-direction: column; gap: 14px; }
-  .seat-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-  .seat-label { font: var(--pr-eyebrow); letter-spacing: var(--pr-tr-eyebrow); text-transform: uppercase; color: var(--pr-fg-muted); }
-  .seat-count { font: 700 34px/1 var(--pr-font-mono); font-variant-numeric: tabular-nums; color: var(--pr-fg-strong); letter-spacing: -0.02em; }
-  .seat-count small { font: 500 15px/1 var(--pr-font-mono); color: var(--pr-fg-faint); }
-  .seat-bar { display: flex; gap: 4px; }
+  /* Tarjeta de cupos: el número manda, la barra lo confirma */
+  .seat-card { display: flex; flex-direction: column; gap: 16px; }
+  .seat-count {
+    font: 700 52px/0.9 var(--pr-font-cond);
+    font-variant-numeric: tabular-nums;
+    color: var(--pr-fg-strong);
+  }
+  .seat-count small { font-size: 0.42em; font-weight: 600; color: var(--pr-fg-faint); }
+  .seat-bar { display: flex; gap: 3px; }
   .seat-bar i {
-    flex: 1; height: 6px; border-radius: 2px;
+    flex: 1; height: 10px;
     background: var(--pr-bg-sunk);
     display: block;
   }
   .seat-bar i.is-used { background: var(--pr-accent); }
   .seat-foot { font: var(--pr-body-sm); color: var(--pr-fg-muted); margin: 0; }
 
-  .soon-card p { font: var(--pr-prose); color: var(--pr-fg-muted); margin: 8px 0 0; }
-  .soon-card h3 { font: var(--pr-h3); color: var(--pr-fg-strong); margin: 0; }
-  .soon-head { display: flex; align-items: center; gap: 9px; }
+  .soon-card p { font: var(--pr-body); color: var(--pr-fg-muted); margin: 10px 0 0; }
+  .soon-card h3 { font: var(--pr-h3); text-transform: uppercase; letter-spacing: .04em; color: var(--pr-fg-strong); margin: 0; }
+  .soon-head { display: flex; align-items: center; gap: 10px; }
   .soon-head .ti { color: var(--pr-accent); font-size: 19px; }
 
   .home-empty { margin-top: 16px; }
@@ -62,10 +64,8 @@
 
       <div class="home-grid">
 
-        <section class="pr-card pr-card-pad seat-card">
-          <div class="seat-top">
-            <span class="seat-label" data-i18n="home.seats">Atletas</span>
-          </div>
+        <section class="pr-card pr-card-pad seat-card has-strip" style="--pr-strip:var(--pr-accent)">
+          <span class="pr-stat-label" data-i18n="home.seats">Atletas</span>
           <div class="seat-count" id="seat-count">0<small>/5</small></div>
           <div class="seat-bar" id="seat-bar" aria-hidden="true"></div>
           <p class="seat-foot" id="seat-foot">&nbsp;</p>
@@ -103,9 +103,16 @@
 
     count.innerHTML = `${seats.used}<small>/${seats.limit}</small>`;
 
-    // Una barra por cupo: se ve de un vistazo cuánto queda sin leer números.
-    bar.innerHTML = Array.from({ length: seats.limit }, (_, i) =>
-      `<i class="${i < seats.used ? 'is-used' : ''}"></i>`).join('');
+    // Un bloque por cupo: se ve de un vistazo cuánto queda sin leer números.
+    // Con planes grandes serían astillas ilegibles, así que a partir de 20
+    // cupos se pasa a una sola barra proporcional.
+    if (seats.limit > 20) {
+      const pct = seats.limit ? Math.round((seats.used / seats.limit) * 100) : 0;
+      bar.innerHTML = `<i style="flex:0 0 ${pct}%" class="is-used"></i><i></i>`;
+    } else {
+      bar.innerHTML = Array.from({ length: seats.limit }, (_, i) =>
+        `<i class="${i < seats.used ? 'is-used' : ''}"></i>`).join('');
+    }
 
     foot.textContent = t('home.seatsOf', `${seats.used} de ${seats.limit} cupos`,
       { used: seats.used, limit: seats.limit });
