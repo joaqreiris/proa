@@ -65,7 +65,11 @@ supabase/migrations/  Lo que se aplica de verdad contra el proyecto.
 
 **Nada de texto fijo en la interfaz.** Toda pantalla nueva se traduce a los tres idiomas: `data-i18n` en el HTML y la clave en `locales/es.json`, `en.json` y `pt.json`. El español es neutro (de «tú»), sin voseo.
 
-**El naranja es la marca y la acción principal, nunca un estado.** Por eso «peligro» es un rojo más oscuro y «atención» es claramente amarillo: si el estado fuera naranja se confundiría con el botón de guardar.
+**El acento es la marca y la acción principal, nunca un estado.** Por eso «peligro» es un rojo más oscuro y «atención» es claramente amarillo: si el estado compartiera el color del acento se confundiría con el botón de guardar.
+
+**El color de marca se elige; los colores de los tipos de trabajo NO.** El entrenador elige uno de los diez acentos de la paleta (`[data-accent="..."]` en `proa.css`) y con eso se pintan botones, menú activo, logo y enlaces. Los nueve colores de trabajo —gimnasio, campo, su club, partido, recuperación, comida, compromiso, viaje, descanso— son fijos para todos: su valor está en que se aprenden, y si cada entrenador los repinta, una captura compartida deja de entenderse y un atleta con dos entrenadores ve dos idiomas.
+
+Cada acento declara **cuatro** valores (`--a`, `--a-lift`, `--a-on`, `--a-on-lift`) y el navegador deriva el resto con `color-mix`. Al agregar uno hay que tocar tres lugares: el bloque en `proa.css`, la lista de `assets/brand.js` y la restricción de `workspaces.accent` en la base. En `workspaces.accent` se guarda el **identificador**, nunca un código de color.
 
 **No copiar módulos de ClavaMetrics todavía.** El calendario, el planificador de gimnasio, las comidas y las evaluaciones se traen en su tramo, y se adaptan al modelo de espacio de trabajo en el mismo movimiento. Copiarlos ahora obliga a adaptarlos dos veces.
 

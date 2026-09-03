@@ -88,6 +88,12 @@
           <span class="pr-hint" data-i18n="onb.timezoneHint">Con esto calculamos los horarios de tus atletas.</span>
         </div>
 
+        <div class="pr-field">
+          <span class="pr-label" id="accent-label" data-i18n="onb.accent">Color de tu marca</span>
+          <div class="pr-accent-picker" id="accent-picker" role="radiogroup" aria-labelledby="accent-label"></div>
+          <span class="pr-hint" data-i18n="onb.accentHint">Pinta los botones y el menú, y es el que va a ver tu atleta. Los colores de gimnasio, campo y partido no cambian: son iguales para todos.</span>
+        </div>
+
       </div>
 
       <div class="onb-seats">
@@ -116,8 +122,42 @@
   const t = (k, fb, vars) => (window.PR_I18N ? window.PR_I18N.t(k, vars) : null) || fb;
 
   const DEFAULT_SEATS = 5;
+  let accent = (window.prBrand && window.prBrand.currentAccent()) || 'orange';
 
   function show(text) { msg.textContent = text; msg.hidden = false; }
+
+  // Selector de color de marca. Cada muestra lleva su propio data-accent, así
+  // que se pinta sola con el mismo bloque de proa.css que usa la app entera:
+  // los códigos de color están en un solo lugar.
+  function buildAccentPicker() {
+    const host = document.getElementById('accent-picker');
+    const list = (window.prBrand && window.prBrand.ACCENTS) || [];
+    host.innerHTML = list.map(a => {
+      const name = t('accent.' + a.id, a.id);
+      return `<button type="button" class="pr-accent-opt" role="radio"
+                data-accent="${a.id}" data-id="${a.id}"
+                aria-checked="${a.id === accent}" aria-label="${name}" title="${name}"><i></i></button>`;
+    }).join('');
+
+    host.addEventListener('click', (e) => {
+      const btn = e.target.closest('.pr-accent-opt');
+      if (!btn) return;
+      accent = btn.dataset.id;
+      // Se aplica en el acto: elegir un color sin verlo aplicado es adivinar.
+      window.prBrand.applyAccent(accent);
+      paintAccentSelection(host);
+    });
+
+    paintAccentSelection(host);
+  }
+
+  function paintAccentSelection(host) {
+    host.querySelectorAll('.pr-accent-opt').forEach(b => {
+      const on = b.dataset.id === accent;
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+  }
 
   // Zonas horarias: la del navegador primero, y después una lista corta de las
   // más usadas. No hace falta el catálogo completo para empezar.
@@ -146,6 +186,7 @@
     if (profile.onboarded_at) { window.location.replace('Home.html'); return; }
 
     fillTimezones();
+    buildAccentPicker();
 
     // Sugerencias a partir de lo que ya sabemos del usuario.
     if (profile.full_name) document.getElementById('ws-name').value = profile.full_name;
@@ -179,7 +220,7 @@
     //    fuera una segunda llamada desde acá, un corte de red entre las dos
     //    dejaría un espacio que su propio dueño no puede ver.
     const { data: ws, error: wsErr } = await window.sb.from('workspaces')
-      .insert({ name, sport, language, timezone, owner_id: user.id, seat_limit: DEFAULT_SEATS })
+      .insert({ name, sport, language, timezone, accent, owner_id: user.id, seat_limit: DEFAULT_SEATS })
       .select('id').single();
 
     if (wsErr) {

@@ -138,11 +138,15 @@
   };
 
   // ── Marca del entrenador ──────────────────────────────────────────────────
-  // Cada entrenador puede pintar su espacio con su propio color de acento.
-  // Si no eligió ninguno, queda el naranja de Proa.
+  // Cada entrenador elige su color de la paleta de brand.js. En workspaces.accent
+  // se guarda el IDENTIFICADOR ('blue'), no un código de color: cada acento son
+  // cuatro valores (claro, aclarado y los dos colores de texto encima) y todos
+  // viven juntos en proa.css.
+  //
+  // Esto pinta SOLO la marca. Los colores de los tipos de trabajo no se tocan.
   window.applyWorkspaceTheme = function (ws) {
-    if (!ws || !ws.accent) return;
-    document.documentElement.style.setProperty('--pr-accent', ws.accent);
+    if (!window.prBrand) return;
+    window.prBrand.applyAccent((ws && ws.accent) || window.prBrand.DEFAULT_ACCENT);
   };
 
   // ── Puertas de entrada ────────────────────────────────────────────────────

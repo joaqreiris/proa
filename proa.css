@@ -87,6 +87,40 @@
 }
 
 /* ============================================================
+   COLOR DE MARCA DEL ENTRENADOR
+   ============================================================
+   Cada entrenador elige uno de esta paleta y con eso se pintan
+   los botones, el ítem activo del menú, el logo y los enlaces.
+   Los COLORES DE LOS TIPOS DE TRABAJO no se tocan nunca: son un
+   idioma compartido, y si cada uno los repinta, una captura de
+   pantalla deja de entenderse sola.
+
+   Cada acento declara cuatro cosas y nada más:
+     --a         el color sobre fondo claro
+     --a-lift    el mismo color aclarado, para fondo oscuro y para
+                 el riel negro (un verde medio desaparece ahí)
+     --a-on      qué color va el texto ENCIMA de --a
+     --a-on-lift qué color va el texto encima de --a-lift
+   Todo lo demás (hover, pulsado, borde, fondo tenue, anillo de
+   foco) lo deriva el navegador con color-mix.
+
+   Los selectores son de atributo, así que sirven en cualquier
+   elemento: el html para pintar la app entera, o una muestra
+   dentro del selector de color. Un solo lugar con los valores.
+   ============================================================ */
+:root,
+[data-accent="orange"]   { --a:#FF3D00; --a-lift:#FF5A28; --a-on:#14100E; --a-on-lift:#14100E; }
+[data-accent="red"]      { --a:#E01B24; --a-lift:#FF5C5C; --a-on:#FFFFFF; --a-on-lift:#14100E; }
+[data-accent="fuchsia"]  { --a:#DB007F; --a-lift:#FF4DA6; --a-on:#FFFFFF; --a-on-lift:#14100E; }
+[data-accent="violet"]   { --a:#7C3AED; --a-lift:#A78BFA; --a-on:#FFFFFF; --a-on-lift:#14100E; }
+[data-accent="blue"]     { --a:#0072F5; --a-lift:#4D9EFF; --a-on:#FFFFFF; --a-on-lift:#14100E; }
+[data-accent="teal"]     { --a:#00A99D; --a-lift:#2DD4BF; --a-on:#0A1210; --a-on-lift:#0A1210; }
+[data-accent="green"]    { --a:#16A34A; --a-lift:#34D399; --a-on:#0A1408; --a-on-lift:#0A1408; }
+[data-accent="lime"]     { --a:#8CC800; --a-lift:#B4E832; --a-on:#141A00; --a-on-lift:#141A00; }
+[data-accent="yellow"]   { --a:#F2B705; --a-lift:#FFD046; --a-on:#1A1400; --a-on-lift:#1A1400; }
+[data-accent="graphite"] { --a:#16181C; --a-lift:#E8EAEE; --a-on:#FFFFFF; --a-on-lift:#0A0B0D; }
+
+/* ============================================================
    TEMA — CLARO (por defecto)
 
    REGLA DE COLOR: el naranja es la marca y la acción principal.
@@ -113,21 +147,31 @@
   --pr-fg-strong:    #000000;
   --pr-fg-muted:     #666B74;
   --pr-fg-faint:     #93989F;
-  --pr-fg-on-accent: #14100E;   /* casi negro sobre naranja: 5.9:1 */
+  --pr-fg-on-accent: var(--a-on);   /* casi negro sobre naranja: 5.9:1 */
 
   /* Bordes */
   --pr-border:        #DEDED9;
   --pr-border-soft:   #E9E9E4;
   --pr-border-strong: #C2C2BC;
-  --pr-focus-ring:    rgba(255,61,0,0.30);
 
-  /* Marca */
-  --pr-accent:       #FF3D00;
+  /* Marca — todo derivado del acento elegido.
+     Cada par declara primero un valor plano y después el derivado:
+     si un navegador viejo no entiende color-mix, descarta la segunda
+     línea al analizarla y se queda con el naranja de fábrica en vez
+     de quedarse sin color. */
+  --pr-accent:       var(--a);
   --pr-accent-hover: #E63700;
+  --pr-accent-hover: color-mix(in srgb, var(--a) 88%, #000);
   --pr-accent-press: #CC3100;
-  --pr-accent-ink:   #C93000;   /* naranja legible como TEXTO */
+  --pr-accent-press: color-mix(in srgb, var(--a) 76%, #000);
+  --pr-accent-ink:   #C93000;   /* el acento legible como TEXTO sobre claro */
+  --pr-accent-ink:   color-mix(in srgb, var(--a) 80%, #000);
   --pr-accent-soft:  #FFE9E2;
+  --pr-accent-soft:  color-mix(in srgb, var(--a) 12%, #FFFFFF);
   --pr-accent-bd:    #FFC2AF;
+  --pr-accent-bd:    color-mix(in srgb, var(--a) 34%, #FFFFFF);
+  --pr-focus-ring:   rgba(255,61,0,0.30);
+  --pr-focus-ring:   color-mix(in srgb, var(--a) 34%, transparent);
 
   /* Estados. Deliberadamente fuera del naranja: si «peligro» fuera
      naranja rojizo se confundiría con el botón de guardar. */
@@ -161,9 +205,13 @@
   --pr-side-fg:              #F2F2F0;
   --pr-side-fg-muted:        #83868C;
   --pr-side-border:          rgba(255,255,255,0.10);
+  /* Sobre el riel negro va la versión aclarada: un verde o un azul
+     medios se pierden contra el negro. */
+  --pr-side-accent:          var(--a-lift);
   --pr-side-item-active-bg:  rgba(255,61,0,0.18);
+  --pr-side-item-active-bg:  color-mix(in srgb, var(--a-lift) 20%, transparent);
   --pr-side-item-active-fg:  #FF7A4D;
-  --pr-side-accent:          #FF3D00;
+  --pr-side-item-active-fg:  color-mix(in srgb, var(--a-lift) 80%, #FFFFFF);
 }
 
 /* ============================================================
@@ -180,19 +228,26 @@
   --pr-fg-strong:    #FFFFFF;
   --pr-fg-muted:     #949AA6;
   --pr-fg-faint:     #6B7280;
-  --pr-fg-on-accent: #14100E;
+  --pr-fg-on-accent: var(--a-on-lift);
 
   --pr-border:        rgba(255,255,255,0.11);
   --pr-border-soft:   rgba(255,255,255,0.06);
   --pr-border-strong: rgba(255,255,255,0.20);
-  --pr-focus-ring:    rgba(255,90,40,0.38);
 
-  --pr-accent:       #FF5A28;
+  /* En oscuro manda la versión aclarada, y los derivados se aclaran
+     en vez de oscurecerse. */
+  --pr-accent:       var(--a-lift);
   --pr-accent-hover: #FF6E42;
-  --pr-accent-press: #FF3D00;
+  --pr-accent-hover: color-mix(in srgb, var(--a-lift) 86%, #FFFFFF);
+  --pr-accent-press: var(--a);
   --pr-accent-ink:   #FF875C;
+  --pr-accent-ink:   color-mix(in srgb, var(--a-lift) 82%, #FFFFFF);
   --pr-accent-soft:  rgba(255,90,40,0.15);
+  --pr-accent-soft:  color-mix(in srgb, var(--a-lift) 15%, transparent);
   --pr-accent-bd:    rgba(255,90,40,0.34);
+  --pr-accent-bd:    color-mix(in srgb, var(--a-lift) 34%, transparent);
+  --pr-focus-ring:   rgba(255,90,40,0.38);
+  --pr-focus-ring:   color-mix(in srgb, var(--a-lift) 38%, transparent);
 
   --pr-success: #2FCB8E;  --pr-success-bg: rgba(47,203,142,0.12);  --pr-success-bd: rgba(47,203,142,0.32);
   --pr-warning: #E5B23C;  --pr-warning-bg: rgba(229,178,60,0.12);  --pr-warning-bd: rgba(229,178,60,0.32);
@@ -221,9 +276,42 @@
   --pr-side-fg:              #EDEFF2;
   --pr-side-fg-muted:        #767D89;
   --pr-side-border:          rgba(255,255,255,0.08);
+  --pr-side-accent:          var(--a-lift);
   --pr-side-item-active-bg:  rgba(255,90,40,0.16);
+  --pr-side-item-active-bg:  color-mix(in srgb, var(--a-lift) 18%, transparent);
   --pr-side-item-active-fg:  #FF875C;
-  --pr-side-accent:          #FF5A28;
+  --pr-side-item-active-fg:  color-mix(in srgb, var(--a-lift) 82%, #FFFFFF);
+}
+
+/* ============================================================
+   Selector de color de marca
+   ============================================================ */
+.pr-accent-picker { display: flex; flex-wrap: wrap; gap: 8px; }
+.pr-accent-opt {
+  width: 34px; height: 34px;
+  border-radius: var(--pr-r-3);
+  border: var(--pr-bw-2) solid transparent;
+  background: transparent;
+  padding: 3px;
+  cursor: pointer;
+  display: grid; place-items: center;
+  transition: border-color var(--pr-dur-1), transform var(--pr-dur-1);
+}
+.pr-accent-opt i {
+  display: block;
+  width: 100%; height: 100%;
+  border-radius: var(--pr-r-2);
+  background: var(--a);          /* lo define el propio data-accent */
+}
+.pr-accent-opt:hover { transform: translateY(-1px); }
+.pr-accent-opt:focus-visible { outline: var(--pr-bw-2) solid var(--pr-fg-strong); outline-offset: 2px; }
+.pr-accent-opt.is-on { border-color: var(--pr-fg-strong); }
+.pr-accent-opt.is-on i::after {
+  content: "";
+  display: block; width: 100%; height: 100%;
+  background: var(--a-on);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12.5 10 17.5 19 7' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 68% no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12.5 10 17.5 19 7' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 68% no-repeat;
 }
 
 /* ============================================================

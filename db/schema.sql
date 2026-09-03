@@ -85,7 +85,13 @@ create table if not exists public.workspaces (
   name        text not null,
   slug        text unique,
   logo_url    text,
-  accent      text,                                   -- color de marca del entrenador
+  -- Color de marca: se guarda el IDENTIFICADOR de la paleta, no un código de
+  -- color. Cada acento son cuatro valores y todos viven juntos en proa.css.
+  -- La lista se valida acá también: si el navegador manda cualquier cosa, la
+  -- fila no entra. Los colores de los tipos de trabajo NO se eligen.
+  accent      text not null default 'orange'
+              check (accent in ('orange','red','fuchsia','violet','blue',
+                                'teal','green','lime','yellow','graphite')),
   sport       text not null default 'football',
   seat_limit  int  not null default 5,                -- cupos de atletas activos
   language    text,
