@@ -33,9 +33,15 @@ Grupos de tablas: la cuenta · el atleta · la semana · la devolución · el se
 
 ## Identidad
 
-Naranja de señalización marina `#D8501C` (el de los chalecos y las boyas), agua profunda `#2C4A5E`, tinta de casco `#131A21`. Archivo para la interfaz, Source Serif 4 para lo que escribe una persona, IBM Plex Mono para los números. El riel lateral es oscuro siempre, en los dos temas: es la firma visual.
+Primera versión (paleta marina, serifa para la prosa) descartada el 3 de septiembre: se leía como informe, no como app de entrenamiento. La dirección actual combina dos ideas:
 
-El naranja es marca y acción principal, **nunca** un estado.
+**El color hace algo.** Cada tipo de trabajo tiene su color saturado y fijo en toda la app: gimnasio `#FF3D00`, campo `#00875A`, su club `#0047FF`, partido `#E5004C`, recuperación `#6B3FF5`, comida `#E09000`, estudio o trabajo `#8A94A6`, viaje `#0093B0`, descanso `#B8B8B1`. Con eso se lee la semana de un atleta sin leer una palabra. **No usar ninguno de esos colores para otra cosa** o el sistema deja de significar algo.
+
+**El lenguaje gráfico es duro.** Plano, sin sombras, radios casi rectos, botones en mayúscula, riel negro, números grandes. Equipamiento deportivo, no panel de administración.
+
+Tipografías: **Archivo** para la interfaz y **Barlow Condensed** para títulos, etiquetas y números — condensada entra mucho más número en el ancho de un teléfono. Sin serifa.
+
+El naranja es marca y acción principal, **nunca** un estado. `--pr-accent` es para rellenos (con texto casi negro encima, que contrasta mejor que el blanco); `--pr-accent-ink`, más oscuro, es el naranja usable como texto sobre fondo claro.
 
 ## Lo que falta decidir
 
