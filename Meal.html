@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="ml.pageTitle">Menú — Proa</title>
+<meta name="theme-color" content="#FF3D00">
+<link rel="stylesheet" href="proa.css">
+<script src="assets/brand.js"></script>
+<script src="assets/vendor/supabase-js-2.112.4.min.js"></script>
+<script src="assets/supabase-init.js"></script>
+<script src="assets/i18n.js" defer></script>
+<script src="assets/week-grid.js" defer></script>
+<script src="assets/nutrition-calc.js" defer></script>
+<style>
+  .ml { max-width: 880px; }
+  .ml-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 20px; }
+  .ml-head h1 { font: var(--pr-h1); text-transform: uppercase; letter-spacing: var(--pr-tr-h); color: var(--pr-fg-strong); margin: 0; }
+  .ml-meta { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; font: var(--pr-body-sm); color: var(--pr-fg-muted); margin-top: 5px; }
+
+  /* Fila de alimento: la cantidad se escribe y los macros se recalculan solos. */
+  .ml-cols, .ml-row {
+    display: grid; grid-template-columns: 1fr 84px 66px 56px 56px 56px 34px;
+    gap: 8px; align-items: center;
+  }
+  .ml-cols { padding: 4px 8px 6px; font: 700 10px/1 var(--pr-font-cond); letter-spacing: .16em; text-transform: uppercase; color: var(--pr-fg-faint); }
+  .ml-cols span:not(:first-child) { text-align: center; }
+  .ml-row { padding: 8px; border-radius: var(--pr-r-3); transition: background var(--pr-dur-1) var(--pr-ease); }
+  .ml-row:hover { background: var(--pr-bg-soft); }
+  .ml-name { font: 600 14px/1.3 var(--pr-font-sans); color: var(--pr-fg-strong); min-width: 0; }
+  .ml-name small { display: block; font: var(--pr-meta); color: var(--pr-fg-faint); font-weight: 400; margin-top: 2px; }
+  .ml-macro { font: 600 13px/1 var(--pr-font-cond); text-align: center; color: var(--pr-fg-muted); font-variant-numeric: tabular-nums; }
+  .ml-macro.is-k { color: var(--pr-fg-strong); font-weight: 700; }
+  .ml-qty {
+    width: 100%; height: 34px; padding: 0 8px;
+    border: var(--pr-bw) solid transparent; border-radius: var(--pr-r-2);
+    background: transparent; color: var(--pr-fg);
+    font: 600 13.5px/1 var(--pr-font-sans); text-align: center;
+    font-variant-numeric: tabular-nums; outline: none;
+    transition: border-color var(--pr-dur-1) var(--pr-ease), background var(--pr-dur-1) var(--pr-ease);
+  }
+  .ml-qty:hover { border-color: var(--pr-border); }
+  .ml-qty:focus { border-color: var(--pr-accent); background: var(--pr-surface); box-shadow: 0 0 0 3px var(--pr-focus-ring); }
+
+  @media (max-width: 720px) {
+    .ml-cols { display: none; }
+    .ml-row { grid-template-columns: 1fr 84px 34px; }
+    .ml-row .ml-macro { display: none; }
+  }
+
+  /* Barras de macros contra el objetivo del día */
+  .ml-day { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
+  .ml-bar-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+  .ml-bar-top b { font: 700 21px/1 var(--pr-font-cond); font-variant-numeric: tabular-nums; color: var(--pr-fg-strong); }
+  .ml-bar-top span { font: 700 10px/1 var(--pr-font-cond); letter-spacing: .14em; text-transform: uppercase; color: var(--pr-fg-muted); }
+  .ml-bar-top em { font-style: normal; font: var(--pr-meta); color: var(--pr-fg-faint); font-variant-numeric: tabular-nums; }
+  .ml-bar { height: 7px; background: var(--pr-bg-sunk); border-radius: var(--pr-r-1); overflow: hidden; }
+  .ml-bar i { display: block; height: 100%; transition: width var(--pr-dur-3) var(--pr-ease-out); }
+
+  .fp-list { display: flex; flex-direction: column; gap: 2px; }
+  .fp-row {
+    display: flex; align-items: center; gap: 11px; width: 100%;
+    padding: 10px 11px; border-radius: var(--pr-r-3);
+    border: 0; background: transparent; cursor: pointer; text-align: left;
+    transition: background var(--pr-dur-1) var(--pr-ease);
+  }
+  .fp-row:hover { background: var(--pr-bg-soft); }
+  .fp-name { font: 600 14px/1.25 var(--pr-font-sans); color: var(--pr-fg-strong); flex: 1; min-width: 0; }
+  .fp-macros { font: 600 11.5px/1 var(--pr-font-cond); color: var(--pr-fg-faint); white-space: nowrap; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body class="pr">
+
+<div class="pr-shell">
+  <aside class="pr-shell-side" id="pr-side-root"></aside>
+
+  <div class="pr-shell-main">
+    <header class="pr-topbar">
+      <a class="pr-icon-btn is-flush" href="Week.html" aria-label="Volver"><i class="ti ti-arrow-left"></i></a>
+      <h1 id="top-title">&nbsp;</h1>
+    </header>
+
+    <main class="pr-page ml" id="main" hidden>
+
+      <div class="ml-head">
+        <div class="pr-grow">
+          <h1 id="ml-title">&nbsp;</h1>
+          <div class="ml-meta" id="ml-meta"></div>
+        </div>
+        <button class="pr-btn is-primary" id="add"><i class="ti ti-plus"></i><span data-i18n="ml.addFood">Añadir alimento</span></button>
+      </div>
+
+      <section class="pr-card pr-card-pad pr-rise" style="--i:0">
+        <div class="ml-cols">
+          <span data-i18n="ml.food">Alimento</span>
+          <span data-i18n="ml.qty">Cantidad</span>
+          <span>kcal</span><span data-i18n="ml.p">Prot</span><span data-i18n="ml.c">Carb</span><span data-i18n="ml.f">Gras</span>
+          <span></span>
+        </div>
+        <div id="rows"></div>
+      </section>
+
+      <section class="pr-card pr-card-pad pr-rise" style="--i:1;margin-top:14px">
+        <div class="ml-bar-top" style="margin-bottom:14px">
+          <span data-i18n="ml.dayTotal">Total del día</span>
+          <em id="day-note"></em>
+        </div>
+        <div class="ml-day" id="day"></div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- Selector de alimentos -->
+<div class="pr-modal-backdrop" id="m-food" hidden>
+  <div class="pr-modal is-wide" role="dialog" aria-modal="true" aria-labelledby="m-food-title">
+    <div class="pr-modal-head">
+      <h2 id="m-food-title" data-i18n="ml.pick">Elegir alimento</h2>
+      <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="pr-modal-body">
+      <div class="pr-input-affix" style="margin-bottom:10px">
+        <i class="ti ti-search"></i>
+        <input id="fp-q" data-i18n-ph="ml.searchPh" placeholder="Buscar un alimento…" autocomplete="off">
+      </div>
+      <div class="fp-list" id="fp-list"></div>
+    </div>
+    <div class="pr-modal-foot">
+      <button class="pr-btn is-ghost" type="button" id="fp-free"><i class="ti ti-pencil-plus"></i><span data-i18n="ml.freeText">Escribir uno suelto</span></button>
+      <span class="pr-grow"></span>
+      <button class="pr-btn is-secondary" type="button" data-close data-i18n="common.close">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script src="assets/sidebar.js" defer></script>
+<script>
+(function () {
+  const t = (k, fb, vars) => (window.PR_I18N ? window.PR_I18N.t(k, vars) : null) || fb;
+  const esc = window.prEsc;
+  const W = () => window.prWeek;
+
+  const eventId = new URLSearchParams(location.search).get('event');
+  let ev = null, items = [], foods = [], dayTotals = null, target = null, wsId = null;
+
+  const r1 = (n) => Math.round((Number(n) || 0) * 10) / 10;
+
+  function foodName(f) {
+    const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
+    return (lang === 'es' && f.name_es) || (lang === 'pt' && f.name_pt) || f.name;
+  }
+
+  // ── Datos ────────────────────────────────────────────────────────────────
+  async function load() {
+    const { data, error } = await window.sb.from('meal_items')
+      .select('*').eq('event_id', eventId).order('position');
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    items = data || [];
+
+    // Total del día: todas las comidas de esa fecha, no solo esta.
+    const { data: day } = await window.sb.from('meal_items')
+      .select('kcal,protein_g,carbs_g,fats_g,fiber_g,events!inner(date,athlete_id)')
+      .eq('events.athlete_id', ev.athlete_id).eq('events.date', ev.date);
+    dayTotals = window.prNutri.sumMacros(day || []);
+
+    paint();
+  }
+
+  function paint() {
+    const host = document.getElementById('rows');
+    if (!items.length) {
+      host.innerHTML = `<section class="pr-empty">
+        <i class="ti ti-tools-kitchen-2"></i>
+        <h3>${esc(t('ml.empty.title'))}</h3>
+        <p>${esc(t('ml.empty.body'))}</p></section>`;
+    } else {
+      host.innerHTML = items.map(it => `
+        <div class="ml-row" data-item="${it.id}">
+          <div class="ml-name">${esc(it.name)}
+            ${it.qty_text || it.notes ? `<small>${esc([it.qty_text, it.notes].filter(Boolean).join(' · '))}</small>` : ''}
+          </div>
+          <input class="ml-qty" data-f="qty_g" value="${it.qty_g == null ? '' : r1(it.qty_g)}"
+                 inputmode="decimal" placeholder="g" ${it.food_id ? '' : 'disabled'}>
+          <span class="ml-macro is-k">${Math.round(it.kcal)}</span>
+          <span class="ml-macro">${r1(it.protein_g)}</span>
+          <span class="ml-macro">${r1(it.carbs_g)}</span>
+          <span class="ml-macro">${r1(it.fats_g)}</span>
+          <button class="pr-icon-btn is-flush" data-del="${it.id}" aria-label="${esc(t('se.delItem'))}"><i class="ti ti-x"></i></button>
+        </div>`).join('');
+
+      const mt = window.prNutri.sumMacros(items);
+      host.insertAdjacentHTML('beforeend', `
+        <div class="ml-row" style="border-top:var(--pr-bw) solid var(--pr-border);margin-top:6px;padding-top:12px">
+          <div class="ml-name">${esc(t('ml.mealTotal', 'Total de esta comida'))}</div>
+          <span></span>
+          <span class="ml-macro is-k">${Math.round(mt.kcal)}</span>
+          <span class="ml-macro">${r1(mt.protein_g)}</span>
+          <span class="ml-macro">${r1(mt.carbs_g)}</span>
+          <span class="ml-macro">${r1(mt.fats_g)}</span>
+          <span></span>
+        </div>`);
+    }
+
+    paintDay();
+    if (window.PR_I18N) window.PR_I18N.applyTo(document);
+  }
+
+  function paintDay() {
+    const d = dayTotals || { kcal: 0, protein_g: 0, carbs_g: 0, fats_g: 0 };
+    const rows = [
+      ['kcal', d.kcal, target && target.kcal, 'var(--pr-accent)'],
+      ['ml.p', d.protein_g, target && target.protein_g, 'var(--pr-bt-str)'],
+      ['ml.c', d.carbs_g, target && target.carbs_g, 'var(--pr-bt-plyo)'],
+      ['ml.f', d.fats_g, target && target.fats_g, 'var(--pr-bt-mob)']
+    ];
+    document.getElementById('day').innerHTML = rows.map(([k, val, goal, color]) => {
+      const pct = goal ? Math.min(100, Math.round((val / goal) * 100)) : 0;
+      return `<div>
+        <div class="ml-bar-top">
+          <b>${Math.round(val)}</b>
+          <em>${goal ? '/ ' + goal : ''}</em>
+        </div>
+        <div class="ml-bar"><i style="width:${pct}%;background:${color}"></i></div>
+        <span style="font:700 10px/1 var(--pr-font-cond);letter-spacing:.14em;text-transform:uppercase;color:var(--pr-fg-muted);display:block;margin-top:6px">${esc(k === 'kcal' ? 'kcal' : t(k))}</span>
+      </div>`;
+    }).join('');
+
+    document.getElementById('day-note').textContent = target
+      ? ''
+      : t('ml.noTarget', 'Sin objetivo cargado — se puede definir en la ficha del atleta.');
+  }
+
+  // ── Editar la cantidad recalcula los macros ──────────────────────────────
+  // Los macros se guardan EN LA FILA, no se calculan al leer: si mañana se
+  // corrige el alimento en el catálogo, el menú de la semana pasada no cambia.
+  document.getElementById('rows').addEventListener('change', async (e) => {
+    if (!e.target.dataset.f) return;
+    const row = e.target.closest('[data-item]');
+    const it = items.find(x => x.id === row.dataset.item);
+    const qty = Number(e.target.value);
+    if (!Number.isFinite(qty) || qty < 0) { window.prToast(t('se.numberOnly', 'Ahí va un número.'), 'danger'); return; }
+
+    const food = foods.find(f => f.id === it.food_id);
+    if (!food) return;
+    const m = window.prNutri.macrosForQuantity(food, qty);
+    const { error } = await window.sb.from('meal_items')
+      .update({ qty_g: qty, kcal: m.kcal, protein_g: m.protein_g, carbs_g: m.carbs_g, fats_g: m.fats_g, fiber_g: m.fiber_g })
+      .eq('id', it.id);
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    await load();
+  });
+
+  document.getElementById('rows').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-del]');
+    if (!b) return;
+    const { error } = await window.sb.from('meal_items').delete().eq('id', b.dataset.del);
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    await load();
+  });
+
+  // ── Selector de alimentos ────────────────────────────────────────────────
+  function paintFoods() {
+    const q = document.getElementById('fp-q').value.trim().toLowerCase();
+    const hit = foods.filter(f => !q ||
+      [f.name, f.name_es, f.name_pt].filter(Boolean).some(v => v.toLowerCase().includes(q))
+    ).slice(0, 80);
+    document.getElementById('fp-list').innerHTML = hit.length ? hit.map(f => `
+      <button type="button" class="fp-row" data-food="${f.id}">
+        <span class="fp-name">${esc(foodName(f))}</span>
+        <span class="fp-macros">${Math.round(f.kcal)} kcal · ${r1(f.protein_g)}P ${r1(f.carbs_g)}C ${r1(f.fats_g)}G</span>
+      </button>`).join('')
+      : `<p class="px-none">${esc(t('ml.noHits', 'Nada con eso. Puedes escribirlo suelto abajo.'))}</p>`;
+  }
+
+  document.getElementById('add').addEventListener('click', () => {
+    document.getElementById('fp-q').value = '';
+    paintFoods();
+    document.getElementById('m-food').hidden = false;
+    document.getElementById('fp-q').focus();
+  });
+  document.getElementById('fp-q').addEventListener('input', paintFoods);
+
+  document.getElementById('fp-list').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-food]');
+    if (!b) return;
+    const f = foods.find(x => x.id === b.dataset.food);
+    // Se arranca con 100 g, que es la unidad en la que están los valores.
+    const m = window.prNutri.macrosForQuantity(f, 100);
+    await addItem({ food_id: f.id, name: foodName(f), qty_g: 100, ...m });
+  });
+
+  document.getElementById('fp-free').addEventListener('click', async () => {
+    const name = prompt(t('ml.freePrompt', '¿Qué come?'));
+    if (!name || !name.trim()) return;
+    const qty = prompt(t('ml.freeQty', 'Cantidad (opcional): «1 taza», «2 rebanadas»…')) || null;
+    await addItem({ name: name.trim(), qty_text: qty });
+  });
+
+  async function addItem(row) {
+    const pos = items.length ? Math.max(...items.map(i => i.position)) + 1 : 0;
+    const { error } = await window.sb.from('meal_items')
+      .insert(Object.assign({ event_id: eventId, position: pos }, row));
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    document.getElementById('m-food').hidden = true;
+    await load();
+  }
+
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-close]') || e.target.classList.contains('pr-modal-backdrop')) {
+      document.querySelectorAll('.pr-modal-backdrop').forEach(m => m.hidden = true);
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.querySelectorAll('.pr-modal-backdrop').forEach(m => m.hidden = true);
+  });
+
+  // ── Arranque ─────────────────────────────────────────────────────────────
+  async function boot() {
+    if (!(await window.requireCoach())) return;
+    if (window.PR_I18N && window.PR_I18N.ready) { try { await window.PR_I18N.ready; } catch (e) {} }
+    if (!eventId) { window.location.replace('Week.html'); return; }
+    if (window.prSidebar) window.prSidebar.mount('week');
+
+    wsId = await window.getWorkspaceId();
+
+    const { data } = await window.sb.from('events')
+      .select('id,date,start_time,end_time,type,title,athlete_id,athletes(first_name,last_name)')
+      .eq('id', eventId).maybeSingle();
+    if (!data) { window.location.replace('Week.html'); return; }
+    ev = data;
+
+    const who = `${ev.athletes.first_name} ${ev.athletes.last_name || ''}`.trim();
+    const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
+    const when = W().parseYMD(ev.date).toLocaleDateString(lang, { weekday: 'long', day: 'numeric', month: 'long' });
+
+    document.title = who + ' — Proa';
+    document.getElementById('top-title').textContent = who;
+    document.getElementById('ml-title').textContent = ev.title || t('ev.meal', 'Comida');
+    document.getElementById('ml-meta').innerHTML =
+      `<span class="pr-pill" style="background:var(--pr-ev-meal);color:#fff;border-color:transparent">${esc(t('ev.meal'))}</span>`
+      + `<span>${esc(who)}</span><span>·</span><span>${esc(when)}</span>`
+      + (ev.start_time ? `<span>·</span><span>${esc(W().hhmm(ev.start_time))}</span>` : '');
+
+    const [{ data: fd }, { data: tg }] = await Promise.all([
+      window.sb.from('foods').select('id,name,name_es,name_pt,kcal,protein_g,carbs_g,fats_g,fiber_g')
+        .or(`workspace_id.is.null,workspace_id.eq.${wsId}`).order('name'),
+      window.sb.from('nutrition_targets').select('*').eq('athlete_id', ev.athlete_id).maybeSingle()
+    ]);
+    foods = fd || [];
+    target = tg || null;
+
+    document.getElementById('main').hidden = false;
+    await load();
+    if (window.PR_I18N) window.PR_I18N.applyTo(document);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>

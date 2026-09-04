@@ -254,12 +254,17 @@
     document.getElementById('e-location').value = (ev && ev.location) || '';
     document.getElementById('e-notes').value    = (ev && ev.notes) || '';
     document.getElementById('e-del').hidden     = !ev;
-    // La sesión solo se abre en lo que tiene contenido: un partido o un viaje
-    // no llevan bloques de ejercicios.
-    const openable = ev && ['gym','field','recovery'].includes(ev.type);
+    // Cada tipo abre su propio editor. Un partido o un viaje no abren nada:
+    // no llevan contenido que planificar.
     const openBtn = document.getElementById('e-open');
-    openBtn.hidden = !openable;
-    if (openable) openBtn.href = 'Session.html?event=' + ev.id;
+    const dest = ev && (['gym','field','recovery'].includes(ev.type) ? 'Session.html'
+                      : ev.type === 'meal' ? 'Meal.html' : null);
+    openBtn.hidden = !dest;
+    if (dest) {
+      openBtn.href = dest + '?event=' + ev.id;
+      openBtn.querySelector('span').textContent =
+        t(ev.type === 'meal' ? 'wk.openMenu' : 'wk.openSession');
+    }
     document.getElementById('ev-msg').hidden    = true;
     document.getElementById('ev-hint').hidden   = !sug;
     document.getElementById('m-ev').hidden      = false;
