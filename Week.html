@@ -11,6 +11,7 @@
 <script src="assets/supabase-init.js"></script>
 <script src="assets/i18n.js" defer></script>
 <script src="assets/week-grid.js" defer></script>
+<script src="assets/recovery-methods.js" defer></script>
 <style>
   .wkp { max-width: 1080px; }
   .wkp-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
@@ -30,6 +31,45 @@
   .wkp-sum div.is-accent b { color: var(--pr-accent-ink); }
 
   .wkp-empty-athlete { margin-top: 20px; }
+
+  /* Recuperación: grilla de métodos y la lista de lo elegido. */
+  .rc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 8px; }
+  .rc-m {
+    position: relative; cursor: pointer; text-align: left;
+    border: var(--pr-bw) solid var(--pr-border);
+    background: var(--pr-surface);
+    border-radius: var(--pr-r-4);
+    padding: 11px 12px 10px 14px;
+    display: flex; align-items: center; gap: 9px;
+    transition: border-color var(--pr-dur-1) var(--pr-ease),
+                box-shadow var(--pr-dur-2) var(--pr-ease),
+                transform var(--pr-dur-1) var(--pr-ease);
+  }
+  .rc-m::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--rc); }
+  .rc-m:hover { border-color: var(--rc); box-shadow: var(--pr-shadow-2); transform: translateY(-2px); }
+  .rc-m .ti { font-size: 18px; color: var(--rc); flex: none; }
+  .rc-m span { font: 600 13px/1.2 var(--pr-font-sans); color: var(--pr-fg-strong); }
+
+  .rc-list { display: flex; flex-direction: column; gap: 8px; }
+  .rc-item {
+    display: flex; align-items: flex-start; gap: 11px;
+    border: var(--pr-bw) solid var(--pr-border);
+    border-left: 4px solid var(--rc);
+    border-radius: var(--pr-r-4);
+    background: var(--pr-surface);
+    padding: 12px 12px 12px 13px;
+  }
+  .rc-item .ti.head { font-size: 19px; color: var(--rc); flex: none; margin-top: 1px; }
+  .rc-body { flex: 1; min-width: 0; }
+  .rc-name { font: 700 14px/1.2 var(--pr-font-sans); color: var(--pr-fg-strong); }
+  .rc-sum { font: 600 12px/1 var(--pr-font-cond); letter-spacing: .06em; color: var(--pr-fg-muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .rc-fields { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .rc-f { display: flex; flex-direction: column; gap: 4px; }
+  .rc-f label { font: 700 9.5px/1 var(--pr-font-cond); letter-spacing: .14em; text-transform: uppercase; color: var(--pr-fg-faint); }
+  .rc-f input { width: 84px; height: 32px; text-align: center; font-size: 13px; }
+  .rc-f.is-wide input { width: 150px; text-align: left; }
+  .rc-f.is-notes { flex: 1; min-width: 160px; }
+  .rc-f.is-notes input { width: 100%; text-align: left; }
 </style>
 </head>
 <body class="pr">
@@ -148,6 +188,30 @@
   </div>
 </div>
 
+<!-- Recuperación -->
+<div class="pr-modal-backdrop" id="m-rec" hidden>
+  <div class="pr-modal is-wide" role="dialog" aria-modal="true" aria-labelledby="m-rec-title">
+    <div class="pr-modal-head">
+      <div>
+        <h2 id="m-rec-title" data-i18n="rc.title">Recuperación</h2>
+        <span class="pr-mono" id="rec-sub"></span>
+      </div>
+      <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="pr-modal-body">
+      <div class="rc-list" id="rec-list"></div>
+      <div>
+        <span class="pr-eyebrow" style="display:block;margin-bottom:10px" data-i18n="rc.add">Añadir método</span>
+        <div class="rc-grid" id="rec-grid"></div>
+      </div>
+    </div>
+    <div class="pr-modal-foot">
+      <span class="pr-hint pr-grow" data-i18n="rc.autoSave">Se guarda solo, al salir de cada campo.</span>
+      <button class="pr-btn is-secondary" type="button" data-close data-i18n="common.close">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Copiar semana -->
 <div class="pr-modal-backdrop" id="m-copy" hidden>
   <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-copy-title">
@@ -257,13 +321,17 @@
     // Cada tipo abre su propio editor. Un partido o un viaje no abren nada:
     // no llevan contenido que planificar.
     const openBtn = document.getElementById('e-open');
-    const dest = ev && (['gym','field','recovery'].includes(ev.type) ? 'Session.html'
-                      : ev.type === 'meal' ? 'Meal.html' : null);
+    // Cada tipo abre lo suyo. La recuperación se resuelve acá mismo, en un
+    // modal: no son bloques de ejercicios sino métodos con dos parámetros.
+    const dest = ev && (['gym','field'].includes(ev.type) ? 'Session.html'
+                      : ev.type === 'meal' ? 'Meal.html'
+                      : ev.type === 'recovery' ? 'recovery' : null);
     openBtn.hidden = !dest;
     if (dest) {
-      openBtn.href = dest + '?event=' + ev.id;
-      openBtn.querySelector('span').textContent =
-        t(ev.type === 'meal' ? 'wk.openMenu' : 'wk.openSession');
+      openBtn.dataset.dest = dest;
+      openBtn.href = dest === 'recovery' ? '#' : dest + '?event=' + ev.id;
+      openBtn.querySelector('span').textContent = t(
+        dest === 'recovery' ? 'rc.open' : ev.type === 'meal' ? 'wk.openMenu' : 'wk.openSession');
     }
     document.getElementById('ev-msg').hidden    = true;
     document.getElementById('ev-hint').hidden   = !sug;
@@ -321,6 +389,115 @@
     await loadWeek();
   });
 
+  // ── Recuperación ─────────────────────────────────────────────────────────
+  // Vive dentro de la semana a propósito: son dos o tres datos por método y no
+  // justifican salir de la pantalla.
+  let recEvent = null, recItems = [];
+
+  async function openRecovery(e) {
+    recEvent = e;
+    const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
+    document.getElementById('rec-sub').textContent =
+      W().parseYMD(e.date).toLocaleDateString(lang, { weekday: 'long', day: 'numeric', month: 'long' })
+      + (e.start_time ? ' · ' + W().hhmm(e.start_time) : '');
+    document.getElementById('rec-grid').innerHTML = window.prRecovery.LIST.map(m =>
+      `<button type="button" class="rc-m" style="--rc:${window.prRecovery.color(m.id)}" data-add-m="${m.id}">
+        <i class="ti ${m.icon}"></i><span>${esc(window.prRecovery.label(m.id))}</span>
+      </button>`).join('');
+    await loadRecovery();
+    document.getElementById('m-rec').hidden = false;
+  }
+
+  async function loadRecovery() {
+    const { data, error } = await window.sb.from('recovery_items')
+      .select('*').eq('event_id', recEvent.id).order('position');
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    recItems = data || [];
+    paintRecovery();
+  }
+
+  function paintRecovery() {
+    const R = window.prRecovery;
+    const host = document.getElementById('rec-list');
+    if (!recItems.length) {
+      host.innerHTML = `<p class="pr-hint" style="margin:0 0 4px">${esc(t('rc.empty', 'Elegí abajo qué le toca.'))}</p>`;
+      return;
+    }
+    // Solo se muestran los campos que ese método usa: pedir la temperatura de
+    // un masaje sería ruido.
+    const FIELD = {
+      temp_c:     ['rc.temp',    'number'],
+      temp_hot_c: ['rc.tempHot', 'number'],
+      cycles:     ['rc.cycles',  'number'],
+      pressure:   ['rc.pressure','text']
+    };
+    host.innerHTML = recItems.map(it => {
+      const m = R.get(it.method);
+      const extra = m.fields.map(f => {
+        const [key, type] = FIELD[f];
+        return `<div class="rc-f${f === 'pressure' ? ' is-wide' : ''}">
+          <label>${esc(t(key))}</label>
+          <input class="pr-input" type="${type}" data-f="${f}" value="${esc(it[f] == null ? '' : it[f])}">
+        </div>`;
+      }).join('');
+      return `<div class="rc-item" style="--rc:${R.color(it.method)}" data-rec="${it.id}">
+        <i class="ti ${m.icon} head"></i>
+        <div class="rc-body">
+          <div class="rc-name">${esc(R.label(it.method))}</div>
+          ${R.summary(it) ? `<div class="rc-sum">${esc(R.summary(it))}</div>` : ''}
+          <div class="rc-fields">
+            <div class="rc-f"><label data-i18n="se.min">min</label>
+              <input class="pr-input" type="number" data-f="duration_min" value="${esc(it.duration_min == null ? '' : it.duration_min)}"></div>
+            ${extra}
+            <div class="rc-f is-notes"><label data-i18n="wk.notes">Notas</label>
+              <input class="pr-input" data-f="notes" value="${esc(it.notes || '')}"></div>
+          </div>
+        </div>
+        <button class="pr-icon-btn is-flush" data-del-rec="${it.id}" aria-label="${esc(t('se.delItem'))}"><i class="ti ti-x"></i></button>
+      </div>`;
+    }).join('');
+    if (window.PR_I18N) window.PR_I18N.applyTo(host);
+  }
+
+  document.getElementById('m-rec').addEventListener('click', async (ev2) => {
+    const add = ev2.target.closest('[data-add-m]');
+    if (add) {
+      const m = window.prRecovery.get(add.dataset.addM);
+      const pos = recItems.length ? Math.max(...recItems.map(x => x.position)) + 1 : 0;
+      // Se crea con los valores de uso habitual del método: agregar uno es un
+      // clic, no completar un formulario.
+      const row = Object.assign({ event_id: recEvent.id, position: pos, method: m.id, duration_min: m.min }, m.def || {});
+      const { error } = await window.sb.from('recovery_items').insert(row);
+      if (error) { window.prToast(error.message, 'danger'); return; }
+      await loadRecovery();
+      await loadWeek();
+      return;
+    }
+    const del = ev2.target.closest('[data-del-rec]');
+    if (del) {
+      const { error } = await window.sb.from('recovery_items').delete().eq('id', del.dataset.delRec);
+      if (error) { window.prToast(error.message, 'danger'); return; }
+      await loadRecovery();
+      await loadWeek();
+    }
+  });
+
+  document.getElementById('m-rec').addEventListener('change', async (ev2) => {
+    const el = ev2.target;
+    const row = el.closest('[data-rec]');
+    if (!row || !el.dataset.f) return;
+    const f = el.dataset.f;
+    const raw = el.value.trim();
+    const numeric = ['duration_min', 'temp_c', 'temp_hot_c', 'cycles'].includes(f);
+    let val = raw === '' ? null : (numeric ? Number(raw) : raw);
+    if (numeric && raw !== '' && !Number.isFinite(val)) {
+      window.prToast(t('se.numberOnly', 'Ahí va un número.'), 'danger'); return;
+    }
+    const { error } = await window.sb.from('recovery_items').update({ [f]: val }).eq('id', row.dataset.rec);
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    await loadRecovery();
+  });
+
   // ── Copiar la semana ─────────────────────────────────────────────────────
   document.getElementById('btn-copy').addEventListener('click', () => {
     if (!events.length) { window.prToast(t('wk.copyEmpty', 'Esta semana no tiene nada que copiar.'), 'danger'); return; }
@@ -373,6 +550,14 @@
   });
 
   document.getElementById('btn-new').addEventListener('click', () => openEvent(null, window.prToday()));
+
+  document.getElementById('e-open').addEventListener('click', (e) => {
+    if (e.currentTarget.dataset.dest !== 'recovery') return;
+    e.preventDefault();
+    const id = editingId;
+    document.getElementById('m-ev').hidden = true;
+    openRecovery(events.find(x => x.id === id));
+  });
 
   // ── Arranque ─────────────────────────────────────────────────────────────
   async function boot() {
