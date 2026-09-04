@@ -600,5 +600,11 @@
   "wk.noOthers": "You have no other athletes to apply it to.",
   "se.dupBlock": "Duplicate block",
   "se.dupItem": "Duplicate",
-  "se.usedTimes": "Times you've used it"
+  "se.usedTimes": "Times you've used it",
+  "se.dragBlock": "Drag the letter to reorder the block",
+  "se.dragItem": "Drag to reorder, or move it to another block",
+  "se.dragSet": "Drag to reorder the set",
+  "se.reorderFail": "The new order couldn't be saved.",
+  "ml.drag": "Drag to reorder the food",
+  "rc.drag": "Drag to reorder"
 }

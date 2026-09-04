@@ -12,6 +12,7 @@
 <script src="assets/i18n.js" defer></script>
 <script src="assets/week-grid.js" defer></script>
 <script src="assets/recovery-methods.js" defer></script>
+<script src="assets/sortable.js"></script>
 <style>
   .wkp { max-width: 1080px; }
   .wkp-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
@@ -59,7 +60,9 @@
     background: var(--pr-surface);
     padding: 12px 12px 12px 13px;
   }
-  .rc-item .ti.head { font-size: 19px; color: var(--rc); flex: none; margin-top: 1px; }
+  /* El icono del método es además el tirador para reordenar. */
+  .rc-item .ti.head { font-size: 19px; color: var(--rc); flex: none; padding: 4px; margin: -3px -4px 0; }
+  .rc-item .ti.head:hover { background: var(--pr-bg-sunk); }
   .rc-body { flex: 1; min-width: 0; }
   .rc-name { font: 700 14px/1.2 var(--pr-font-sans); color: var(--pr-fg-strong); }
   .rc-sum { font: 600 12px/1 var(--pr-font-cond); letter-spacing: .06em; color: var(--pr-fg-muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
@@ -506,7 +509,8 @@
         </div>`;
       }).join('');
       return `<div class="rc-item" style="--rc:${R.color(it.method)}" data-rec="${it.id}">
-        <i class="ti ${m.icon} head"></i>
+        <i class="ti ${m.icon} head" data-grip tabindex="0" role="button"
+           aria-label="${esc(t('rc.drag', 'Arrastra para reordenar'))}" title="${esc(t('rc.drag', 'Arrastra para reordenar'))}"></i>
         <div class="rc-body">
           <div class="rc-name">${esc(R.label(it.method))}</div>
           ${R.summary(it) ? `<div class="rc-sum">${esc(R.summary(it))}</div>` : ''}
@@ -523,6 +527,23 @@
     }).join('');
     if (window.PR_I18N) window.PR_I18N.applyTo(host);
   }
+
+  // ── Arrastrar para reordenar ─────────────────────────────────────────────
+  // La recuperación tiene orden: el baño de contraste va antes de las botas,
+  // no después. Se agarra por el icono del método.
+  window.prSortable.rule({
+    container: '#rec-list', item: '[data-rec]', handle: '[data-grip]',
+    id: el => el.dataset.rec,
+    async onDrop({ ids }) {
+      const { data, error } = await window.sb.rpc('reorder', { p_kind: 'recovery', p_parent: recEvent.id, p_ids: ids });
+      if (error || data !== ids.length) {
+        window.prToast(error ? error.message : t('se.reorderFail', 'No se pudo guardar el orden.'), 'danger');
+        await loadRecovery(); return;
+      }
+      recItems = ids.map(id => recItems.find(x => x.id === id)).filter(Boolean);
+      paintRecovery();
+    }
+  });
 
   document.getElementById('m-rec').addEventListener('click', async (ev2) => {
     const add = ev2.target.closest('[data-add-m]');

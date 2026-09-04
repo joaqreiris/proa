@@ -12,6 +12,7 @@
 <script src="assets/i18n.js" defer></script>
 <script src="assets/week-grid.js" defer></script>
 <script src="assets/block-types.js" defer></script>
+<script src="assets/sortable.js"></script>
 <style>
   .se { max-width: 900px; }
 
@@ -44,6 +45,9 @@
     transition: background var(--pr-dur-1) var(--pr-ease);
   }
   .se-item:hover { background: var(--pr-bg-soft); }
+  /* La fila envuelve al ejercicio y a su detalle abierto: así arrastrar uno
+     se lleva también lo que tiene desplegado. */
+  .se-row { border-radius: var(--pr-r-3); }
   .se-item-name { font: 600 14px/1.3 var(--pr-font-sans); color: var(--pr-fg-strong); min-width: 0; }
   .se-item-name small { display: block; font: var(--pr-meta); color: var(--pr-fg-faint); font-weight: 400; margin-top: 2px; }
   .se-in {
@@ -87,6 +91,10 @@
     color: var(--pr-fg-faint); width: 22px; flex: none;
     font-variant-numeric: tabular-nums;
   }
+  /* La letra es además el tirador para arrastrar: se le da algo de superficie
+     sin correr nada de sitio (el margen negativo devuelve lo que suma). */
+  .se-tag[data-grip] { padding: 5px 2px; margin: -5px 0; text-align: center; }
+  .se-set b[data-grip] { padding: 6px 0; margin: -6px 0; }
   .se-item-main { display: flex; align-items: center; gap: 9px; min-width: 0; }
   .se-vid {
     border: 0; background: transparent; cursor: pointer; padding: 2px;
@@ -284,7 +292,10 @@
     ].map(([c, v, k]) => `<div class="pr-tot ${c}"><b>${v}</b><span data-i18n="${k}">${esc(t(k))}</span></div>`).join('');
   }
 
-  function paint() {
+  // `animate` va en falso cuando repintamos después de arrastrar: la entrada
+  // escalonada de las tarjetas es linda la primera vez, pero volver a verla
+  // justo después de soltar un bloque se lee como un parpadeo.
+  function paint(animate = true) {
     const host = document.getElementById('blocks');
     paintTotals();
 
@@ -304,9 +315,10 @@
       const combo = b.method !== 'single';     // ¿los ejercicios van juntos?
 
       return `
-      <section class="pr-card se-block has-strip pr-rise" style="--pr-strip:${BT.color(b.kind)};--i:${bi}" data-block="${b.id}">
+      <section class="pr-card se-block has-strip${animate ? ' pr-rise' : ''}" style="--pr-strip:${BT.color(b.kind)};--i:${bi}" data-block="${b.id}">
         <div class="se-block-head">
-          <span class="se-tag">${L}</span>
+          <span class="se-tag" data-grip tabindex="0" role="button"
+                aria-label="${esc(t('se.dragBlock', 'Arrastra para reordenar'))}" title="${esc(t('se.dragBlock', 'Arrastra para reordenar'))}">${L}</span>
           <i class="ti ${BT.get(b.kind).icon}" style="color:${BT.color(b.kind)};font-size:19px"></i>
           <input class="se-block-title" value="${esc(b.title || '')}"
                  placeholder="${esc(BT.label(b.kind))}" data-field="title">
@@ -362,10 +374,12 @@
             const isOpen = open.has(it.id);
             const vid = it.exercises && it.exercises.video_url;
             return `
-            <div class="se-item" data-item="${it.id}">
+            <div class="se-row" data-item="${it.id}">
+            <div class="se-item">
               <div class="se-item-name">
                 <span class="se-item-main">
-                  <span class="se-tag">${L}${ii + 1}</span>
+                  <span class="se-tag" data-grip tabindex="0" role="button"
+                        aria-label="${esc(t('se.dragItem', 'Arrastra para reordenar'))}" title="${esc(t('se.dragItem', 'Arrastra para reordenar'))}">${L}${ii + 1}</span>
                   <span>${esc(it.name)}</span>
                   ${vid ? `<button class="se-vid" data-act="video" data-url="${esc(vid)}" title="${esc(t('se.watch'))}"><i class="ti ti-brand-youtube"></i></button>` : ''}
                   <button class="pr-icon-btn is-flush se-more${isOpen ? ' is-on' : ''}" data-act="more" aria-label="${esc(t('se.detail'))}"><i class="ti ti-adjustments-horizontal"></i></button>
@@ -385,7 +399,8 @@
                 <button class="pr-icon-btn is-flush" data-act="del-item" aria-label="${esc(t('se.delItem'))}"><i class="ti ti-x"></i></button>
               </span>
             </div>
-            ${isOpen ? detailHtml(it) : ''}`;
+            ${isOpen ? detailHtml(it) : ''}
+            </div>`;
           }).join('')
           || `<p class="se-empty-block">${esc(t('se.blockEmpty'))}</p>`}
         </div>
@@ -437,7 +452,7 @@
         ${sets.length ? `<div class="se-sets">
           ${sets.map((st, si) => `
             <div class="se-set" data-set="${st.id}">
-              <b>${si + 1}</b>
+              <b data-grip tabindex="0" role="button" aria-label="${esc(t('se.dragSet', 'Arrastra para reordenar'))}" title="${esc(t('se.dragSet', 'Arrastra para reordenar'))}">${si + 1}</b>
               <input class="pr-input" data-s="reps"   value="${esc(st.reps || '')}"  placeholder="${esc(t('se.reps'))}">
               <input class="pr-input" data-s="load"   value="${esc(st.load || '')}"  placeholder="${esc(t('se.load'))}">
               <input class="pr-input" data-s="rest_s" value="${esc(st.rest_s == null ? '' : st.rest_s)}" inputmode="numeric" placeholder="${esc(t('se.rest'))}">
@@ -517,7 +532,7 @@
     if (act === 'more') {
       const itemId = btn.closest('[data-item]').dataset.item;
       open.has(itemId) ? open.delete(itemId) : open.add(itemId);
-      paint(); return;
+      paint(false); return;   // abrir el detalle no tiene que reanimar la página
     }
 
     if (act === 'add-set') {
@@ -617,6 +632,69 @@
         window.sb.from('session_blocks').update({ position: blocks[i].position }).eq('id', blocks[j].id)
       ]);
       await load();
+    }
+  });
+
+  // ── Arrastrar para reordenar ─────────────────────────────────────────────
+  // Se agarra por la letra: A, B, C en los bloques y A1, A2 en los ejercicios.
+  // Es el número de orden, así que agarrarlo para cambiar el orden es lo que
+  // uno haría sin que se lo expliquen — y no hace falta una columna más.
+  //
+  // El orden ya se movió en pantalla mientras se arrastraba; acá solo se
+  // confirma en la base. Si la base no lo acepta, se vuelve a leer todo: la
+  // pantalla no puede quedar mostrando un orden que no está guardado.
+  async function commit(kind, parent, ids) {
+    const { data, error } = await window.sb.rpc('reorder', { p_kind: kind, p_parent: parent, p_ids: ids });
+    if (error || data !== ids.length) {
+      window.prToast(error ? error.message : t('se.reorderFail', 'No se pudo guardar el orden.'), 'danger');
+      await load();
+      return false;
+    }
+    touched();
+    return true;
+  }
+
+  const byIds = (arr, ids) => ids.map(id => arr.find(x => x.id === id)).filter(Boolean);
+  const S = () => window.prSortable;
+
+  S().rule({
+    container: '#blocks', item: '[data-block]', handle: '[data-grip]',
+    id: el => el.dataset.block,
+    async onDrop({ ids }) {
+      if (!await commit('blocks', eventId, ids)) return;
+      blocks = byIds(blocks, ids);
+      paint(false);
+    }
+  });
+
+  // Los ejercicios además se pueden soltar en OTRO bloque: el mismo llamado
+  // los renumera y les cambia de bloque de una. El bloque de origen queda con
+  // huecos (1, 2, 4) y no hace falta tocarlo: el orden es el mismo.
+  S().rule({
+    container: '.se-items', item: '[data-item]', handle: '[data-grip]', group: 'items',
+    id: el => el.dataset.item,
+    async onDrop({ el, to, ids }) {
+      const itemId = el.dataset.item;
+      const toBlock = to.closest('[data-block]').dataset.block;
+      if (!await commit('items', toBlock, ids)) return;
+      const src = blocks.find(b => b.session_items.some(x => x.id === itemId));
+      const dst = blocks.find(b => b.id === toBlock);
+      const it = src.session_items.find(x => x.id === itemId);
+      src.session_items = src.session_items.filter(x => x !== it);
+      dst.session_items = byIds(dst.session_items.concat(it), ids);
+      paint(false);
+    }
+  });
+
+  S().rule({
+    container: '.se-sets', item: '[data-set]', handle: '[data-grip]',
+    id: el => el.dataset.set,
+    async onDrop({ el, ids }) {
+      const itemId = el.closest('[data-detail]').dataset.detail;
+      if (!await commit('sets', itemId, ids)) return;
+      const it = blocks.flatMap(b => b.session_items).find(x => x.id === itemId);
+      it.session_sets = byIds(it.session_sets, ids);
+      paint(false);
     }
   });
 

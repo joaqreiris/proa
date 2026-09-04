@@ -82,5 +82,8 @@ PY
 
 curl -s -X DELETE "$URL/rest/v1/workspaces?id=eq.$W" -H "apikey: $SVC" -H "Authorization: Bearer $SVC" >/dev/null
 curl -s -X DELETE "$URL/auth/v1/admin/users/$U" -H "apikey: $SVC" -H "Authorization: Bearer $SVC" >/dev/null
-L=$(curl -s "$URL/rest/v1/session_blocks?select=id" -H "apikey: $SVC" -H "Authorization: Bearer $SVC")
-[ "$L" = "[]" ] && ok "base limpia" || no "restos" "$L"
+# El control de restos mira SOLO los eventos de esta prueba. Preguntar por
+# «todas las filas de la tabla» daría por resto el trabajo real de alguien —
+# y una vez llevó a borrarlo.
+L=$(curl -s "$URL/rest/v1/session_blocks?select=id&event_id=in.($EV,$NEVID)" -H "apikey: $SVC" -H "Authorization: Bearer $SVC")
+[ "$L" = "[]" ] && ok "quedó limpio lo que creó la prueba" || no "restos de esta prueba" "$L"

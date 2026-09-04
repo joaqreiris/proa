@@ -1265,6 +1265,44 @@ button.wk-ev:hover { filter: brightness(1.15); }
 }
 
 /* ============================================================
+   ARRASTRAR PARA REORDENAR (assets/sortable.js)
+   ============================================================ */
+
+/* El tirador. `touch-action:none` es lo que evita que el dedo, en vez de
+   mover la fila, scrollee la página: sin eso no se puede arrastrar en móvil. */
+[data-grip] {
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  border-radius: var(--pr-r-2);
+  transition: color var(--pr-dur-1) var(--pr-ease), background var(--pr-dur-1) var(--pr-ease);
+}
+[data-grip]:hover { color: var(--pr-accent-ink); background: var(--pr-bg-sunk); }
+[data-grip]:focus-visible { outline: var(--pr-bw-2) solid var(--pr-accent); outline-offset: 2px; }
+
+/* Mientras se arrastra, el cursor es de agarre en toda la página: soltar en
+   cualquier lado tiene que sentirse como parte del mismo gesto. */
+.pr-sorting, .pr-sorting * { cursor: grabbing !important; user-select: none !important; }
+
+/* El hueco: la fila original se queda en su sitio, apagada. Es la referencia
+   de dónde va a caer. */
+.pr-drag-src { opacity: .28; }
+.pr-drag-src * { pointer-events: none; }
+
+/* El fantasma: la copia que sigue al dedo. */
+.pr-ghost {
+  position: fixed; top: 0; left: 0; z-index: 120;
+  margin: 0; pointer-events: none;
+  box-sizing: border-box;
+  border-radius: var(--pr-r-3);
+  background: var(--pr-surface);
+  box-shadow: var(--pr-shadow-pop);
+  opacity: .96;
+  overflow: hidden;
+}
+
+/* ============================================================
    IMPRESIÓN — siempre clara y legible, sea cual sea el tema.
    ============================================================ */
 @media print {

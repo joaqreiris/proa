@@ -12,6 +12,7 @@
 <script src="assets/i18n.js" defer></script>
 <script src="assets/week-grid.js" defer></script>
 <script src="assets/nutrition-calc.js" defer></script>
+<script src="assets/sortable.js"></script>
 <style>
   .ml { max-width: 880px; }
   .ml-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 20px; }
@@ -177,7 +178,8 @@
     } else {
       host.innerHTML = items.map(it => `
         <div class="ml-row" data-item="${it.id}">
-          <div class="ml-name">${esc(it.name)}
+          <div class="ml-name" data-grip tabindex="0" role="button"
+               aria-label="${esc(t('ml.drag', 'Arrastra para reordenar'))}" title="${esc(t('ml.drag', 'Arrastra para reordenar'))}">${esc(it.name)}
             ${it.qty_text || it.notes ? `<small>${esc([it.qty_text, it.notes].filter(Boolean).join(' · '))}</small>` : ''}
           </div>
           <input class="ml-qty" data-f="qty_g" value="${it.qty_g == null ? '' : r1(it.qty_g)}"
@@ -249,6 +251,23 @@
       .eq('id', it.id);
     if (error) { window.prToast(error.message, 'danger'); return; }
     await load();
+  });
+
+  // ── Arrastrar para reordenar ─────────────────────────────────────────────
+  // El orden de un menú no es decorativo: primero el plato, después la fruta,
+  // el batido al final. Se agarra por el nombre del alimento.
+  window.prSortable.rule({
+    container: '#rows', item: '[data-item]', handle: '[data-grip]',
+    id: el => el.dataset.item,
+    async onDrop({ ids }) {
+      const { data, error } = await window.sb.rpc('reorder', { p_kind: 'meal', p_parent: eventId, p_ids: ids });
+      if (error || data !== ids.length) {
+        window.prToast(error ? error.message : t('se.reorderFail', 'No se pudo guardar el orden.'), 'danger');
+        await load(); return;
+      }
+      items = ids.map(id => items.find(x => x.id === id)).filter(Boolean);
+      paint();
+    }
   });
 
   document.getElementById('rows').addEventListener('click', async (e) => {

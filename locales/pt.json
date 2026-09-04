@@ -600,5 +600,11 @@
   "wk.noOthers": "Você não tem outros atletas para aplicar.",
   "se.dupBlock": "Duplicar bloco",
   "se.dupItem": "Duplicar",
-  "se.usedTimes": "Vezes que você usou"
+  "se.usedTimes": "Vezes que você usou",
+  "se.dragBlock": "Arraste a letra para mudar a ordem do bloco",
+  "se.dragItem": "Arraste para mudar a ordem, ou leve para outro bloco",
+  "se.dragSet": "Arraste para mudar a ordem da série",
+  "se.reorderFail": "Não foi possível salvar a ordem.",
+  "ml.drag": "Arraste para mudar a ordem do alimento",
+  "rc.drag": "Arraste para mudar a ordem"
 }
