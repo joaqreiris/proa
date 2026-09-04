@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="se.pageTitle">Sesión — Proa</title>
+<meta name="theme-color" content="#FF3D00">
+<link rel="stylesheet" href="proa.css">
+<script src="assets/brand.js"></script>
+<script src="assets/vendor/supabase-js-2.112.4.min.js"></script>
+<script src="assets/supabase-init.js"></script>
+<script src="assets/i18n.js" defer></script>
+<script src="assets/week-grid.js" defer></script>
+<style>
+  .se { max-width: 900px; }
+
+  .se-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 22px; }
+  .se-when { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .se-when h1 { font: var(--pr-h1); text-transform: uppercase; letter-spacing: var(--pr-tr-h); color: var(--pr-fg-strong); margin: 0; }
+  .se-meta { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; font: var(--pr-body-sm); color: var(--pr-fg-muted); }
+
+  /* Un bloque = una tarjeta. El color de la franja es el del tipo de sesión. */
+  .se-block { margin-bottom: 14px; }
+  .se-block-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: var(--pr-bw) solid var(--pr-border); }
+  .se-block-title {
+    font: 700 15px/1.2 var(--pr-font-sans); color: var(--pr-fg-strong);
+    border: 0; background: transparent; padding: 4px 6px; margin: -4px -6px;
+    border-radius: var(--pr-r-2); min-width: 60px; flex: 1;
+    transition: background var(--pr-dur-1) var(--pr-ease);
+  }
+  .se-block-title:hover  { background: var(--pr-bg-soft); }
+  .se-block-title:focus  { background: var(--pr-bg-soft); outline: var(--pr-bw-2) solid var(--pr-accent); outline-offset: 0; }
+  .se-block-actions { display: flex; gap: 5px; }
+
+  /* Filas de ejercicio: los campos se editan en el lugar, sin abrir nada. */
+  .se-items { padding: 6px 10px 10px; }
+  .se-item {
+    display: grid;
+    grid-template-columns: 1fr 52px 74px 84px 64px 34px;
+    gap: 8px; align-items: center;
+    padding: 7px 8px; border-radius: var(--pr-r-3);
+    transition: background var(--pr-dur-1) var(--pr-ease);
+  }
+  .se-item:hover { background: var(--pr-bg-soft); }
+  .se-item-name { font: 600 14px/1.3 var(--pr-font-sans); color: var(--pr-fg-strong); min-width: 0; }
+  .se-item-name small { display: block; font: var(--pr-meta); color: var(--pr-fg-faint); font-weight: 400; margin-top: 2px; }
+  .se-in {
+    width: 100%; height: 34px; padding: 0 8px;
+    border: var(--pr-bw) solid transparent; border-radius: var(--pr-r-2);
+    background: transparent; color: var(--pr-fg);
+    font: 600 13.5px/1 var(--pr-font-sans); text-align: center;
+    font-variant-numeric: tabular-nums; outline: none;
+    transition: border-color var(--pr-dur-1) var(--pr-ease), background var(--pr-dur-1) var(--pr-ease);
+  }
+  .se-in::placeholder { color: var(--pr-fg-faint); font-weight: 400; }
+  .se-in:hover { border-color: var(--pr-border); }
+  .se-in:focus { border-color: var(--pr-accent); background: var(--pr-surface); box-shadow: 0 0 0 3px var(--pr-focus-ring); }
+
+  .se-cols {
+    display: grid;
+    grid-template-columns: 1fr 52px 74px 84px 64px 34px;
+    gap: 8px; padding: 4px 8px 2px;
+    font: 700 10px/1 var(--pr-font-cond); letter-spacing: .16em;
+    text-transform: uppercase; color: var(--pr-fg-faint);
+  }
+  .se-cols span:not(:first-child) { text-align: center; }
+
+  @media (max-width: 720px) {
+    .se-cols { display: none; }
+    .se-item { grid-template-columns: 1fr 1fr; grid-auto-rows: min-content; padding: 10px 8px; }
+    .se-item-name { grid-column: 1 / -1; }
+    .se-item .se-del { grid-column: 2; justify-self: end; }
+  }
+
+  .se-block-foot { padding: 4px 14px 14px; }
+  .se-add-block { margin-top: 6px; }
+  .se-empty-block { padding: 16px 18px; font: var(--pr-body-sm); color: var(--pr-fg-faint); }
+
+  /* Selector de ejercicios */
+  .px-search { position: sticky; top: 0; background: var(--pr-bg); padding-bottom: 12px; z-index: 1; }
+  .px-cats { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .px-cat {
+    border: var(--pr-bw) solid var(--pr-border); background: var(--pr-surface);
+    border-radius: var(--pr-r-pill); padding: 5px 11px; cursor: pointer;
+    font: 600 12px/1 var(--pr-font-sans); color: var(--pr-fg-muted);
+    transition: all var(--pr-dur-1) var(--pr-ease);
+  }
+  .px-cat:hover { border-color: var(--pr-border-strong); color: var(--pr-fg-strong); }
+  .px-cat.is-on { background: var(--pr-accent); border-color: var(--pr-accent); color: var(--pr-fg-on-accent); }
+  .px-list { display: flex; flex-direction: column; gap: 2px; }
+  .px-row {
+    display: flex; align-items: center; gap: 11px;
+    padding: 10px 11px; border-radius: var(--pr-r-3);
+    border: 0; background: transparent; cursor: pointer; text-align: left; width: 100%;
+    transition: background var(--pr-dur-1) var(--pr-ease);
+  }
+  .px-row:hover { background: var(--pr-bg-soft); }
+  .px-dot { width: 9px; height: 9px; border-radius: 3px; flex: none; }
+  .px-name { font: 600 14px/1.25 var(--pr-font-sans); color: var(--pr-fg-strong); flex: 1; min-width: 0; }
+  .px-tag { font: var(--pr-meta); color: var(--pr-fg-faint); white-space: nowrap; }
+  .px-none { padding: 22px 10px; text-align: center; font: var(--pr-body-sm); color: var(--pr-fg-faint); }
+</style>
+</head>
+<body class="pr">
+
+<div class="pr-shell">
+  <aside class="pr-shell-side" id="pr-side-root"></aside>
+
+  <div class="pr-shell-main">
+    <header class="pr-topbar">
+      <a class="pr-icon-btn is-flush" href="Week.html" aria-label="Volver"><i class="ti ti-arrow-left"></i></a>
+      <h1 id="top-title">&nbsp;</h1>
+    </header>
+
+    <main class="pr-page se" id="main" hidden>
+
+      <div class="se-head">
+        <div class="se-when pr-grow">
+          <h1 id="se-title">&nbsp;</h1>
+          <div class="se-meta" id="se-meta"></div>
+        </div>
+        <span class="in-saved" id="saved"></span>
+      </div>
+
+      <div id="blocks"></div>
+
+      <div class="se-add-block">
+        <button class="pr-btn is-secondary" id="add-block"><i class="ti ti-plus"></i><span data-i18n="se.addBlock">Añadir bloque</span></button>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- Selector de ejercicios -->
+<div class="pr-modal-backdrop" id="m-pick" hidden>
+  <div class="pr-modal is-wide" role="dialog" aria-modal="true" aria-labelledby="m-pick-title">
+    <div class="pr-modal-head">
+      <h2 id="m-pick-title" data-i18n="se.pick">Elegir ejercicio</h2>
+      <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="pr-modal-body">
+      <div class="px-search">
+        <div class="pr-input-affix">
+          <i class="ti ti-search"></i>
+          <input id="px-q" data-i18n-ph="se.searchPh" placeholder="Buscar por nombre, músculo o material…" autocomplete="off">
+        </div>
+        <div class="px-cats" id="px-cats"></div>
+      </div>
+      <div class="px-list" id="px-list"></div>
+    </div>
+    <div class="pr-modal-foot">
+      <button class="pr-btn is-ghost" type="button" id="px-custom"><i class="ti ti-pencil-plus"></i><span data-i18n="se.freeText">Escribir uno suelto</span></button>
+      <span class="pr-grow"></span>
+      <button class="pr-btn is-secondary" type="button" data-close data-i18n="common.close">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script src="assets/sidebar.js" defer></script>
+<script>
+(function () {
+  const t = (k, fb, vars) => (window.PR_I18N ? window.PR_I18N.t(k, vars) : null) || fb;
+  const esc = window.prEsc;
+  const W = () => window.prWeek;
+
+  const eventId = new URLSearchParams(location.search).get('event');
+  let ev = null, blocks = [], catalog = [], pickBlockId = null, cat = '', wsId = null;
+
+  const KINDS = ['warmup', 'main', 'accessory', 'circuit', 'cooldown'];
+  const CAT_COLOR = {
+    strength: 'var(--pr-ev-gym)',      power: 'var(--pr-ev-match)',
+    speed: 'var(--pr-ev-match)',       olympic: 'var(--pr-ev-match)',
+    mobility: 'var(--pr-ev-recovery)', cooldown: 'var(--pr-ev-recovery)',
+    activation: 'var(--pr-ev-meal)',   prehab: 'var(--pr-ev-field)',
+    balance: 'var(--pr-ev-field)',     core: 'var(--pr-ev-team)',
+    conditioning: 'var(--pr-ev-travel)'
+  };
+
+  // El nombre del ejercicio en el idioma del entrenador. El inglés es el
+  // canónico, pero nadie busca «back squat» si trabaja en español.
+  function exName(e) {
+    const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
+    return (lang === 'es' && e.name_es) || (lang === 'pt' && e.name_pt) || e.name;
+  }
+
+  // ── Datos ────────────────────────────────────────────────────────────────
+  async function load() {
+    const { data, error } = await window.sb.from('session_blocks')
+      .select('id,position,title,kind,rounds,notes,session_items(id,position,exercise_id,name,sets,reps,load,rest_s,tempo,notes)')
+      .eq('event_id', eventId).order('position');
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    blocks = (data || []).map(b => ({
+      ...b, session_items: (b.session_items || []).sort((x, y) => x.position - y.position)
+    }));
+    paint();
+  }
+
+  function paint() {
+    const host = document.getElementById('blocks');
+    const color = W().EVENT_COLOR[ev.type] || W().EVENT_COLOR.other;
+
+    if (!blocks.length) {
+      host.innerHTML = `<section class="pr-empty">
+        <i class="ti ti-stack-2"></i>
+        <h3>${esc(t('se.empty.title'))}</h3>
+        <p>${esc(t('se.empty.body'))}</p>
+      </section>`;
+      return;
+    }
+
+    host.innerHTML = blocks.map((b, bi) => `
+      <section class="pr-card se-block has-strip pr-rise" style="--pr-strip:${color};--i:${bi}" data-block="${b.id}">
+        <div class="se-block-head">
+          <input class="se-block-title" value="${esc(b.title || '')}"
+                 data-i18n-ph="se.blockName" placeholder="${esc(t('se.blockName'))}" data-field="title">
+          <select class="pr-select" style="width:auto;height:34px;font-size:13px" data-field="kind">
+            ${KINDS.map(k => `<option value="${k}"${k === b.kind ? ' selected' : ''}>${esc(t('se.k.' + k))}</option>`).join('')}
+          </select>
+          <div class="se-block-actions">
+            ${bi > 0 ? `<button class="pr-icon-btn" data-act="up" aria-label="${esc(t('se.moveUp'))}"><i class="ti ti-chevron-up"></i></button>` : ''}
+            ${bi < blocks.length - 1 ? `<button class="pr-icon-btn" data-act="down" aria-label="${esc(t('se.moveDown'))}"><i class="ti ti-chevron-down"></i></button>` : ''}
+            <button class="pr-icon-btn" data-act="del-block" aria-label="${esc(t('se.delBlock'))}"><i class="ti ti-trash"></i></button>
+          </div>
+        </div>
+
+        ${b.session_items.length ? `
+        <div class="se-cols">
+          <span data-i18n="se.exercise">Ejercicio</span>
+          <span data-i18n="se.sets">Series</span>
+          <span data-i18n="se.reps">Reps</span>
+          <span data-i18n="se.load">Carga</span>
+          <span data-i18n="se.rest">Pausa</span>
+          <span></span>
+        </div>` : ''}
+
+        <div class="se-items">
+          ${b.session_items.map(it => `
+            <div class="se-item" data-item="${it.id}">
+              <div class="se-item-name">${esc(it.name)}
+                ${it.tempo || it.notes ? `<small>${esc([it.tempo, it.notes].filter(Boolean).join(' · '))}</small>` : ''}
+              </div>
+              <input class="se-in" data-f="sets"   value="${esc(it.sets == null ? '' : it.sets)}" inputmode="numeric" placeholder="—">
+              <input class="se-in" data-f="reps"   value="${esc(it.reps || '')}" placeholder="—">
+              <input class="se-in" data-f="load"   value="${esc(it.load || '')}" placeholder="—">
+              <input class="se-in" data-f="rest_s" value="${esc(it.rest_s == null ? '' : it.rest_s)}" inputmode="numeric" placeholder="—">
+              <button class="pr-icon-btn is-flush se-del" data-act="del-item" aria-label="${esc(t('se.delItem'))}"><i class="ti ti-x"></i></button>
+            </div>`).join('')
+          || `<p class="se-empty-block">${esc(t('se.blockEmpty'))}</p>`}
+        </div>
+
+        <div class="se-block-foot">
+          <button class="pr-btn is-sm is-ghost" data-act="add-item"><i class="ti ti-plus"></i><span data-i18n="se.addExercise">Añadir ejercicio</span></button>
+        </div>
+      </section>`).join('');
+
+    if (window.PR_I18N) window.PR_I18N.applyTo(host);
+  }
+
+  function touched() {
+    document.getElementById('saved').textContent = t('se.saved', 'Guardado');
+    clearTimeout(touched._t);
+    touched._t = setTimeout(() => { document.getElementById('saved').textContent = ''; }, 2200);
+  }
+
+  // ── Edición ──────────────────────────────────────────────────────────────
+  // Cada campo se guarda al salir de él. Un botón «guardar» en una pantalla
+  // así garantiza que alguien pierda media sesión.
+  document.getElementById('blocks').addEventListener('change', async (e) => {
+    const el = e.target;
+    const blockEl = el.closest('[data-block]');
+    if (!blockEl) return;
+
+    if (el.dataset.field) {
+      const { error } = await window.sb.from('session_blocks')
+        .update({ [el.dataset.field]: el.value || null }).eq('id', blockEl.dataset.block);
+      if (error) { window.prToast(error.message, 'danger'); return; }
+      touched();
+      return;
+    }
+
+    const itemEl = el.closest('[data-item]');
+    if (itemEl && el.dataset.f) {
+      const f = el.dataset.f;
+      const raw = el.value.trim();
+      const val = raw === '' ? null : ((f === 'sets' || f === 'rest_s') ? Number(raw) : raw);
+      if ((f === 'sets' || f === 'rest_s') && raw !== '' && !Number.isFinite(val)) {
+        window.prToast(t('se.numberOnly', 'Ahí va un número.'), 'danger'); return;
+      }
+      const { error } = await window.sb.from('session_items')
+        .update({ [f]: val }).eq('id', itemEl.dataset.item);
+      if (error) { window.prToast(error.message, 'danger'); return; }
+      touched();
+    }
+  });
+
+  document.getElementById('blocks').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    const blockEl = btn.closest('[data-block]');
+    const id = blockEl.dataset.block;
+    const act = btn.dataset.act;
+
+    if (act === 'add-item') { openPicker(id); return; }
+
+    if (act === 'del-item') {
+      const itemId = btn.closest('[data-item]').dataset.item;
+      const { error } = await window.sb.from('session_items').delete().eq('id', itemId);
+      if (error) { window.prToast(error.message, 'danger'); return; }
+      await load(); return;
+    }
+
+    if (act === 'del-block') {
+      if (!confirm(t('se.confirmDelBlock', '¿Borrar el bloque y todo lo que tiene dentro?'))) return;
+      const { error } = await window.sb.from('session_blocks').delete().eq('id', id);
+      if (error) { window.prToast(error.message, 'danger'); return; }
+      await load(); return;
+    }
+
+    if (act === 'up' || act === 'down') {
+      const i = blocks.findIndex(b => b.id === id);
+      const j = act === 'up' ? i - 1 : i + 1;
+      if (j < 0 || j >= blocks.length) return;
+      // Se intercambian las posiciones de los dos, no se renumera todo.
+      await Promise.all([
+        window.sb.from('session_blocks').update({ position: blocks[j].position }).eq('id', blocks[i].id),
+        window.sb.from('session_blocks').update({ position: blocks[i].position }).eq('id', blocks[j].id)
+      ]);
+      await load();
+    }
+  });
+
+  document.getElementById('add-block').addEventListener('click', async () => {
+    const { error } = await window.sb.from('session_blocks').insert({
+      event_id: eventId,
+      position: blocks.length ? Math.max(...blocks.map(b => b.position)) + 1 : 0,
+      kind: blocks.length ? 'main' : 'warmup'
+    });
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    await load();
+  });
+
+  // ── Selector de ejercicios ───────────────────────────────────────────────
+  function openPicker(blockId) {
+    pickBlockId = blockId;
+    document.getElementById('px-q').value = '';
+    cat = '';
+    paintCats();
+    paintList();
+    document.getElementById('m-pick').hidden = false;
+    document.getElementById('px-q').focus();
+  }
+
+  function paintCats() {
+    const cats = [...new Set(catalog.map(e => e.category).filter(Boolean))].sort();
+    document.getElementById('px-cats').innerHTML =
+      `<button type="button" class="px-cat${cat === '' ? ' is-on' : ''}" data-cat="">${esc(t('se.all', 'Todos'))}</button>`
+      + cats.map(c => `<button type="button" class="px-cat${cat === c ? ' is-on' : ''}" data-cat="${c}">${esc(t('se.c.' + c, c))}</button>`).join('');
+  }
+
+  function paintList() {
+    const q = document.getElementById('px-q').value.trim().toLowerCase();
+    // Se busca en los tres idiomas y también en músculo y material: un
+    // preparador escribe «banda» o «isquios», no el nombre exacto.
+    const hit = catalog.filter(e => {
+      if (cat && e.category !== cat) return false;
+      if (!q) return true;
+      return [e.name, e.name_es, e.name_pt, e.muscle_group, e.equipment]
+        .filter(Boolean).some(v => v.toLowerCase().includes(q));
+    }).slice(0, 80);
+
+    const host = document.getElementById('px-list');
+    if (!hit.length) { host.innerHTML = `<p class="px-none">${esc(t('se.noHits', 'Nada con eso. Podés escribirlo suelto abajo.'))}</p>`; return; }
+
+    host.innerHTML = hit.map(e => `
+      <button type="button" class="px-row" data-ex="${e.id}">
+        <span class="px-dot" style="background:${CAT_COLOR[e.category] || 'var(--pr-ev-commit)'}"></span>
+        <span class="px-name">${esc(exName(e))}</span>
+        <span class="px-tag">${esc([e.muscle_group, e.equipment].filter(Boolean).join(' · '))}</span>
+      </button>`).join('');
+  }
+
+  document.getElementById('px-q').addEventListener('input', paintList);
+  document.getElementById('px-cats').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-cat]');
+    if (!b) return;
+    cat = b.dataset.cat;
+    paintCats(); paintList();
+  });
+
+  document.getElementById('px-list').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-ex]');
+    if (!b) return;
+    const ex = catalog.find(x => x.id === b.dataset.ex);
+    await addItem({ exercise_id: ex.id, name: exName(ex) });
+  });
+
+  document.getElementById('px-custom').addEventListener('click', async () => {
+    const name = prompt(t('se.freeTextPrompt', '¿Cómo se llama el ejercicio?'));
+    if (name && name.trim()) await addItem({ name: name.trim() });
+  });
+
+  async function addItem(row) {
+    const b = blocks.find(x => x.id === pickBlockId);
+    const pos = b && b.session_items.length ? Math.max(...b.session_items.map(i => i.position)) + 1 : 0;
+    const { error } = await window.sb.from('session_items')
+      .insert(Object.assign({ block_id: pickBlockId, position: pos }, row));
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    document.getElementById('m-pick').hidden = true;
+    await load();
+  }
+
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-close]') || e.target.classList.contains('pr-modal-backdrop')) {
+      document.querySelectorAll('.pr-modal-backdrop').forEach(m => m.hidden = true);
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.querySelectorAll('.pr-modal-backdrop').forEach(m => m.hidden = true);
+  });
+
+  // ── Arranque ─────────────────────────────────────────────────────────────
+  async function boot() {
+    if (!(await window.requireCoach())) return;
+    if (window.PR_I18N && window.PR_I18N.ready) { try { await window.PR_I18N.ready; } catch (e) {} }
+    if (!eventId) { window.location.replace('Week.html'); return; }
+    if (window.prSidebar) window.prSidebar.mount('week');
+
+    wsId = await window.getWorkspaceId();
+
+    const { data } = await window.sb.from('events')
+      .select('id,date,start_time,end_time,type,title,location,notes,athlete_id,athletes(first_name,last_name)')
+      .eq('id', eventId).maybeSingle();
+    if (!data) { window.location.replace('Week.html'); return; }
+    ev = data;
+
+    const who = `${ev.athletes.first_name} ${ev.athletes.last_name || ''}`.trim();
+    const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
+    const when = W().parseYMD(ev.date).toLocaleDateString(lang, { weekday: 'long', day: 'numeric', month: 'long' });
+    const time = ev.start_time ? W().hhmm(ev.start_time) + (ev.end_time ? '–' + W().hhmm(ev.end_time) : '') : t('wk.noTime');
+
+    document.title = who + ' — Proa';
+    document.getElementById('top-title').textContent = who;
+    document.getElementById('se-title').textContent = ev.title || t(W().EVENT_KEY[ev.type] || 'ev.other');
+    document.getElementById('se-meta').innerHTML =
+      `<span class="pr-pill" style="background:${W().EVENT_COLOR[ev.type]};color:#fff;border-color:transparent">${esc(t(W().EVENT_KEY[ev.type] || 'ev.other'))}</span>`
+      + `<span>${esc(who)}</span><span>·</span><span>${esc(when)}</span><span>·</span><span>${esc(time)}</span>`
+      + (ev.location ? `<span>·</span><span>${esc(ev.location)}</span>` : '');
+
+    // El catálogo de Proa más lo propio del entrenador, en una sola consulta.
+    const { data: ex } = await window.sb.from('exercises')
+      .select('id,name,name_es,name_pt,category,muscle_group,equipment')
+      .or(`workspace_id.is.null,workspace_id.eq.${wsId}`)
+      .order('name');
+    catalog = ex || [];
+
+    document.getElementById('main').hidden = false;
+    await load();
+    if (window.PR_I18N) window.PR_I18N.applyTo(document);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>

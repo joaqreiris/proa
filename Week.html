@@ -138,10 +138,11 @@
         <p id="ev-msg" role="alert" hidden style="margin:0;color:var(--pr-danger);font:600 13px/1.45 var(--pr-font-sans)"></p>
       </div>
       <div class="pr-modal-foot">
-        <button class="pr-btn is-danger is-sm" type="button" id="e-del" hidden data-i18n="wk.delete">Borrar</button>
+        <button class="pr-btn is-danger is-sm" type="button" id="e-del" hidden><i class="ti ti-trash"></i></button>
+        <a class="pr-btn is-secondary" id="e-open" href="#" hidden><i class="ti ti-list-details"></i><span data-i18n="wk.openSession">Abrir sesión</span></a>
         <span class="pr-grow"></span>
         <button class="pr-btn is-ghost" type="button" data-close data-i18n="common.cancel">Cancelar</button>
-        <button class="pr-btn is-primary" type="submit" data-i18n="common.save">Guardar</button>
+        <button class="pr-btn is-primary" type="submit"><i class="ti ti-check"></i><span data-i18n="common.save">Guardar</span></button>
       </div>
     </form>
   </div>
@@ -253,6 +254,12 @@
     document.getElementById('e-location').value = (ev && ev.location) || '';
     document.getElementById('e-notes').value    = (ev && ev.notes) || '';
     document.getElementById('e-del').hidden     = !ev;
+    // La sesión solo se abre en lo que tiene contenido: un partido o un viaje
+    // no llevan bloques de ejercicios.
+    const openable = ev && ['gym','field','recovery'].includes(ev.type);
+    const openBtn = document.getElementById('e-open');
+    openBtn.hidden = !openable;
+    if (openable) openBtn.href = 'Session.html?event=' + ev.id;
     document.getElementById('ev-msg').hidden    = true;
     document.getElementById('ev-hint').hidden   = !sug;
     document.getElementById('m-ev').hidden      = false;
