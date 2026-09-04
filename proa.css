@@ -1014,6 +1014,17 @@ button.wk-ev:hover { filter: brightness(1.15); }
   flex: none;
 }
 
+/* Bloque sin horario: banda del día entero, rayada para que se lea distinto
+   de uno programado a una hora. */
+.wk-ev.is-allday {
+  border-radius: 0 0 var(--pr-r-1) var(--pr-r-1);
+  font-size: 9px;
+  opacity: .92;
+  background-image: repeating-linear-gradient(45deg,
+    rgba(255,255,255,.22) 0, rgba(255,255,255,.22) 3px,
+    transparent 3px, transparent 7px);
+}
+
 /* La columna del día en modo calendario lleva también el número */
 .wk-day.is-date { display: flex; align-items: baseline; gap: 5px; width: 52px; }
 .wk-day.is-date b { font-weight: 700; }

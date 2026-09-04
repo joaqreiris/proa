@@ -131,6 +131,10 @@
           <label class="pr-label" for="e-notes" data-i18n="wk.notes">Notas</label>
           <textarea class="pr-textarea" id="e-notes" rows="2" data-i18n-ph="wk.notesPh" placeholder="Lo que el atleta tiene que saber."></textarea>
         </div>
+        <p class="pr-hint" id="ev-hint" hidden style="display:flex;gap:8px;align-items:flex-start;margin:0">
+          <i class="ti ti-sparkles" style="color:var(--pr-accent);flex:none;margin-top:1px"></i>
+          <span data-i18n="wk.suggested">Te propuse el primer hueco libre de ese día. Cambialo si querés.</span>
+        </p>
         <p id="ev-msg" role="alert" hidden style="margin:0;color:var(--pr-danger);font:600 13px/1.45 var(--pr-font-sans)"></p>
       </div>
       <div class="pr-modal-foot">
@@ -228,16 +232,29 @@
   // ── Bloques ──────────────────────────────────────────────────────────────
   function openEvent(ev, date) {
     editingId = ev ? ev.id : null;
+    const d = ev ? ev.date : (date || window.prToday());
+
+    // Al crear, se propone el primer hueco libre de ese día. La app ya sabe
+    // dónde entra: hacérselo adivinar al entrenador sería desperdiciar la
+    // anamnesis entera.
+    let sug = null;
+    if (!ev) {
+      const dates = W().weekDates(monday);
+      const wd = dates.indexOf(d);
+      if (wd >= 0) sug = W().firstFreeSlot(slots, events, d, wd, 60);
+    }
+
     document.getElementById('m-ev-title').textContent = t(ev ? 'wk.edit' : 'wk.new');
     document.getElementById('e-type').value     = ev ? ev.type : 'gym';
-    document.getElementById('e-date').value     = ev ? ev.date : (date || monday);
-    document.getElementById('e-start').value    = ev && ev.start_time ? W().hhmm(ev.start_time) : '';
-    document.getElementById('e-end').value      = ev && ev.end_time ? W().hhmm(ev.end_time) : '';
+    document.getElementById('e-date').value     = d;
+    document.getElementById('e-start').value    = ev && ev.start_time ? W().hhmm(ev.start_time) : (sug ? sug.start : '');
+    document.getElementById('e-end').value      = ev && ev.end_time ? W().hhmm(ev.end_time) : (sug ? sug.end : '');
     document.getElementById('e-title').value    = (ev && ev.title) || '';
     document.getElementById('e-location').value = (ev && ev.location) || '';
     document.getElementById('e-notes').value    = (ev && ev.notes) || '';
     document.getElementById('e-del').hidden     = !ev;
     document.getElementById('ev-msg').hidden    = true;
+    document.getElementById('ev-hint').hidden   = !sug;
     document.getElementById('m-ev').hidden      = false;
   }
 

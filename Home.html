@@ -10,43 +10,52 @@
 <script src="assets/vendor/supabase-js-2.112.4.min.js"></script>
 <script src="assets/supabase-init.js"></script>
 <script src="assets/i18n.js" defer></script>
+<script src="assets/week-grid.js" defer></script>
 <style>
-  .home-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 16px;
-    align-items: start;
-  }
+  .home-wrap { max-width: 1000px; }
 
-  /* Tarjeta de cupos: el número manda, la barra lo confirma */
-  .seat-card { display: flex; flex-direction: column; gap: 16px; }
-  .seat-count {
-    font: 700 52px/0.9 var(--pr-font-cond);
-    font-variant-numeric: tabular-nums;
-    color: var(--pr-fg-strong);
-  }
-  .seat-count small { font-size: 0.42em; font-weight: 600; color: var(--pr-fg-faint); }
-  .seat-bar { display: flex; gap: 3px; }
-  .seat-bar i {
-    flex: 1; height: 10px;
-    background: var(--pr-bg-sunk);
-    display: block;
-  }
-  .seat-bar i.is-used { background: var(--pr-accent); }
-  .seat-foot { font: var(--pr-body-sm); color: var(--pr-fg-muted); margin: 0; }
+  /* Tres números arriba: cupos, trabajo de hoy y fichas que faltan. */
+  .home-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 26px; }
+  .home-stat { display: flex; flex-direction: column; gap: 8px; }
+  .home-stat b { font: 700 42px/0.9 var(--pr-font-cond); font-variant-numeric: tabular-nums; color: var(--pr-fg-strong); }
+  .home-stat b small { font-size: 0.42em; font-weight: 600; color: var(--pr-fg-faint); }
+  .home-stat b.is-accent { color: var(--pr-accent-ink); }
+  .home-stat b.is-warn { color: var(--pr-warning); }
+  .home-stat > span { font: var(--pr-eyebrow); letter-spacing: var(--pr-tr-eyebrow); text-transform: uppercase; color: var(--pr-fg-muted); }
+  .home-stat a { font: var(--pr-body-sm); color: var(--pr-accent-ink); text-decoration: none; font-weight: 600; }
+  .home-stat a:hover { text-decoration: underline; text-underline-offset: 3px; }
 
-  .soon-card p { font: var(--pr-body); color: var(--pr-fg-muted); margin: 10px 0 0; }
-  .soon-card h3 { font: var(--pr-h3); text-transform: uppercase; letter-spacing: .04em; color: var(--pr-fg-strong); margin: 0; }
-  .soon-head { display: flex; align-items: center; gap: 10px; }
-  .soon-head .ti { color: var(--pr-accent); font-size: 19px; }
+  .home-bar { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+  .home-bar h2 { font: var(--pr-h2); text-transform: uppercase; letter-spacing: var(--pr-tr-h); color: var(--pr-fg-strong); margin: 0; }
+  .home-bar span { font: var(--pr-body-sm); color: var(--pr-fg-muted); }
 
-  .home-empty { margin-top: 16px; }
-  .home-hello { margin-bottom: 6px; }
+  /* Un bloque por atleta con lo que tiene hoy. */
+  .home-day { display: flex; flex-direction: column; }
+  .home-ath { display: grid; grid-template-columns: 190px 1fr; gap: 16px; align-items: start; padding: 14px 0; border-top: var(--pr-bw) solid var(--pr-border); }
+  .home-ath:first-child { border-top: 0; padding-top: 0; }
+  @media (max-width: 620px) { .home-ath { grid-template-columns: 1fr; gap: 10px; } }
+
+  .home-ath-who { display: flex; align-items: center; gap: 10px; text-decoration: none; min-width: 0; }
+  .home-ath-name { font: 700 14.5px/1.2 var(--pr-font-sans); color: var(--pr-fg-strong); display: block; }
+  .home-ath-meta { font: var(--pr-meta); color: var(--pr-fg-muted); display: block; margin-top: 2px; }
+
+  .home-blocks { display: flex; flex-wrap: wrap; gap: 7px; }
+  .home-block {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: var(--pr-bw) solid var(--pr-border);
+    border-left-width: 4px;
+    border-radius: var(--pr-r-3);
+    background: var(--pr-surface);
+    padding: 7px 11px 7px 9px;
+  }
+  .home-block b { font: 700 13px/1 var(--pr-font-sans); color: var(--pr-fg-strong); }
+  .home-block span { font: 700 11.5px/1 var(--pr-font-cond); letter-spacing: .08em; color: var(--pr-fg-muted); font-variant-numeric: tabular-nums; }
+  .home-rest { font: var(--pr-body-sm); color: var(--pr-fg-faint); margin: 0; }
 </style>
 </head>
 <body class="pr">
 
-<div class="pr-shell" id="shell">
+<div class="pr-shell">
   <aside class="pr-shell-side" id="pr-side-root"></aside>
 
   <div class="pr-shell-main">
@@ -54,39 +63,55 @@
       <h1 data-i18n="home.title">Inicio</h1>
     </header>
 
-    <main class="pr-page">
+    <main class="pr-page home-wrap">
+
       <div class="pr-page-header">
         <div>
-          <h1 class="home-hello" id="greeting">&nbsp;</h1>
-          <p data-i18n="home.sub">Esto es lo que tienes hoy.</p>
+          <h1 id="greeting">&nbsp;</h1>
+          <p id="today-label"></p>
         </div>
       </div>
 
-      <div class="home-grid">
-
-        <section class="pr-card pr-card-pad seat-card has-strip" style="--pr-strip:var(--pr-accent)">
-          <span class="pr-stat-label" data-i18n="home.seats">Atletas</span>
-          <div class="seat-count" id="seat-count">0<small>/5</small></div>
-          <div class="seat-bar" id="seat-bar" aria-hidden="true"></div>
-          <p class="seat-foot" id="seat-foot">&nbsp;</p>
-        </section>
-
-        <section class="pr-card pr-card-pad soon-card">
-          <div class="soon-head">
-            <i class="ti ti-route"></i>
-            <h3 data-i18n="home.soon.title">En camino</h3>
-          </div>
-          <p data-i18n="home.soon.body">La ficha del atleta, la anamnesis y el calendario de la semana llegan en los próximos tramos.</p>
-        </section>
-
-      </div>
-
-      <section class="pr-empty home-empty">
+      <!-- Sin atletas todavía: no hay nada que mostrar, se empuja al alta. -->
+      <section class="pr-empty" id="empty" hidden>
         <i class="ti ti-users"></i>
         <h3 data-i18n="home.empty.title">Todavía no tienes atletas</h3>
         <p data-i18n="home.empty.body">Da de alta a tu primer atleta y luego arma su semana. Le llegará una invitación para entrar con su propia cuenta.</p>
         <a class="pr-btn is-primary" href="Athletes.html" style="margin-top:6px" data-i18n="home.empty.cta">Dar de alta un atleta</a>
       </section>
+
+      <div id="board" hidden>
+
+        <div class="home-stats">
+          <section class="pr-card pr-card-pad home-stat has-strip" style="--pr-strip:var(--pr-accent)">
+            <span data-i18n="home.seats">Atletas</span>
+            <b id="s-seats">0<small>/5</small></b>
+            <a href="Athletes.html" data-i18n="home.manage">Ver todos</a>
+          </section>
+
+          <section class="pr-card pr-card-pad home-stat">
+            <span data-i18n="home.todayBlocks">Bloques hoy</span>
+            <b class="is-accent" id="s-blocks">0</b>
+            <a href="Week.html" data-i18n="home.toWeek">Ir a la semana</a>
+          </section>
+
+          <section class="pr-card pr-card-pad home-stat">
+            <span data-i18n="home.pendingIntake">Fichas sin completar</span>
+            <b id="s-intake">0</b>
+            <a href="Athletes.html" id="intake-link" hidden data-i18n="home.whoIs">Ver quiénes</a>
+          </section>
+        </div>
+
+        <div class="home-bar">
+          <h2 data-i18n="home.todayTitle">Hoy</h2>
+          <span id="today-count"></span>
+        </div>
+
+        <section class="pr-card pr-card-pad">
+          <div class="home-day" id="day"></div>
+        </section>
+
+      </div>
 
     </main>
   </div>
@@ -96,56 +121,103 @@
 <script>
 (function () {
   const t = (k, fb, vars) => (window.PR_I18N ? window.PR_I18N.t(k, vars) : null) || fb;
+  const esc = window.prEsc;
+  const W = () => window.prWeek;
 
-  function paintSeats(seats) {
-    const count = document.getElementById('seat-count');
-    const bar   = document.getElementById('seat-bar');
-    const foot  = document.getElementById('seat-foot');
+  function paintDay(athletes, events) {
+    const host = document.getElementById('day');
 
-    count.innerHTML = `${seats.used}<small>/${seats.limit}</small>`;
+    // Solo se listan los atletas que tienen algo hoy. Seis «nada para hoy»
+    // seguidos son ruido, no información.
+    const withWork = athletes.filter(a => events.some(e => e.athlete_id === a.id));
 
-    // Un bloque por cupo: se ve de un vistazo cuánto queda sin leer números.
-    // Con planes grandes serían astillas ilegibles, así que a partir de 20
-    // cupos se pasa a una sola barra proporcional.
-    if (seats.limit > 20) {
-      const pct = seats.limit ? Math.round((seats.used / seats.limit) * 100) : 0;
-      bar.innerHTML = `<i style="flex:0 0 ${pct}%" class="is-used"></i><i></i>`;
-    } else {
-      bar.innerHTML = Array.from({ length: seats.limit }, (_, i) =>
-        `<i class="${i < seats.used ? 'is-used' : ''}"></i>`).join('');
+    if (!withWork.length) {
+      host.innerHTML = `<p class="home-rest">${esc(t('home.nothingToday', 'Nadie tiene trabajo cargado para hoy.'))}</p>`;
+      return;
     }
 
-    foot.textContent = t('home.seatsOf', `${seats.used} de ${seats.limit} cupos`,
-      { used: seats.used, limit: seats.limit });
+    host.innerHTML = withWork.map(a => {
+      const mine = events.filter(e => e.athlete_id === a.id)
+        .sort((x, y) => W().toMin(x.start_time || '99:99') - W().toMin(y.start_time || '99:99'));
+      const full = `${a.first_name} ${a.last_name || ''}`.trim();
+
+      const blocks = mine.map(e => {
+        const name = e.title || t(W().EVENT_KEY[e.type] || 'ev.other', '');
+        const time = e.start_time
+          ? W().hhmm(e.start_time) + (e.end_time ? '–' + W().hhmm(e.end_time) : '')
+          : t('wk.noTime', 'sin horario');
+        return `<span class="home-block" style="border-left-color:${W().EVENT_COLOR[e.type] || W().EVENT_COLOR.other}">
+          <b>${esc(name)}</b><span>${esc(time)}</span></span>`;
+      }).join('');
+
+      return `<div class="home-ath">
+        <a class="home-ath-who" href="Athlete.html?id=${a.id}">
+          <span class="pr-avatar">${esc(window.prInitials(full))}</span>
+          <span><span class="home-ath-name">${esc(full)}</span>
+          <span class="home-ath-meta">${esc(t('home.nBlocks', mine.length + ' bloques', { n: mine.length }))}</span></span>
+        </a>
+        <div class="home-blocks">${blocks}</div>
+      </div>`;
+    }).join('');
   }
 
   async function boot() {
     if (!(await window.requireCoach())) return;
-
-    // Esperar al motor de idiomas evita que el saludo se pinte con la clave
-    // cruda («home.greeting») antes de que carguen las traducciones.
     if (window.PR_I18N && window.PR_I18N.ready) { try { await window.PR_I18N.ready; } catch (e) {} }
+    if (window.prSidebar) window.prSidebar.mount('home');
 
-    const [profile, seats] = await Promise.all([
-      window.getProfile(),
-      window.getSeatUsage()
+    const [profile, seats, wsId] = await Promise.all([
+      window.getProfile(), window.getSeatUsage(), window.getWorkspaceId()
     ]);
 
-    // El nombre de pila alcanza para un saludo; el apellido lo hace ceremonioso.
+    // El nombre de pila alcanza; el apellido lo hace ceremonioso.
     const firstName = (profile && profile.full_name || '').split(' ')[0]
       || (profile && profile.email || '').split('@')[0];
-    document.getElementById('greeting').textContent =
-      t('home.greeting', `Hola, ${firstName}`, { name: firstName });
+    document.getElementById('greeting').textContent = t('home.greeting', `Hola, ${firstName}`, { name: firstName });
 
-    paintSeats(seats);
+    const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
+    const today = window.prToday();
+    document.getElementById('today-label').textContent =
+      W().parseYMD(today).toLocaleDateString(lang, { weekday: 'long', day: 'numeric', month: 'long' });
 
-    // El riel se monta después de la sesión: necesita el espacio y los cupos.
-    if (window.prSidebar) window.prSidebar.mount('home');
-    if (window.PR_I18N && window.PR_I18N.applyTo) window.PR_I18N.applyTo(document);
+    const { data: athletes } = await window.sb.from('athletes')
+      .select('id,first_name,last_name,athlete_intake(completed_at)')
+      .eq('workspace_id', wsId).eq('status', 'active').order('first_name');
+
+    if (!athletes || !athletes.length) {
+      document.getElementById('empty').hidden = false;
+      if (window.PR_I18N) window.PR_I18N.applyTo(document);
+      return;
+    }
+
+    // El filtro va sobre la tabla unida: la base devuelve solo los eventos de
+    // hoy de MIS atletas, en vez de traer todo y filtrar acá.
+    const { data: events } = await window.sb.from('events')
+      .select('id,athlete_id,start_time,end_time,type,title,athletes!inner(workspace_id)')
+      .eq('date', today).eq('athletes.workspace_id', wsId);
+
+    const evs = events || [];
+    const pending = athletes.filter(a => {
+      const i = Array.isArray(a.athlete_intake) ? a.athlete_intake[0] : a.athlete_intake;
+      return !(i && i.completed_at);
+    }).length;
+
+    document.getElementById('s-seats').innerHTML = `${seats.used}<small>/${seats.limit}</small>`;
+    document.getElementById('s-blocks').textContent = evs.length;
+    const si = document.getElementById('s-intake');
+    si.textContent = pending;
+    si.classList.toggle('is-warn', pending > 0);
+    document.getElementById('intake-link').hidden = pending === 0;
+
+    document.getElementById('today-count').textContent = evs.length
+      ? t('home.nBlocks', evs.length + ' bloques', { n: evs.length })
+      : '';
+
+    paintDay(athletes, evs);
+    document.getElementById('board').hidden = false;
+    if (window.PR_I18N) window.PR_I18N.applyTo(document);
   }
 
-  // Los scripts con defer (i18n, sidebar) corren antes de DOMContentLoaded:
-  // arrancar acá garantiza que prSidebar y PR_I18N ya existan.
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 })();

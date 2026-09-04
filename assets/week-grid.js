@@ -173,25 +173,41 @@
       }).join('');
 
       // Capa de arriba: lo planificado ese día.
-      const mine = events.filter(e => e.date === ymd).map(e => {
-        const a = e.start_time ? Math.max(toMin(e.start_time), H0 * 60) : H0 * 60;
-        const b = e.end_time   ? Math.min(toMin(e.end_time),   H1 * 60) : a + 60;
+      // Un bloque SIN horario («descanso», «comida libre») no se dibuja a una
+      // hora inventada: va como una banda de todo el día abajo. Ponerlo a las
+      // 06:00 lo haría parecer programado a esa hora, que es mentira.
+      const day  = events.filter(e => e.date === ymd);
+      const free = day.filter(e => !e.start_time);
+      const timed = day.filter(e => e.start_time).map(e => {
+        const a = Math.max(toMin(e.start_time), H0 * 60);
+        const b = e.end_time ? Math.min(toMin(e.end_time), H1 * 60) : a + 60;
         return Object.assign({}, e, { _a: a, _b: Math.max(b, a + 20) });
       }).sort((x, y) => x._a - y._a);
-      const laneCount = lanes(mine);
 
-      const evs = mine.map(e => {
+      const laneCount = lanes(timed);
+      // Si hay bloques sin hora, se les reserva la franja de abajo.
+      const topH = free.length ? 66 : 100;
+
+      const tag   = editable ? 'button' : 'span';
+      const attrs = (e) => editable ? ` type="button" data-event="${e.id}"` : '';
+
+      const evs = timed.map(e => {
         const left  = ((e._a - H0 * 60) / (SPAN * 60)) * 100;
         const width = ((e._b - e._a) / (SPAN * 60)) * 100;
         const label = e.title || t(EVENT_KEY[e.type] || 'ev.other', '');
-        const time  = e.start_time ? hhmm(e.start_time) : '';
-        const h = 100 / laneCount;
+        const h = topH / laneCount;
         const style = `left:${left}%;width:${width}%;top:${e._lane * h}%;height:${h}%;`
                     + `background:${EVENT_COLOR[e.type] || EVENT_COLOR.other}`;
-        const tag = editable ? 'button' : 'span';
-        const attrs = editable ? ` type="button" data-event="${e.id}"` : '';
-        return `<${tag} class="wk-ev${e.status === 'done' ? ' is-done' : ''}"${attrs} style="${style}"
-                 title="${esc(label + (time ? ' · ' + time : ''))}">${esc(label)}</${tag}>`;
+        return `<${tag} class="wk-ev${e.status === 'done' ? ' is-done' : ''}"${attrs(e)} style="${style}"
+                 title="${esc(label + ' · ' + hhmm(e.start_time))}">${esc(label)}</${tag}>`;
+      }).join('')
+      + free.map((e, i) => {
+        const label = e.title || t(EVENT_KEY[e.type] || 'ev.other', '');
+        const w = 100 / free.length;
+        const style = `left:${i * w}%;width:${w}%;top:${topH}%;height:${100 - topH}%;`
+                    + `background:${EVENT_COLOR[e.type] || EVENT_COLOR.other}`;
+        return `<${tag} class="wk-ev is-allday${e.status === 'done' ? ' is-done' : ''}"${attrs(e)} style="${style}"
+                 title="${esc(label + ' · ' + t('wk.noTime', 'sin horario'))}">${esc(label)}</${tag}>`;
       }).join('');
 
       const dt = parseYMD(ymd);
@@ -209,6 +225,51 @@
         ${add}
       </div>`;
     }).join('');
+  }
+
+  // El primer hueco libre de un día, mirando lo que ya tiene ocupado (sus
+  // horarios fijos) y lo que ya le planificaron. Es lo que hace que al tocar
+  // el «+» no haya que adivinar: la app ya sabe dónde entra.
+  //
+  // Se busca a partir de las 08:00 porque casi nadie programa a las seis de la
+  // mañana; si no hay nada desde ahí, se vuelve a probar desde el arranque.
+  function firstFreeSlot(slots, events, ymd, weekday, minMinutes) {
+    const need = minMinutes || 60;
+    const busy = [];
+
+    (slots || []).filter(s => s.weekday === weekday).forEach(s => {
+      busy.push([toMin(s.start_time), toMin(s.end_time)]);
+    });
+    (events || []).filter(e => e.date === ymd && e.start_time).forEach(e => {
+      busy.push([toMin(e.start_time), e.end_time ? toMin(e.end_time) : toMin(e.start_time) + 60]);
+    });
+
+    // Se fusiona lo que se pisa, si no un hueco entre dos solapadas sale falso.
+    busy.sort((a, b) => a[0] - b[0]);
+    const merged = [];
+    busy.forEach(([a, b]) => {
+      const last = merged[merged.length - 1];
+      if (last && a <= last[1]) last[1] = Math.max(last[1], b);
+      else merged.push([a, b]);
+    });
+
+    function search(from) {
+      let cur = from;
+      for (const [a, b] of merged) {
+        if (b <= cur) continue;
+        if (a - cur >= need) return [cur, a];
+        cur = Math.max(cur, b);
+      }
+      return (H1 * 60 - cur >= need) ? [cur, H1 * 60] : null;
+    }
+
+    const gap = search(8 * 60) || search(H0 * 60);
+    if (!gap) return null;
+    const start = gap[0];
+    // Se propone lo que se pida, o el hueco entero si es más corto.
+    const end = Math.min(gap[1], start + need);
+    const fmt = (m) => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+    return { start: fmt(start), end: fmt(end) };
   }
 
   function eventTypeOptions(selected) {
@@ -237,6 +298,6 @@
     render, freeHours, dayOptions, legendHtml, scaleHtml, toMin, hhmm,
     H0, H1, SPAN, KIND_COLOR, KIND_KEY, DAY_KEYS,
     EVENT_TYPES, EVENT_COLOR, EVENT_KEY, eventTypeOptions, eventLegendHtml,
-    parseYMD, addDays, mondayOf, weekDates
+    parseYMD, addDays, mondayOf, weekDates, firstFreeSlot
   };
 })();
