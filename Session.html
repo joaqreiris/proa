@@ -230,6 +230,7 @@
 
   const eventId = new URLSearchParams(location.search).get('event');
   let ev = null, blocks = [], catalog = [], pickBlockId = null, cat = '', wsId = null;
+  let topUses = {};   // exercise_id → veces que lo usó este entrenador
 
 
   const METHODS = ['single', 'superset', 'complex', 'contrast', 'circuit', 'emom', 'amrap', 'cluster'];
@@ -315,6 +316,7 @@
           <div class="se-block-actions">
             ${bi > 0 ? `<button class="pr-icon-btn" data-act="up" aria-label="${esc(t('se.moveUp'))}"><i class="ti ti-chevron-up"></i></button>` : ''}
             ${bi < blocks.length - 1 ? `<button class="pr-icon-btn" data-act="down" aria-label="${esc(t('se.moveDown'))}"><i class="ti ti-chevron-down"></i></button>` : ''}
+            <button class="pr-icon-btn" data-act="dup-block" aria-label="${esc(t('se.dupBlock'))}" title="${esc(t('se.dupBlock'))}"><i class="ti ti-copy"></i></button>
             <button class="pr-icon-btn" data-act="del-block" aria-label="${esc(t('se.delBlock'))}"><i class="ti ti-trash"></i></button>
           </div>
         </div>
@@ -378,7 +380,10 @@
               <input class="se-in" data-f="reps"   value="${esc(it.reps || '')}" placeholder="—" ${detailed ? 'disabled' : ''}>
               <input class="se-in" data-f="load"   value="${esc(it.load || '')}" placeholder="—" ${detailed ? 'disabled' : ''}>
               <input class="se-in" data-f="rest_s" value="${esc(it.rest_s == null ? '' : it.rest_s)}" inputmode="numeric" placeholder="—" ${detailed ? 'disabled' : ''}>
-              <button class="pr-icon-btn is-flush se-del" data-act="del-item" aria-label="${esc(t('se.delItem'))}"><i class="ti ti-x"></i></button>
+              <span class="se-del" style="display:flex;gap:2px">
+                <button class="pr-icon-btn is-flush" data-act="dup-item" aria-label="${esc(t('se.dupItem'))}" title="${esc(t('se.dupItem'))}"><i class="ti ti-copy"></i></button>
+                <button class="pr-icon-btn is-flush" data-act="del-item" aria-label="${esc(t('se.delItem'))}"><i class="ti ti-x"></i></button>
+              </span>
             </div>
             ${isOpen ? detailHtml(it) : ''}`;
           }).join('')
@@ -546,6 +551,55 @@
       await load(); return;
     }
 
+    // Duplicar un bloque entero, con sus ejercicios y sus series. «Fuerza A» y
+    // «Fuerza B» casi nunca se escriben dos veces desde cero.
+    if (act === 'dup-block') {
+      const src = blocks.find(b => b.id === id);
+      const { data: nb, error } = await window.sb.from('session_blocks').insert({
+        event_id: eventId,
+        position: Math.max(...blocks.map(b => b.position)) + 1,
+        title: src.title ? src.title + ' (2)' : null,
+        kind: src.kind, method: src.method, rounds: src.rounds, rest_s: src.rest_s,
+        duration_min: src.duration_min, rpe: src.rpe, notes: src.notes
+      }).select('id').single();
+      if (error) { window.prToast(error.message, 'danger'); return; }
+
+      for (const it of src.session_items) {
+        const { data: ni, error: e2 } = await window.sb.from('session_items').insert({
+          block_id: nb.id, position: it.position, exercise_id: it.exercise_id, name: it.name,
+          sets: it.sets, reps: it.reps, load: it.load, rest_s: it.rest_s,
+          tempo: it.tempo, side: it.side, mode: it.mode, notes: it.notes
+        }).select('id').single();
+        if (e2) { window.prToast(e2.message, 'danger'); return; }
+        if (it.session_sets.length) {
+          await window.sb.from('session_sets').insert(it.session_sets.map(st => ({
+            item_id: ni.id, position: st.position, reps: st.reps, load: st.load,
+            rest_s: st.rest_s, tempo: st.tempo, note: st.note
+          })));
+        }
+      }
+      await load(); return;
+    }
+
+    if (act === 'dup-item') {
+      const itemId = btn.closest('[data-item]').dataset.item;
+      const b = blocks.find(x => x.id === id);
+      const it = b.session_items.find(x => x.id === itemId);
+      const { data: ni, error } = await window.sb.from('session_items').insert({
+        block_id: id, position: Math.max(...b.session_items.map(x => x.position)) + 1,
+        exercise_id: it.exercise_id, name: it.name, sets: it.sets, reps: it.reps,
+        load: it.load, rest_s: it.rest_s, tempo: it.tempo, side: it.side, mode: it.mode, notes: it.notes
+      }).select('id').single();
+      if (error) { window.prToast(error.message, 'danger'); return; }
+      if (it.session_sets.length) {
+        await window.sb.from('session_sets').insert(it.session_sets.map(st => ({
+          item_id: ni.id, position: st.position, reps: st.reps, load: st.load,
+          rest_s: st.rest_s, tempo: st.tempo, note: st.note
+        })));
+      }
+      await load(); return;
+    }
+
     if (act === 'del-block') {
       if (!confirm(t('se.confirmDelBlock', '¿Borrar el bloque y todo lo que tiene dentro?'))) return;
       const { error } = await window.sb.from('session_blocks').delete().eq('id', id);
@@ -701,6 +755,7 @@
         <span class="px-dot" style="background:${CAT_COLOR[e.category] || 'var(--pr-ev-commit)'}"></span>
         <span class="px-name">${esc(exName(e))}</span>
         <span class="px-tag">${esc([e.muscle_group, e.equipment].filter(Boolean).join(' · '))}</span>
+        ${topUses[e.id] ? `<span class="pr-pill" title="${esc(t('se.usedTimes'))}">×${topUses[e.id]}</span>` : ''}
         ${e.video_url ? '<i class="ti ti-brand-youtube" style="color:var(--pr-fg-faint)"></i>' : ''}
       </button>`).join('') : `<p class="px-none">${esc(t('se.noHits'))}</p>`;
   }
@@ -803,7 +858,11 @@
       if (!q) return true;
       return [e.name, e.name_es, e.name_pt, e.muscle_group, e.equipment]
         .filter(Boolean).some(v => v.toLowerCase().includes(q));
-    }).slice(0, 80);
+    })
+    // Sin búsqueda, primero lo que más usa: un preparador vuelve una y otra vez
+    // sobre los mismos veinte ejercicios.
+    .sort((a, b) => q ? 0 : (topUses[b.id] || 0) - (topUses[a.id] || 0))
+    .slice(0, 80);
 
     const host = document.getElementById('px-list');
     if (!hit.length) { host.innerHTML = `<p class="px-none">${esc(t('se.noHits', 'Nada con eso. Podés escribirlo suelto abajo.'))}</p>`; return; }
@@ -890,6 +949,11 @@
       .or(`workspace_id.is.null,workspace_id.eq.${wsId}`)
       .order('name');
     catalog = ex || [];
+
+    // Cuántas veces usó cada ejercicio: ordena el selector sin que tenga que
+    // buscar. Si falla, el selector funciona igual — solo pierde el orden.
+    const { data: top } = await window.sb.rpc('my_top_exercises', { p_limit: 60 });
+    topUses = Object.fromEntries((top || []).map(x => [x.exercise_id, Number(x.uses)]));
 
     document.getElementById('main').hidden = false;
     await load();

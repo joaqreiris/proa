@@ -87,6 +87,7 @@
           <h1 data-i18n="wk.title">La semana</h1>
           <p data-i18n="wk.sub">En gris, lo que ya tiene ocupado. Lo que queda claro es donde podés poner trabajo.</p>
         </div>
+        <button class="pr-btn is-secondary" id="btn-copy-day"><i class="ti ti-calendar-plus"></i><span data-i18n="wk.copyDay">Copiar día</span></button>
         <button class="pr-btn is-secondary" id="btn-copy"><i class="ti ti-copy"></i><span data-i18n="wk.copy">Copiar semana</span></button>
         <button class="pr-btn is-primary" id="btn-new"><i class="ti ti-plus"></i><span data-i18n="wk.new">Nuevo bloque</span></button>
       </div>
@@ -179,6 +180,8 @@
       </div>
       <div class="pr-modal-foot">
         <button class="pr-btn is-danger is-sm" type="button" id="e-del" hidden><i class="ti ti-trash"></i></button>
+        <button class="pr-btn is-ghost is-sm" type="button" id="e-dup" hidden title="" data-i18n-attr="title:wk.duplicate"><i class="ti ti-copy"></i></button>
+        <button class="pr-btn is-ghost is-sm" type="button" id="e-share" hidden title="" data-i18n-attr="title:wk.toAthletes"><i class="ti ti-users-plus"></i></button>
         <a class="pr-btn is-secondary" id="e-open" href="#" hidden><i class="ti ti-list-details"></i><span data-i18n="wk.openSession">Abrir sesión</span></a>
         <span class="pr-grow"></span>
         <button class="pr-btn is-ghost" type="button" data-close data-i18n="common.cancel">Cancelar</button>
@@ -209,6 +212,66 @@
       <span class="pr-hint pr-grow" data-i18n="rc.autoSave">Se guarda solo, al salir de cada campo.</span>
       <button class="pr-btn is-secondary" type="button" data-close data-i18n="common.close">Cerrar</button>
     </div>
+  </div>
+</div>
+
+<!-- Copiar un día a otro -->
+<div class="pr-modal-backdrop" id="m-cday" hidden>
+  <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-cday-title">
+    <div class="pr-modal-head">
+      <h2 id="m-cday-title" data-i18n="wk.copyDay">Copiar día</h2>
+      <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
+    </div>
+    <form id="f-cday">
+      <div class="pr-modal-body">
+        <p class="pr-hint" style="margin:0" data-i18n="wk.copyDayHint">Martes y jueves suelen ser el mismo trabajo. Copialo en vez de rehacerlo.</p>
+        <div class="pr-modal-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="cd-from" data-i18n="wk.copyFromDay">Copiar el día</label>
+            <select class="pr-select" id="cd-from"></select>
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="cd-to" data-i18n="wk.copyToDay">Al día</label>
+            <input class="pr-input" id="cd-to" type="date" required>
+          </div>
+        </div>
+        <label class="pr-hint" style="display:flex;gap:9px;align-items:flex-start;cursor:pointer">
+          <input type="checkbox" id="cd-replace" style="margin-top:2px">
+          <span data-i18n="wk.copyDayReplace">Borrar lo que ya haya ese día. Sin marcar, se suma a lo que está.</span>
+        </label>
+        <p id="cday-msg" role="alert" hidden style="margin:0;color:var(--pr-danger);font:600 13px/1.45 var(--pr-font-sans)"></p>
+      </div>
+      <div class="pr-modal-foot">
+        <button class="pr-btn is-ghost" type="button" data-close data-i18n="common.cancel">Cancelar</button>
+        <button class="pr-btn is-primary" type="submit"><i class="ti ti-copy"></i><span data-i18n="wk.copyDo">Copiar</span></button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Aplicar a otros atletas -->
+<div class="pr-modal-backdrop" id="m-share" hidden>
+  <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-share-title">
+    <div class="pr-modal-head">
+      <h2 id="m-share-title" data-i18n="wk.toAthletes">Aplicar a otros atletas</h2>
+      <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
+    </div>
+    <form id="f-share">
+      <div class="pr-modal-body">
+        <p class="pr-hint" id="share-lead" style="margin:0"></p>
+        <div id="share-list" style="display:flex;flex-direction:column;gap:2px"></div>
+        <div class="pr-field">
+          <label class="pr-label" for="sh-date" data-i18n="wk.date">Día</label>
+          <input class="pr-input" id="sh-date" type="date">
+          <span class="pr-hint" data-i18n="wk.toAthletesDate">Si lo dejas vacío, va al mismo día.</span>
+        </div>
+        <p id="share-msg" role="alert" hidden style="margin:0;color:var(--pr-danger);font:600 13px/1.45 var(--pr-font-sans)"></p>
+      </div>
+      <div class="pr-modal-foot">
+        <button class="pr-btn is-ghost" type="button" data-close data-i18n="common.cancel">Cancelar</button>
+        <button class="pr-btn is-primary" type="submit"><i class="ti ti-users-plus"></i><span data-i18n="wk.apply">Aplicar</span></button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -318,6 +381,8 @@
     document.getElementById('e-location').value = (ev && ev.location) || '';
     document.getElementById('e-notes').value    = (ev && ev.notes) || '';
     document.getElementById('e-del').hidden     = !ev;
+    document.getElementById('e-dup').hidden     = !ev;
+    document.getElementById('e-share').hidden   = !ev || athletes.length < 2;
     // Cada tipo abre su propio editor. Un partido o un viaje no abren nada:
     // no llevan contenido que planificar.
     const openBtn = document.getElementById('e-open');
@@ -498,6 +563,84 @@
     await loadRecovery();
   });
 
+  // ── Copiar un día a otro ─────────────────────────────────────────────────
+  document.getElementById('btn-copy-day').addEventListener('click', () => {
+    const dates = W().weekDates(monday);
+    const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
+    // Solo se ofrecen los días que tienen algo: copiar un día vacío no hace nada.
+    const withWork = dates.filter(d => events.some(e => e.date === d));
+    if (!withWork.length) { window.prToast(t('wk.copyDayEmpty', 'Esta semana no tiene ningún día cargado.'), 'danger'); return; }
+
+    document.getElementById('cd-from').innerHTML = withWork.map(d => {
+      const nEv = events.filter(e => e.date === d).length;
+      const label = W().parseYMD(d).toLocaleDateString(lang, { weekday: 'long', day: 'numeric' });
+      return `<option value="${d}">${esc(label)} · ${nEv}</option>`;
+    }).join('');
+    document.getElementById('cd-to').value = W().addDays(withWork[0], 2);
+    document.getElementById('cday-msg').hidden = true;
+    document.getElementById('m-cday').hidden = false;
+  });
+
+  document.getElementById('f-cday').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('cday-msg');
+    msg.hidden = true;
+    const from = document.getElementById('cd-from').value;
+    const to   = document.getElementById('cd-to').value;
+    if (!to) { msg.textContent = t('wk.copyDayPick', 'Elige el día de destino.'); msg.hidden = false; return; }
+    if (from === to) { msg.textContent = t('wk.copyDaySame', 'Es el mismo día.'); msg.hidden = false; return; }
+
+    const { data, error } = await window.sb.rpc('copy_day', {
+      p_athlete_id: athleteId, p_from: from, p_to: to,
+      p_replace: document.getElementById('cd-replace').checked
+    });
+    if (error) { msg.textContent = error.message; msg.hidden = false; return; }
+
+    document.getElementById('m-cday').hidden = true;
+    window.prToast(t('wk.copiedDay', `${data} bloques copiados.`, { n: data }), 'success');
+    monday = W().mondayOf(to);
+    await loadWeek();
+  });
+
+  // ── Aplicar una sesión a otros atletas ───────────────────────────────────
+  // Un preparador con ocho jugadores le da a varios el mismo trabajo de fuerza.
+  // Cargarlo ocho veces es justo lo que esta app existe para sacar.
+  let shareEvent = null;
+
+  function openShare(ev2) {
+    shareEvent = ev2;
+    const others = athletes.filter(a => a.id !== athleteId);
+    if (!others.length) { window.prToast(t('wk.noOthers', 'No tienes otros atletas a quienes aplicárselo.'), 'danger'); return; }
+    document.getElementById('share-lead').textContent =
+      t('wk.toAthletesLead', 'Se copia el bloque con todo su contenido.');
+    document.getElementById('share-list').innerHTML = others.map(a => `
+      <label class="px-row" style="cursor:pointer">
+        <input type="checkbox" value="${a.id}" style="margin-right:4px">
+        <span class="pr-avatar">${esc(window.prInitials(`${a.first_name} ${a.last_name || ''}`.trim()))}</span>
+        <span class="px-name">${esc(`${a.first_name} ${a.last_name || ''}`.trim())}</span>
+      </label>`).join('');
+    document.getElementById('sh-date').value = '';
+    document.getElementById('share-msg').hidden = true;
+    document.getElementById('m-share').hidden = false;
+  }
+
+  document.getElementById('f-share').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('share-msg');
+    msg.hidden = true;
+    const ids = [...document.querySelectorAll('#share-list input:checked')].map(x => x.value);
+    if (!ids.length) { msg.textContent = t('wk.pickAthletes', 'Elige al menos un atleta.'); msg.hidden = false; return; }
+
+    const { data, error } = await window.sb.rpc('copy_event_to_athletes', {
+      p_event: shareEvent.id, p_athletes: ids,
+      p_date: document.getElementById('sh-date').value || null
+    });
+    if (error) { msg.textContent = error.message; msg.hidden = false; return; }
+
+    document.getElementById('m-share').hidden = true;
+    window.prToast(t('wk.applied', `Aplicado a ${data} atletas.`, { n: data }), 'success');
+  });
+
   // ── Copiar la semana ─────────────────────────────────────────────────────
   document.getElementById('btn-copy').addEventListener('click', () => {
     if (!events.length) { window.prToast(t('wk.copyEmpty', 'Esta semana no tiene nada que copiar.'), 'danger'); return; }
@@ -550,6 +693,25 @@
   });
 
   document.getElementById('btn-new').addEventListener('click', () => openEvent(null, window.prToday()));
+
+  // Duplicar el bloque en el mismo día: la base de «lo mismo pero cambiando
+  // dos cosas», que es como se arma media semana.
+  document.getElementById('e-dup').addEventListener('click', async () => {
+    if (!editingId) return;
+    const { error } = await window.sb.rpc('copy_event_to_athletes', {
+      p_event: editingId, p_athletes: [athleteId], p_date: null
+    });
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    document.getElementById('m-ev').hidden = true;
+    window.prToast(t('wk.duplicated', 'Bloque duplicado.'), 'success');
+    await loadWeek();
+  });
+
+  document.getElementById('e-share').addEventListener('click', () => {
+    const id = editingId;
+    document.getElementById('m-ev').hidden = true;
+    openShare(events.find(x => x.id === id));
+  });
 
   document.getElementById('e-open').addEventListener('click', (e) => {
     if (e.currentTarget.dataset.dest !== 'recovery') return;
