@@ -190,6 +190,20 @@
   --pr-info:    #0038CC;  --pr-info-bg:    #E4EAFF;  --pr-info-bd:    #B6C6FF;
   --pr-neutral: #666B74;  --pr-neutral-bg: #EDEDE9;  --pr-neutral-bd: #DEDED9;
 
+  /* Tipos de bloque de una sesión. Igual que los tipos de trabajo: fijos para
+     todos los entrenadores, porque su valor está en que se aprenden. */
+  --pr-bt-warmup: #0E9F6E;
+  --pr-bt-myo:    #8B5CF6;
+  --pr-bt-mob:    #0891B2;
+  --pr-bt-act:    #16A34A;
+  --pr-bt-str:    #DC2626;
+  --pr-bt-plyo:   #C2700A;
+  --pr-bt-skills: #2563EB;
+  --pr-bt-field:  #15803D;
+  --pr-bt-cond:   #E4572E;
+  --pr-bt-cool:   #526A80;
+  --pr-bt-assess: #0284C7;
+
   /* ── Tipos de trabajo de la semana ── */
   --pr-ev-match:    #E5004C;   /* partido */
   --pr-ev-team:     #0047FF;   /* entrenamiento con su club */
@@ -264,6 +278,18 @@
   --pr-danger:  #FF4D77;  --pr-danger-bg:  rgba(255,77,119,0.12);  --pr-danger-bd:  rgba(255,77,119,0.32);
   --pr-info:    #5C8CFF;  --pr-info-bg:    rgba(92,140,255,0.12);  --pr-info-bd:    rgba(92,140,255,0.32);
   --pr-neutral: #949AA6;  --pr-neutral-bg: rgba(255,255,255,0.06); --pr-neutral-bd: rgba(255,255,255,0.12);
+
+  --pr-bt-warmup: #34D399;
+  --pr-bt-myo:    #A78BFA;
+  --pr-bt-mob:    #22D3EE;
+  --pr-bt-act:    #4ADE80;
+  --pr-bt-str:    #F87171;
+  --pr-bt-plyo:   #FBBF24;
+  --pr-bt-skills: #60A5FA;
+  --pr-bt-field:  #34D399;
+  --pr-bt-cond:   #FB7B54;
+  --pr-bt-cool:   #94A3B8;
+  --pr-bt-assess: #38BDF8;
 
   --pr-ev-match:    #FF2D6F;
   --pr-ev-team:     #4D7CFF;
@@ -1096,6 +1122,75 @@ button.wk-ev:hover { filter: brightness(1.15); }
   overflow: hidden;
 }
 .pr-progress i { display: block; height: 100%; background: var(--pr-accent); transition: width var(--pr-dur-2) var(--pr-ease); }
+
+/* ============================================================
+   Asistente por pasos
+   ============================================================
+   Elegir de una grilla de tarjetas con icono, color y valores
+   de arranque es otra cosa que completar un formulario vacío.
+   ============================================================ */
+.pr-steps { display: flex; align-items: center; gap: 0; padding: 14px 20px; border-bottom: var(--pr-bw) solid var(--pr-border); }
+.pr-step { display: flex; align-items: center; gap: 9px; color: var(--pr-fg-faint); }
+.pr-step b {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--pr-bg-sunk); color: var(--pr-fg-faint);
+  display: grid; place-items: center;
+  font: 700 11px/1 var(--pr-font-cond);
+  transition: background var(--pr-dur-2) var(--pr-ease), color var(--pr-dur-2) var(--pr-ease);
+}
+.pr-step span { font: 600 13px/1 var(--pr-font-sans); }
+.pr-step.is-on b { background: var(--pr-fg-strong); color: var(--pr-bg); }
+.pr-step.is-on span { color: var(--pr-fg-strong); }
+.pr-step.is-done b { background: var(--pr-accent); color: var(--pr-fg-on-accent); }
+.pr-step-line { flex: 1; height: 1px; background: var(--pr-border); margin: 0 12px; }
+
+/* Grilla de tipos */
+.pr-typegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.pr-type {
+  position: relative; text-align: left; cursor: pointer;
+  border: var(--pr-bw) solid var(--pr-border);
+  background: var(--pr-surface);
+  border-radius: var(--pr-r-5);
+  padding: 14px 14px 12px 17px;
+  overflow: hidden;
+  transition: border-color var(--pr-dur-1) var(--pr-ease),
+              box-shadow var(--pr-dur-2) var(--pr-ease),
+              transform var(--pr-dur-1) var(--pr-ease);
+}
+.pr-type::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  background: var(--bt, var(--pr-accent));
+}
+.pr-type:hover { border-color: var(--pr-border-strong); box-shadow: var(--pr-shadow-2); transform: translateY(-2px); }
+.pr-type.is-on { border-color: var(--bt); box-shadow: 0 0 0 2px var(--bt) inset, var(--pr-shadow-2); }
+.pr-type-top { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
+.pr-type-top .ti { font-size: 19px; color: var(--bt); }
+.pr-type-name { font: 700 14.5px/1.2 var(--pr-font-sans); color: var(--pr-fg-strong); }
+.pr-type-def { font: 600 11.5px/1 var(--pr-font-cond); letter-spacing: .06em; color: var(--pr-fg-faint); font-variant-numeric: tabular-nums; }
+
+/* Pie con los totales en vivo */
+.pr-wizfoot {
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  padding: 14px 20px 18px;
+  border-top: var(--pr-bw) solid var(--pr-border);
+}
+.pr-tot { display: flex; align-items: baseline; gap: 5px; }
+.pr-tot b { font: 700 21px/1 var(--pr-font-cond); font-variant-numeric: tabular-nums; color: var(--pr-fg-strong); }
+.pr-tot span { font: 700 10px/1 var(--pr-font-cond); letter-spacing: .16em; text-transform: uppercase; color: var(--pr-fg-faint); }
+.pr-tot.is-accent b { color: var(--pr-accent-ink); }
+
+/* Selector de RPE: diez puntos, se toca el que va */
+.pr-rpe { display: flex; gap: 4px; }
+.pr-rpe button {
+  width: 28px; height: 28px; border-radius: var(--pr-r-2);
+  border: var(--pr-bw) solid var(--pr-border);
+  background: var(--pr-surface); cursor: pointer;
+  font: 700 12px/1 var(--pr-font-cond); color: var(--pr-fg-muted);
+  font-variant-numeric: tabular-nums;
+  transition: all var(--pr-dur-1) var(--pr-ease);
+}
+.pr-rpe button:hover { border-color: var(--pr-border-strong); transform: translateY(-1px); }
+.pr-rpe button.is-on { background: var(--pr-accent); border-color: var(--pr-accent); color: var(--pr-fg-on-accent); }
 
 /* ============================================================
    Movimiento

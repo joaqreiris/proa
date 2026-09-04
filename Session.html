@@ -11,6 +11,7 @@
 <script src="assets/supabase-init.js"></script>
 <script src="assets/i18n.js" defer></script>
 <script src="assets/week-grid.js" defer></script>
+<script src="assets/block-types.js" defer></script>
 <style>
   .se { max-width: 900px; }
 
@@ -18,6 +19,7 @@
   .se-when { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
   .se-when h1 { font: var(--pr-h1); text-transform: uppercase; letter-spacing: var(--pr-tr-h); color: var(--pr-fg-strong); margin: 0; }
   .se-meta { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; font: var(--pr-body-sm); color: var(--pr-fg-muted); }
+  .se-totals { display: flex; gap: 18px; flex-wrap: wrap; }
 
   /* Un bloque = una tarjeta. El color de la franja es el del tipo de sesión. */
   .se-block { margin-bottom: 14px; }
@@ -152,6 +154,7 @@
           <h1 id="se-title">&nbsp;</h1>
           <div class="se-meta" id="se-meta"></div>
         </div>
+        <div class="se-totals" id="totals"></div>
         <span class="in-saved" id="saved"></span>
       </div>
 
@@ -162,6 +165,34 @@
       </div>
 
     </main>
+  </div>
+</div>
+
+<!-- Nuevo bloque: tipo → ejercicios → parámetros -->
+<div class="pr-modal-backdrop" id="m-wiz" hidden>
+  <div class="pr-modal is-wide" role="dialog" aria-modal="true" aria-labelledby="m-wiz-title">
+    <div class="pr-modal-head">
+      <div>
+        <h2 id="m-wiz-title" data-i18n="se.newBlock">Nuevo bloque</h2>
+        <span class="pr-mono" id="wiz-sub"></span>
+      </div>
+      <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
+    </div>
+
+    <div class="pr-steps" id="wiz-steps"></div>
+
+    <div class="pr-modal-body" id="wiz-body"></div>
+
+    <div class="pr-wizfoot">
+      <div class="pr-tot"><b id="w-min">0</b><span data-i18n="se.min">min</span></div>
+      <div class="pr-tot"><b id="w-ex">0</b><span data-i18n="se.ex">ej</span></div>
+      <div class="pr-tot is-accent"><b id="w-au">0</b><span data-i18n="se.au">UA</span></div>
+      <div class="pr-tot"><b id="w-rpe">—</b><span data-i18n="se.rpeTarget">RPE objetivo</span></div>
+      <span class="pr-grow"></span>
+      <button class="pr-btn is-ghost" type="button" id="wiz-back" hidden><i class="ti ti-arrow-left"></i><span data-i18n="common.back">Volver</span></button>
+      <button class="pr-btn is-ghost" type="button" data-close data-i18n="common.cancel">Cancelar</button>
+      <button class="pr-btn is-primary" type="button" id="wiz-next"><span data-i18n="common.next">Siguiente</span><i class="ti ti-arrow-right"></i></button>
+    </div>
   </div>
 </div>
 
@@ -200,7 +231,7 @@
   const eventId = new URLSearchParams(location.search).get('event');
   let ev = null, blocks = [], catalog = [], pickBlockId = null, cat = '', wsId = null;
 
-  const KINDS   = ['warmup', 'main', 'accessory', 'cooldown'];
+
   const METHODS = ['single', 'superset', 'complex', 'contrast', 'circuit', 'emom', 'amrap', 'cluster'];
   const SIDES   = ['both', 'left', 'right', 'alt'];
   const MODES   = ['reps', 'time', 'distance'];
@@ -239,9 +270,22 @@
     paint();
   }
 
+  function paintTotals() {
+    const BT = window.prBlockTypes;
+    const min = blocks.reduce((a, b) => a + (b.duration_min || 0), 0);
+    const ex  = blocks.reduce((a, b) => a + b.session_items.length, 0);
+    const au  = blocks.reduce((a, b) => a + (b.au || 0), 0);
+    // El RPE de la sesión se pondera por duración: veinte minutos a 9 pesan más
+    // que cinco a 3, y un promedio simple lo diría al revés.
+    const rpe = min ? Math.round(blocks.reduce((a, b) => a + (b.rpe || 0) * (b.duration_min || 0), 0) / min * 10) / 10 : 0;
+    document.getElementById('totals').innerHTML = [
+      ['', min, 'se.min'], ['', ex, 'se.ex'], ['is-accent', au, 'se.au'], ['', rpe || '—', 'se.rpeShort']
+    ].map(([c, v, k]) => `<div class="pr-tot ${c}"><b>${v}</b><span data-i18n="${k}">${esc(t(k))}</span></div>`).join('');
+  }
+
   function paint() {
     const host = document.getElementById('blocks');
-    const color = W().EVENT_COLOR[ev.type] || W().EVENT_COLOR.other;
+    paintTotals();
 
     if (!blocks.length) {
       host.innerHTML = `<section class="pr-empty">
@@ -252,18 +296,21 @@
       return;
     }
 
+    const BT = window.prBlockTypes;
+
     host.innerHTML = blocks.map((b, bi) => {
       const L = LETTERS[bi] || '·';
       const combo = b.method !== 'single';     // ¿los ejercicios van juntos?
 
       return `
-      <section class="pr-card se-block has-strip pr-rise" style="--pr-strip:${color};--i:${bi}" data-block="${b.id}">
+      <section class="pr-card se-block has-strip pr-rise" style="--pr-strip:${BT.color(b.kind)};--i:${bi}" data-block="${b.id}">
         <div class="se-block-head">
           <span class="se-tag">${L}</span>
+          <i class="ti ${BT.get(b.kind).icon}" style="color:${BT.color(b.kind)};font-size:19px"></i>
           <input class="se-block-title" value="${esc(b.title || '')}"
-                 data-i18n-ph="se.blockName" placeholder="${esc(t('se.blockName'))}" data-field="title">
+                 placeholder="${esc(BT.label(b.kind))}" data-field="title">
           <select class="pr-select" style="width:auto;height:34px;font-size:13px" data-field="kind">
-            ${KINDS.map(k => `<option value="${k}"${k === b.kind ? ' selected' : ''}>${esc(t('se.k.' + k))}</option>`).join('')}
+            ${BT.LIST.map(x => `<option value="${x.id}"${x.id === b.kind ? ' selected' : ''}>${esc(BT.label(x.id))}</option>`).join('')}
           </select>
           <div class="se-block-actions">
             ${bi > 0 ? `<button class="pr-icon-btn" data-act="up" aria-label="${esc(t('se.moveUp'))}"><i class="ti ti-chevron-up"></i></button>` : ''}
@@ -273,6 +320,15 @@
         </div>
 
         <div class="se-method">
+          <span class="se-rounds">
+            <input class="pr-input" data-field="duration_min" value="${esc(b.duration_min == null ? '' : b.duration_min)}" inputmode="numeric" placeholder="${BT.get(b.kind).min}">
+            <span data-i18n="se.min">min</span>
+          </span>
+          <span class="se-rounds">
+            <span data-i18n="se.rpeShort">RPE</span>
+            <input class="pr-input" data-field="rpe" value="${esc(b.rpe == null ? '' : b.rpe)}" inputmode="numeric" placeholder="${BT.get(b.kind).rpe}">
+          </span>
+          ${b.au ? `<span class="pr-pill"><b>${b.au}</b>&nbsp;${esc(t('se.au'))}</span>` : ''}
           <select class="pr-select" data-field="method">
             ${METHODS.map(m => `<option value="${m}"${m === b.method ? ' selected' : ''}>${esc(t('se.m.' + m))}</option>`).join('')}
           </select>
@@ -510,13 +566,213 @@
     }
   });
 
-  document.getElementById('add-block').addEventListener('click', async () => {
-    const { error } = await window.sb.from('session_blocks').insert({
+  document.getElementById('add-block').addEventListener('click', openWizard);
+
+  // ── Asistente de bloque nuevo ────────────────────────────────────────────
+  // Tres pasos: qué tipo de bloque, qué ejercicios y con qué parámetros.
+  // El tipo trae valores de arranque, así que el paso 3 casi nunca se toca —
+  // pero está, porque «casi nunca» no es «nunca».
+  const wiz = { step: 1, type: null, picked: [], min: 0, rpe: null, method: 'single', rounds: null, rest: null, title: '' };
+
+  function openWizard() {
+    Object.assign(wiz, { step: 1, type: null, picked: [], min: 0, rpe: null, method: 'single', rounds: null, rest: null, title: '' });
+    const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
+    document.getElementById('wiz-sub').textContent =
+      W().parseYMD(ev.date).toLocaleDateString(lang, { weekday: 'short', day: 'numeric' }).toUpperCase()
+      + ' · ' + t(W().EVENT_KEY[ev.type] || 'ev.other');
+    paintWizard();
+    document.getElementById('m-wiz').hidden = false;
+  }
+
+  function paintWizard() {
+    const steps = [['se.step.type', 1], ['se.step.exercises', 2], ['se.step.params', 3]];
+    document.getElementById('wiz-steps').innerHTML = steps.map(([k, n], i) => {
+      const cls = wiz.step === n ? 'is-on' : (wiz.step > n ? 'is-done' : '');
+      return `<span class="pr-step ${cls}"><b>${wiz.step > n ? '✓' : n}</b><span>${esc(t(k))}</span></span>`
+        + (i < 2 ? '<span class="pr-step-line"></span>' : '');
+    }).join('');
+
+    const body = document.getElementById('wiz-body');
+    if (wiz.step === 1) body.innerHTML = wizTypes();
+    if (wiz.step === 2) body.innerHTML = wizExercises();
+    if (wiz.step === 3) body.innerHTML = wizParams();
+
+    document.getElementById('wiz-back').hidden = wiz.step === 1;
+    document.getElementById('wiz-next').querySelector('span').textContent =
+      wiz.step === 3 ? t('se.createBlock', 'Crear bloque') : t('common.next', 'Siguiente');
+    document.getElementById('wiz-next').classList.toggle('is-busy', wiz.step === 1 && !wiz.type);
+
+    wizTotals();
+    if (window.PR_I18N) window.PR_I18N.applyTo(document.getElementById('m-wiz'));
+  }
+
+  function wizTotals() {
+    const BT = window.prBlockTypes;
+    document.getElementById('w-min').textContent = wiz.min || 0;
+    document.getElementById('w-ex').textContent  = wiz.picked.length;
+    document.getElementById('w-au').textContent  = BT.au(wiz.min, wiz.rpe);
+    document.getElementById('w-rpe').textContent = wiz.rpe || '—';
+  }
+
+  function wizTypes() {
+    return `<div class="pr-typegrid">` + window.prBlockTypes.LIST.map(bt => `
+      <button type="button" class="pr-type${wiz.type === bt.id ? ' is-on' : ''}"
+              style="--bt:${window.prBlockTypes.color(bt.id)}" data-type="${bt.id}">
+        <span class="pr-type-top"><i class="ti ${bt.icon}"></i>
+          <span class="pr-type-name">${esc(window.prBlockTypes.label(bt.id))}</span></span>
+        <span class="pr-type-def">${bt.ex} ej · ${bt.min} min · RPE ${bt.rpe}</span>
+      </button>`).join('') + `</div>`;
+  }
+
+  function wizExercises() {
+    const bt = window.prBlockTypes.get(wiz.type);
+    return `
+      <p class="pr-hint" style="margin:0 0 12px">${esc(t('se.pickHint', 'Elegí los ejercicios. Podés sumar más después.'))}
+        ${wiz.picked.length ? '' : `<b>${esc(t('se.suggested', 'Sugerido: ' + bt.ex, { n: bt.ex }))}</b>`}</p>
+      <div class="pr-input-affix" style="margin-bottom:10px">
+        <i class="ti ti-search"></i>
+        <input id="wz-q" data-i18n-ph="se.searchPh" placeholder="${esc(t('se.searchPh'))}" autocomplete="off">
+      </div>
+      <div id="wz-picked" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">${
+        wiz.picked.map((x, i) => `<span class="pr-pill is-accent">${i + 1}. ${esc(x.name)}
+          <button class="se-vid" data-unpick="${i}" aria-label="${esc(t('se.delItem'))}"><i class="ti ti-x"></i></button></span>`).join('')
+      }</div>
+      <div class="px-list" id="wz-list"></div>`;
+  }
+
+  function wizParams() {
+    return `
+      <div class="in-grid" style="margin-bottom:16px">
+        <div class="pr-field">
+          <label class="pr-label" data-i18n="se.blockName">Nombre del bloque</label>
+          <input class="pr-input" id="wz-title" value="${esc(wiz.title)}" placeholder="${esc(window.prBlockTypes.label(wiz.type))}">
+        </div>
+        <div class="pr-field">
+          <label class="pr-label" data-i18n="se.duration">Duración (min)</label>
+          <input class="pr-input" id="wz-min" type="number" min="0" max="300" value="${wiz.min}">
+        </div>
+      </div>
+      <div class="pr-field" style="margin-bottom:16px">
+        <label class="pr-label" data-i18n="se.rpeTarget">RPE objetivo</label>
+        <div class="pr-rpe" id="wz-rpe">${
+          Array.from({ length: 10 }, (_, i) => i + 1).map(n =>
+            `<button type="button" class="${wiz.rpe === n ? 'is-on' : ''}" data-rpe="${n}">${n}</button>`).join('')
+        }</div>
+        <span class="pr-hint" data-i18n="se.auHint">La carga en unidades arbitrarias son los minutos por el RPE. Es lo que deja comparar una sesión de fuerza con una de campo.</span>
+      </div>
+      <div class="in-grid is-3">
+        <div class="pr-field">
+          <label class="pr-label" data-i18n="se.method">Método</label>
+          <select class="pr-select" id="wz-method">
+            ${METHODS.map(m => `<option value="${m}"${m === wiz.method ? ' selected' : ''}>${esc(t('se.m.' + m))}</option>`).join('')}
+          </select>
+        </div>
+        <div class="pr-field">
+          <label class="pr-label" data-i18n="se.rounds">rondas</label>
+          <input class="pr-input" id="wz-rounds" type="number" min="1" max="20" value="${wiz.rounds || ''}" ${wiz.method === 'single' ? 'disabled' : ''}>
+        </div>
+        <div class="pr-field">
+          <label class="pr-label" data-i18n="se.restBetween">s entre rondas</label>
+          <input class="pr-input" id="wz-rest" type="number" min="0" max="900" value="${wiz.rest || ''}" ${wiz.method === 'single' ? 'disabled' : ''}>
+        </div>
+      </div>`;
+  }
+
+  // Buscar dentro del paso 2
+  function wizList() {
+    const host = document.getElementById('wz-list');
+    if (!host) return;
+    const q = (document.getElementById('wz-q').value || '').trim().toLowerCase();
+    const bt = window.prBlockTypes.get(wiz.type);
+    // Sin búsqueda se muestran primero los de la categoría que pega con el tipo
+    // de bloque: elegir «fuerza» y ver ejercicios de fuerza ahorra el filtro.
+    const near = { warmup: 'mobility', myo: 'cooldown', mob: 'mobility', act: 'activation',
+                   str: 'strength', plyo: 'power', skills: 'speed', field: 'speed',
+                   cond: 'conditioning', cool: 'cooldown', assess: 'balance' }[wiz.type];
+    let hit = catalog.filter(e => !q
+      ? e.category === near
+      : [e.name, e.name_es, e.name_pt, e.muscle_group, e.equipment].filter(Boolean)
+          .some(v => v.toLowerCase().includes(q)));
+    if (!q && !hit.length) hit = catalog;
+    hit = hit.slice(0, 60);
+
+    host.innerHTML = hit.length ? hit.map(e => `
+      <button type="button" class="px-row" data-pick="${e.id}">
+        <span class="px-dot" style="background:${CAT_COLOR[e.category] || 'var(--pr-ev-commit)'}"></span>
+        <span class="px-name">${esc(exName(e))}</span>
+        <span class="px-tag">${esc([e.muscle_group, e.equipment].filter(Boolean).join(' · '))}</span>
+        ${e.video_url ? '<i class="ti ti-brand-youtube" style="color:var(--pr-fg-faint)"></i>' : ''}
+      </button>`).join('') : `<p class="px-none">${esc(t('se.noHits'))}</p>`;
+  }
+
+  document.getElementById('m-wiz').addEventListener('click', async (e) => {
+    const ty = e.target.closest('[data-type]');
+    if (ty) {
+      const bt = window.prBlockTypes.get(ty.dataset.type);
+      wiz.type = bt.id; wiz.min = bt.min; wiz.rpe = bt.rpe;
+      paintWizard(); return;
+    }
+    const pick = e.target.closest('[data-pick]');
+    if (pick) {
+      const ex = catalog.find(x => x.id === pick.dataset.pick);
+      wiz.picked.push({ exercise_id: ex.id, name: exName(ex) });
+      paintWizard(); wizList(); return;
+    }
+    const un = e.target.closest('[data-unpick]');
+    if (un) { wiz.picked.splice(Number(un.dataset.unpick), 1); paintWizard(); wizList(); return; }
+
+    const rp = e.target.closest('[data-rpe]');
+    if (rp) { wiz.rpe = Number(rp.dataset.rpe); paintWizard(); return; }
+  });
+
+  document.getElementById('m-wiz').addEventListener('input', (e) => {
+    if (e.target.id === 'wz-q') { wizList(); return; }
+    if (e.target.id === 'wz-min') { wiz.min = Number(e.target.value) || 0; wizTotals(); }
+    if (e.target.id === 'wz-title') wiz.title = e.target.value;
+    if (e.target.id === 'wz-rounds') wiz.rounds = Number(e.target.value) || null;
+    if (e.target.id === 'wz-rest') wiz.rest = Number(e.target.value) || null;
+  });
+
+  document.getElementById('m-wiz').addEventListener('change', (e) => {
+    if (e.target.id === 'wz-method') { wiz.method = e.target.value; paintWizard(); }
+  });
+
+  document.getElementById('wiz-back').addEventListener('click', () => {
+    wiz.step = Math.max(1, wiz.step - 1);
+    paintWizard();
+    if (wiz.step === 2) wizList();
+  });
+
+  document.getElementById('wiz-next').addEventListener('click', async () => {
+    if (wiz.step === 1) {
+      if (!wiz.type) return;
+      wiz.step = 2; paintWizard(); wizList();
+      document.getElementById('wz-q').focus();
+      return;
+    }
+    if (wiz.step === 2) { wiz.step = 3; paintWizard(); return; }
+
+    // Paso 3: se crea el bloque con sus ejercicios de una sola vez.
+    const { data: blk, error } = await window.sb.from('session_blocks').insert({
       event_id: eventId,
       position: blocks.length ? Math.max(...blocks.map(b => b.position)) + 1 : 0,
-      kind: blocks.length ? 'main' : 'warmup'
-    });
+      kind: wiz.type,
+      title: wiz.title.trim() || null,
+      method: wiz.method,
+      rounds: wiz.method === 'single' ? null : wiz.rounds,
+      rest_s: wiz.method === 'single' ? null : wiz.rest,
+      duration_min: wiz.min || null,
+      rpe: wiz.rpe || null
+    }).select('id').single();
     if (error) { window.prToast(error.message, 'danger'); return; }
+
+    if (wiz.picked.length) {
+      const rows = wiz.picked.map((x, i) => ({ block_id: blk.id, position: i, exercise_id: x.exercise_id, name: x.name }));
+      const { error: e2 } = await window.sb.from('session_items').insert(rows);
+      if (e2) { window.prToast(e2.message, 'danger'); }
+    }
+
+    document.getElementById('m-wiz').hidden = true;
     await load();
   });
 
