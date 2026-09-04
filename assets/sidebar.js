@@ -20,7 +20,7 @@
     { key: 'home',      href: 'Home.html',      icon: 'ti-home',          label: 'nav.home' },
     { key: 'athletes',  href: 'Athletes.html',  icon: 'ti-users',         label: 'nav.athletes' },
     { key: 'week',      href: 'Week.html',      icon: 'ti-calendar-week', label: 'nav.week' },
-    { key: 'exercises', href: 'Exercises.html', icon: 'ti-barbell',       label: 'nav.exercises', soon: true }
+    { key: 'exercises', href: 'Exercises.html', icon: 'ti-barbell',       label: 'nav.exercises' }
   ];
 
   const t = (k, fb) => (window.PR_I18N ? window.PR_I18N.t(k) : null) || fb || k;

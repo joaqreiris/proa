@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="ex.pageTitle">Ejercicios — Proa</title>
+<meta name="theme-color" content="#FF3D00">
+<link rel="stylesheet" href="proa.css">
+<script src="assets/brand.js"></script>
+<script src="assets/vendor/supabase-js-2.112.4.min.js"></script>
+<script src="assets/supabase-init.js"></script>
+<script src="assets/i18n.js" defer></script>
+<style>
+  .ex-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .ex-search { flex: 1; min-width: 220px; max-width: 420px; }
+  .ex-cats { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
+  .ex-cat {
+    border: var(--pr-bw) solid var(--pr-border); background: var(--pr-surface);
+    border-radius: var(--pr-r-pill); padding: 6px 12px; cursor: pointer;
+    font: 600 12.5px/1 var(--pr-font-sans); color: var(--pr-fg-muted);
+    display: inline-flex; align-items: center; gap: 7px;
+    transition: all var(--pr-dur-1) var(--pr-ease);
+  }
+  .ex-cat:hover { border-color: var(--pr-border-strong); color: var(--pr-fg-strong); transform: translateY(-1px); }
+  .ex-cat.is-on { background: var(--pr-accent); border-color: var(--pr-accent); color: var(--pr-fg-on-accent); }
+  .ex-cat b { font: 700 11px/1 var(--pr-font-cond); opacity: .7; font-variant-numeric: tabular-nums; }
+
+  .ex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+  .ex-card { position: relative; padding: 15px 16px 13px 18px; overflow: hidden; }
+  .ex-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--c, var(--pr-ev-commit)); }
+  .ex-name { font: 700 14.5px/1.25 var(--pr-font-sans); color: var(--pr-fg-strong); }
+  .ex-alt { font: var(--pr-meta); color: var(--pr-fg-faint); margin-top: 3px; }
+  .ex-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 11px; align-items: center; }
+  .ex-actions { display: flex; gap: 5px; margin-top: 11px; }
+  .ex-mine { position: absolute; top: 12px; right: 12px; }
+
+  .ex-count { font: var(--pr-body-sm); color: var(--pr-fg-muted); }
+</style>
+</head>
+<body class="pr">
+
+<div class="pr-shell">
+  <aside class="pr-shell-side" id="pr-side-root"></aside>
+
+  <div class="pr-shell-main">
+    <header class="pr-topbar"><h1 data-i18n="nav.exercises">Ejercicios</h1></header>
+
+    <main class="pr-page">
+
+      <div class="pr-page-header">
+        <div class="pr-grow">
+          <h1 data-i18n="ex.title">Biblioteca</h1>
+          <p data-i18n="ex.sub">El catálogo de Proa más los que crees tú. Los tuyos solo los ves tú.</p>
+        </div>
+        <button class="pr-btn is-primary" id="btn-new"><i class="ti ti-plus"></i><span data-i18n="ex.new">Nuevo ejercicio</span></button>
+      </div>
+
+      <div class="ex-bar">
+        <div class="pr-input-affix ex-search">
+          <i class="ti ti-search"></i>
+          <input id="q" data-i18n-ph="ex.searchPh" placeholder="Buscar por nombre, músculo o material…" autocomplete="off">
+        </div>
+        <div class="pr-tabs">
+          <button class="pr-tab is-on" data-owner="" data-i18n="ex.f.all">Todos</button>
+          <button class="pr-tab" data-owner="catalog" data-i18n="ex.f.catalog">Catálogo</button>
+          <button class="pr-tab" data-owner="mine" data-i18n="ex.f.mine">Míos</button>
+        </div>
+        <span class="pr-grow"></span>
+        <span class="ex-count" id="count"></span>
+      </div>
+
+      <div class="ex-cats" id="cats"></div>
+      <div class="ex-grid" id="grid"></div>
+
+    </main>
+  </div>
+</div>
+
+<!-- Alta y edición -->
+<div class="pr-modal-backdrop" id="m-ex" hidden>
+  <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-ex-title">
+    <div class="pr-modal-head">
+      <h2 id="m-ex-title" data-i18n="ex.new">Nuevo ejercicio</h2>
+      <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
+    </div>
+    <form id="f-ex">
+      <div class="pr-modal-body">
+        <div class="pr-field">
+          <label class="pr-label" for="x-name" data-i18n="ex.name">Nombre</label>
+          <input class="pr-input" id="x-name" required maxlength="90">
+        </div>
+        <div class="pr-modal-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="x-cat" data-i18n="ex.category">Categoría</label>
+            <select class="pr-select" id="x-cat"></select>
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="x-complex" data-i18n="ex.complexity">Complejidad</label>
+            <select class="pr-select" id="x-complex">
+              <option value="" data-i18n="in.choose">Elegir…</option>
+              <option value="low" data-i18n="ex.cx.low">Baja</option>
+              <option value="medium" data-i18n="ex.cx.medium">Media</option>
+              <option value="high" data-i18n="ex.cx.high">Alta</option>
+            </select>
+          </div>
+        </div>
+        <div class="pr-modal-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="x-muscle" data-i18n="ex.muscle">Músculo o zona</label>
+            <input class="pr-input" id="x-muscle" maxlength="60">
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="x-equip" data-i18n="ex.equipment">Material</label>
+            <input class="pr-input" id="x-equip" maxlength="60">
+          </div>
+        </div>
+        <div class="pr-field">
+          <label class="pr-label" for="x-video" data-i18n="ex.video">Video</label>
+          <input class="pr-input" id="x-video" type="url" maxlength="300" placeholder="https://youtube.com/…">
+          <span class="pr-hint" data-i18n="ex.videoHint">Tu atleta entrena solo: sin ver cómo se hace, la mitad de la indicación se pierde.</span>
+        </div>
+        <div class="pr-field">
+          <label class="pr-label" for="x-notes" data-i18n="ex.notes">Cómo se hace</label>
+          <textarea class="pr-textarea" id="x-notes" rows="3"></textarea>
+        </div>
+        <p id="ex-msg" role="alert" hidden style="margin:0;color:var(--pr-danger);font:600 13px/1.45 var(--pr-font-sans)"></p>
+      </div>
+      <div class="pr-modal-foot">
+        <button class="pr-btn is-danger is-sm" type="button" id="x-del" hidden><i class="ti ti-trash"></i></button>
+        <span class="pr-grow"></span>
+        <button class="pr-btn is-ghost" type="button" data-close data-i18n="common.cancel">Cancelar</button>
+        <button class="pr-btn is-primary" type="submit"><i class="ti ti-check"></i><span data-i18n="common.save">Guardar</span></button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="assets/sidebar.js" defer></script>
+<script>
+(function () {
+  const t = (k, fb) => (window.PR_I18N ? window.PR_I18N.t(k) : null) || fb;
+  const esc = window.prEsc;
+
+  let all = [], wsId = null, cat = '', owner = '', editing = null;
+
+  const CATS = ['strength','power','speed','olympic','core','mobility','activation',
+                'prehab','balance','conditioning','cooldown'];
+  const CAT_COLOR = {
+    strength: 'var(--pr-bt-str)',      power: 'var(--pr-bt-plyo)',
+    speed: 'var(--pr-bt-skills)',      olympic: 'var(--pr-bt-plyo)',
+    mobility: 'var(--pr-bt-mob)',      cooldown: 'var(--pr-bt-cool)',
+    activation: 'var(--pr-bt-act)',    prehab: 'var(--pr-bt-warmup)',
+    balance: 'var(--pr-bt-assess)',    core: 'var(--pr-bt-field)',
+    conditioning: 'var(--pr-bt-cond)'
+  };
+
+  // El nombre en el idioma del entrenador. El inglés es el canónico, pero
+  // nadie busca «back squat» si trabaja en español.
+  function name(e) {
+    const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
+    return (lang === 'es' && e.name_es) || (lang === 'pt' && e.name_pt) || e.name;
+  }
+  // El nombre original, si el mostrado es una traducción: ayuda a reconocerlo.
+  function alt(e) {
+    const n = name(e);
+    return n !== e.name ? e.name : '';
+  }
+
+  function filtered() {
+    const q = document.getElementById('q').value.trim().toLowerCase();
+    return all.filter(e => {
+      if (owner === 'mine' && !e.workspace_id) return false;
+      if (owner === 'catalog' && e.workspace_id) return false;
+      if (cat && e.category !== cat) return false;
+      if (!q) return true;
+      return [e.name, e.name_es, e.name_pt, e.muscle_group, e.equipment]
+        .filter(Boolean).some(v => v.toLowerCase().includes(q));
+    });
+  }
+
+  function paintCats() {
+    const base = all.filter(e =>
+      (owner !== 'mine' || e.workspace_id) && (owner !== 'catalog' || !e.workspace_id));
+    const counts = {};
+    base.forEach(e => { if (e.category) counts[e.category] = (counts[e.category] || 0) + 1; });
+    document.getElementById('cats').innerHTML =
+      `<button class="ex-cat${cat === '' ? ' is-on' : ''}" data-cat="">${esc(t('se.all', 'Todos'))} <b>${base.length}</b></button>`
+      + CATS.filter(c => counts[c]).map(c =>
+        `<button class="ex-cat${cat === c ? ' is-on' : ''}" data-cat="${c}">${esc(t('se.c.' + c, c))} <b>${counts[c]}</b></button>`).join('');
+  }
+
+  function paint() {
+    paintCats();
+    const list = filtered();
+    document.getElementById('count').textContent = t('ex.count', list.length + ' ejercicios', { n: list.length })
+      .replace('{n}', list.length);
+
+    const host = document.getElementById('grid');
+    if (!list.length) {
+      host.innerHTML = `<section class="pr-empty" style="grid-column:1/-1">
+        <i class="ti ti-barbell"></i>
+        <h3>${esc(t('ex.none.title'))}</h3>
+        <p>${esc(t('ex.none.body'))}</p></section>`;
+      return;
+    }
+
+    host.innerHTML = list.map((e, i) => {
+      const mine = !!e.workspace_id;
+      return `<article class="pr-card ex-card pr-rise" style="--c:${CAT_COLOR[e.category] || 'var(--pr-ev-commit)'};--i:${Math.min(i, 8)}" data-id="${e.id}">
+        ${mine ? `<span class="pr-pill is-accent ex-mine">${esc(t('ex.mineTag'))}</span>` : ''}
+        <div class="ex-name">${esc(name(e))}</div>
+        ${alt(e) ? `<div class="ex-alt">${esc(alt(e))}</div>` : ''}
+        <div class="ex-tags">
+          ${e.category ? `<span class="pr-pill">${esc(t('se.c.' + e.category, e.category))}</span>` : ''}
+          ${e.muscle_group ? `<span class="pr-pill">${esc(e.muscle_group)}</span>` : ''}
+          ${e.equipment ? `<span class="pr-pill">${esc(e.equipment)}</span>` : ''}
+        </div>
+        <div class="ex-actions">
+          ${e.video_url ? `<a class="pr-btn is-sm is-ghost" href="${esc(e.video_url)}" target="_blank" rel="noopener"><i class="ti ti-brand-youtube"></i><span>${esc(t('se.watch'))}</span></a>` : ''}
+          ${mine ? `<button class="pr-btn is-sm is-ghost" data-edit="${e.id}"><i class="ti ti-pencil"></i><span>${esc(t('ex.edit'))}</span></button>`
+                 : `<button class="pr-btn is-sm is-ghost" data-copy="${e.id}" title="${esc(t('ex.copyHint'))}"><i class="ti ti-copy"></i><span>${esc(t('ex.copy'))}</span></button>`}
+        </div>
+      </article>`;
+    }).join('');
+  }
+
+  // ── Alta y edición ───────────────────────────────────────────────────────
+  function openEx(ex) {
+    editing = ex ? ex.id : null;
+    document.getElementById('m-ex-title').textContent = t(ex ? 'ex.edit' : 'ex.new');
+    document.getElementById('x-name').value    = ex ? name(ex) : '';
+    document.getElementById('x-cat').value     = (ex && ex.category) || 'strength';
+    document.getElementById('x-complex').value = (ex && ex.complexity) || '';
+    document.getElementById('x-muscle').value  = (ex && ex.muscle_group) || '';
+    document.getElementById('x-equip').value   = (ex && ex.equipment) || '';
+    document.getElementById('x-video').value   = (ex && ex.video_url) || '';
+    document.getElementById('x-notes').value   = (ex && ex.notes) || '';
+    document.getElementById('x-del').hidden    = !ex;
+    document.getElementById('ex-msg').hidden   = true;
+    document.getElementById('m-ex').hidden     = false;
+    document.getElementById('x-name').focus();
+  }
+
+  document.getElementById('btn-new').addEventListener('click', () => openEx(null));
+
+  document.getElementById('grid').addEventListener('click', (e) => {
+    const ed = e.target.closest('[data-edit]');
+    if (ed) { openEx(all.find(x => x.id === ed.dataset.edit)); return; }
+    // Copiar uno del catálogo para poder cambiarlo: el catálogo es de todos y
+    // no se toca, pero nadie tiene por qué empezar de cero para ajustarlo.
+    const cp = e.target.closest('[data-copy]');
+    if (cp) {
+      const src = all.find(x => x.id === cp.dataset.copy);
+      openEx(null);
+      document.getElementById('x-name').value    = name(src);
+      document.getElementById('x-cat').value     = src.category || 'strength';
+      document.getElementById('x-complex').value = src.complexity || '';
+      document.getElementById('x-muscle').value  = src.muscle_group || '';
+      document.getElementById('x-equip').value   = src.equipment || '';
+      document.getElementById('x-video').value   = src.video_url || '';
+    }
+  });
+
+  document.getElementById('f-ex').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('ex-msg');
+    msg.hidden = true;
+    const nm = document.getElementById('x-name').value.trim();
+    if (!nm) { msg.textContent = t('ex.err.name', 'Ponle un nombre.'); msg.hidden = false; return; }
+
+    const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
+    const row = {
+      workspace_id: wsId,
+      // El nombre se guarda en los tres campos del idioma activo: un ejercicio
+      // propio no tiene traducciones, y así se encuentra busque como busque.
+      name: nm, name_es: lang === 'es' ? nm : null, name_pt: lang === 'pt' ? nm : null,
+      category:     document.getElementById('x-cat').value || null,
+      complexity:   document.getElementById('x-complex').value || null,
+      muscle_group: document.getElementById('x-muscle').value.trim() || null,
+      equipment:    document.getElementById('x-equip').value.trim() || null,
+      video_url:    document.getElementById('x-video').value.trim() || null,
+      notes:        document.getElementById('x-notes').value.trim() || null
+    };
+
+    const { error } = editing
+      ? await window.sb.from('exercises').update(row).eq('id', editing)
+      : await window.sb.from('exercises').insert(row);
+    if (error) { msg.textContent = error.message; msg.hidden = false; return; }
+
+    document.getElementById('m-ex').hidden = true;
+    window.prToast(t('ex.saved', 'Guardado.'), 'success');
+    await load();
+  });
+
+  document.getElementById('x-del').addEventListener('click', async () => {
+    if (!editing || !confirm(t('ex.confirmDel', '¿Borrar este ejercicio? Las sesiones que ya lo usan conservan su nombre.'))) return;
+    const { error } = await window.sb.from('exercises').delete().eq('id', editing);
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    document.getElementById('m-ex').hidden = true;
+    await load();
+  });
+
+  // ── Filtros ──────────────────────────────────────────────────────────────
+  document.getElementById('q').addEventListener('input', paint);
+  document.getElementById('cats').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-cat]');
+    if (!b) return;
+    cat = b.dataset.cat; paint();
+  });
+  document.querySelector('.pr-tabs').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-owner]');
+    if (!b) return;
+    owner = b.dataset.owner;
+    document.querySelectorAll('.pr-tab').forEach(x => x.classList.toggle('is-on', x === b));
+    cat = ''; paint();
+  });
+
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-close]') || e.target.classList.contains('pr-modal-backdrop')) {
+      document.querySelectorAll('.pr-modal-backdrop').forEach(m => m.hidden = true);
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.querySelectorAll('.pr-modal-backdrop').forEach(m => m.hidden = true);
+  });
+
+  // ── Arranque ─────────────────────────────────────────────────────────────
+  async function load() {
+    const { data, error } = await window.sb.from('exercises')
+      .select('id,workspace_id,name,name_es,name_pt,category,muscle_group,equipment,complexity,video_url,notes')
+      .or(`workspace_id.is.null,workspace_id.eq.${wsId}`)
+      .order('name');
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    // Los propios primero: son los que el entrenador va a buscar.
+    all = (data || []).sort((a, b) => (b.workspace_id ? 1 : 0) - (a.workspace_id ? 1 : 0));
+    paint();
+  }
+
+  async function boot() {
+    if (!(await window.requireCoach())) return;
+    if (window.PR_I18N && window.PR_I18N.ready) { try { await window.PR_I18N.ready; } catch (e) {} }
+    if (window.prSidebar) window.prSidebar.mount('exercises');
+
+    document.getElementById('x-cat').innerHTML =
+      CATS.map(c => `<option value="${c}">${esc(t('se.c.' + c, c))}</option>`).join('');
+
+    wsId = await window.getWorkspaceId();
+    if (!wsId) { window.location.replace('Onboarding.html'); return; }
+
+    await load();
+    if (window.PR_I18N) window.PR_I18N.applyTo(document);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>
