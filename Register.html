@@ -117,8 +117,9 @@
   (async () => {
     const { data: { session } } = await window.sb.auth.getSession();
     if (!session) return;
-    const profile = await window.getProfile();
-    window.location.replace(window.landingFor(profile));
+    // Si la sesión guardada ya no corresponde a ningún usuario, goAfterAuth la
+    // cierra y devuelve false: se muestra el formulario en vez de recargar.
+    await window.goAfterAuth();
   })();
 
   form.addEventListener('submit', async (e) => {

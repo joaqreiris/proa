@@ -60,8 +60,7 @@
     for (let i = 0; i < 25; i++) {
       const { data: { session } } = await window.sb.auth.getSession();
       if (session) {
-        const profile = await window.getProfile();
-        window.location.replace(window.landingFor(profile));
+        if (!(await window.goAfterAuth())) fail('La sesión no es válida.');
         return;
       }
       await new Promise(r => setTimeout(r, 200));

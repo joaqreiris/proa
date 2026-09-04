@@ -1,4 +1,9 @@
 #!/bin/bash
+# REGLA DE LIMPIEZA: una prueba borra SOLO lo que ella creó, filtrando por el
+# identificador que generó o por el correo @proa-test.dev. Nunca un borrado sin
+# filtro (?id=not.is.null) ni un bucle sobre todos los usuarios: esta base la
+# comparten las pruebas y el trabajo real, y un DELETE amplio se lleva puesto
+# el trabajo de verdad.
 # Prueba de humo del alta del atleta: invitación por enlace, vinculación de la
 # cuenta y aislamiento. Al final borra todo lo que creó.
 URL="https://lryftqfhztzhawplljsu.supabase.co"

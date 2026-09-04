@@ -1,4 +1,9 @@
 #!/bin/bash
+# REGLA DE LIMPIEZA: una prueba borra SOLO lo que ella creó, filtrando por el
+# identificador que generó o por el correo @proa-test.dev. Nunca un borrado sin
+# filtro (?id=not.is.null) ni un bucle sobre todos los usuarios: esta base la
+# comparten las pruebas y el trabajo real, y un DELETE amplio se lleva puesto
+# el trabajo de verdad.
 # Copiar una semana no puede perder NADA. Compara campo por campo el original
 # contra la copia: si mañana se agrega una columna y copy_week no la lleva,
 # esta prueba falla. Es el guardián de la lista explícita de columnas.

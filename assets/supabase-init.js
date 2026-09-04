@@ -162,7 +162,10 @@
   window.requireCoach = async function () {
     if (!(await window.requireAuth())) return false;
     const p = await window.getProfile();
-    if (!p) { window.location.replace('Login.html'); return false; }
+    // Sin perfil, la sesión quedó huérfana. Se cierra y se vuelve a entrar:
+    // reenviar sin cerrarla hacía que la pantalla de entrada rebotara para acá
+    // de nuevo, en bucle.
+    if (!p) { await window.clearStaleSession(); window.location.replace('Login.html'); return false; }
     if (p.role === 'athlete') { window.location.replace('athlete/Week.html'); return false; }
     if (!p.onboarded_at) { window.location.replace('Onboarding.html'); return false; }
     return true;
@@ -171,7 +174,7 @@
   window.requireAthlete = async function () {
     if (!(await window.requireAuth('../Login.html'))) return false;
     const p = await window.getProfile();
-    if (!p) { window.location.replace('../Login.html'); return false; }
+    if (!p) { await window.clearStaleSession(); window.location.replace('../Login.html'); return false; }
     if (p.role !== 'athlete') { window.location.replace('../Home.html'); return false; }
     return true;
   };
@@ -179,8 +182,13 @@
   // A dónde va cada quien después de entrar.
   // Si venía de un enlace de invitación y se desvió a entrar, vuelve al enlace:
   // perderlo significaría pedirle otro al entrenador.
+  //
+  // Devuelve NULL si no hay perfil. Antes devolvía 'Login.html', y eso producía
+  // un bucle infinito de recargas: la pantalla de entrada se reenviaba a sí
+  // misma una y otra vez. Ahora el que llama decide, y lo que corresponde es
+  // cerrar la sesión.
   window.landingFor = function (profile) {
-    if (!profile) return 'Login.html';
+    if (!profile) return null;
     try {
       const pending = sessionStorage.getItem('pr_pending_invite');
       if (pending) {
@@ -190,6 +198,30 @@
     } catch (e) { /* navegación privada */ }
     if (profile.role === 'athlete') return 'athlete/Week.html';
     return profile.onboarded_at ? 'Home.html' : 'Onboarding.html';
+  };
+
+  // ¿Estamos parados en una pantalla de entrada? Sirve para no reenviar a
+  // donde ya estamos.
+  function onAuthPage() {
+    return /\/(Login|Register|set-password|auth-callback|invite)\.html$|\/$/.test(location.pathname);
+  }
+
+  // Una sesión guardada puede haber quedado huérfana: el usuario ya no existe,
+  // o su perfil se borró. El token sigue pareciendo válido hasta que vence, así
+  // que hay que detectarlo y cerrar la sesión, no dar vueltas.
+  window.clearStaleSession = async function () {
+    try { await window.sb.auth.signOut(); } catch (e) { /* ya estaba cerrada */ }
+    window.resetContextCache();
+  };
+
+  // Manda a cada quien a donde le toca después de entrar. Devuelve false si la
+  // sesión no servía (y en ese caso ya la cerró).
+  window.goAfterAuth = async function () {
+    const profile = await window.getProfile();
+    const to = window.landingFor(profile);
+    if (!to) { await window.clearStaleSession(); return false; }
+    window.location.replace(to);
+    return true;
   };
 
   window.logout = async function (redirectTo = 'Login.html') {
@@ -248,10 +280,12 @@
   };
 
   window.sb.auth.onAuthStateChange((event) => {
-    if (event === 'SIGNED_OUT') {
-      window.resetContextCache();
-      const inAthleteApp = location.pathname.includes('/athlete/');
-      window.location.replace(inAthleteApp ? '../Login.html' : 'Login.html');
-    }
+    if (event !== 'SIGNED_OUT') return;
+    window.resetContextCache();
+    // Si ya estamos en una pantalla de entrada, no hay a dónde ir: reenviarse a
+    // uno mismo es exactamente el bucle que se quiere evitar.
+    if (onAuthPage()) return;
+    const inAthleteApp = location.pathname.includes('/athlete/');
+    window.location.replace(inAthleteApp ? '../Login.html' : 'Login.html');
   });
 })();
