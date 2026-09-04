@@ -115,10 +115,11 @@
         const label = s.label || t(KIND_KEY[s.kind] || 'in.k.commitment', '');
         const title = `${label} · ${hhmm(s.start_time)}–${hhmm(s.end_time)}`
                     + (editable ? ` · ${t('in.slot.remove', 'Quitar')}` : '');
-        const style = `left:${left}%;width:${width}%;background:${KIND_COLOR[s.kind] || KIND_COLOR.commitment}`;
+        const style = `left:${left}%;width:${width}%;background:${KIND_COLOR[s.kind] || KIND_COLOR.commitment};`
+                    + `animation-delay:${d * 40}ms`;
         return editable
-          ? `<button type="button" class="wk-slot" data-slot="${s.id}" style="${style}" title="${esc(title)}">${esc(label)}</button>`
-          : `<span class="wk-slot" style="${style}" title="${esc(title)}">${esc(label)}</span>`;
+          ? `<button type="button" class="wk-slot pr-grow" data-slot="${s.id}" style="${style}" title="${esc(title)}">${esc(label)}</button>`
+          : `<span class="wk-slot pr-grow" style="${style}" title="${esc(title)}">${esc(label)}</span>`;
       }).join('');
 
       const add = editable
@@ -167,9 +168,9 @@
         const a = Math.max(toMin(s.start_time), H0 * 60);
         const b = Math.min(toMin(s.end_time),   H1 * 60);
         if (b <= a) return '';
-        return `<span class="wk-busy" title="${esc(s.label || t(KIND_KEY[s.kind] || '', ''))}"
+        return `<span class="wk-busy pr-grow" title="${esc(s.label || t(KIND_KEY[s.kind] || '', ''))}"
                  style="left:${((a - H0*60)/(SPAN*60))*100}%;width:${((b-a)/(SPAN*60))*100}%;
-                 background:${KIND_COLOR[s.kind] || KIND_COLOR.commitment}"></span>`;
+                 background:${KIND_COLOR[s.kind] || KIND_COLOR.commitment};animation-delay:${d * 40}ms"></span>`;
       }).join('');
 
       // Capa de arriba: lo planificado ese día.
@@ -197,16 +198,18 @@
         const label = e.title || t(EVENT_KEY[e.type] || 'ev.other', '');
         const h = topH / laneCount;
         const style = `left:${left}%;width:${width}%;top:${e._lane * h}%;height:${h}%;`
-                    + `background:${EVENT_COLOR[e.type] || EVENT_COLOR.other}`;
-        return `<${tag} class="wk-ev${e.status === 'done' ? ' is-done' : ''}"${attrs(e)} style="${style}"
+                    + `background:${EVENT_COLOR[e.type] || EVENT_COLOR.other};`
+                    + `animation-delay:${120 + d * 40}ms`;
+        return `<${tag} class="wk-ev pr-grow${e.status === 'done' ? ' is-done' : ''}"${attrs(e)} style="${style}"
                  title="${esc(label + ' · ' + hhmm(e.start_time))}">${esc(label)}</${tag}>`;
       }).join('')
       + free.map((e, i) => {
         const label = e.title || t(EVENT_KEY[e.type] || 'ev.other', '');
         const w = 100 / free.length;
         const style = `left:${i * w}%;width:${w}%;top:${topH}%;height:${100 - topH}%;`
-                    + `background:${EVENT_COLOR[e.type] || EVENT_COLOR.other}`;
-        return `<${tag} class="wk-ev is-allday${e.status === 'done' ? ' is-done' : ''}"${attrs(e)} style="${style}"
+                    + `background:${EVENT_COLOR[e.type] || EVENT_COLOR.other};`
+                    + `animation-delay:${120 + d * 40}ms`;
+        return `<${tag} class="wk-ev is-allday pr-grow${e.status === 'done' ? ' is-done' : ''}"${attrs(e)} style="${style}"
                  title="${esc(label + ' · ' + t('wk.noTime', 'sin horario'))}">${esc(label)}</${tag}>`;
       }).join('');
 

@@ -76,18 +76,18 @@
 
   <div class="aw-cards">
 
-    <a class="pr-card has-strip aw-cta" id="intake-card" href="Intake.html" style="--pr-strip:var(--pr-accent)" hidden>
+    <a class="pr-card has-strip aw-cta pr-rise" id="intake-card" href="Intake.html" style="--i:0;--pr-strip:var(--pr-accent)" hidden>
       <h3 id="intake-title">&nbsp;</h3>
       <p id="intake-body">&nbsp;</p>
       <span class="aw-arrow"><span id="intake-cta"></span><i class="ti ti-arrow-right"></i></span>
     </a>
 
-    <section class="pr-card" id="today-card" hidden>
+    <section class="pr-card pr-rise" style="--i:1" id="today-card" hidden>
       <h3 data-i18n="aw.todayTitle">Hoy</h3>
       <div class="aw-today" id="today-list"></div>
     </section>
 
-    <section class="pr-card" id="week-card" hidden>
+    <section class="pr-card pr-rise" style="--i:2" id="week-card" hidden>
       <h3 data-i18n="aw.weekTitle">Tu semana</h3>
       <div class="wk aw-weekwrap">
         <div id="wk-scale"></div>
@@ -96,7 +96,7 @@
       <div id="wk-legend"></div>
     </section>
 
-    <section class="pr-card has-strip" id="soon-card" style="--pr-strip:var(--pr-ev-gym)" hidden>
+    <section class="pr-card has-strip pr-rise" id="soon-card" style="--i:1;--pr-strip:var(--pr-ev-gym)" hidden>
       <h3 data-i18n="aw.soon.title">Tu semana llega en breve</h3>
       <p data-i18n="aw.soon.body">Tu entrenador está armando tu planificación. Cuando la publique, la vas a ver acá: gimnasio, campo, comidas y recuperación, día por día.</p>
     </section>

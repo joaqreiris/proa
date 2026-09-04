@@ -80,22 +80,34 @@
         <a class="pr-btn is-primary" href="Athletes.html" style="margin-top:6px" data-i18n="home.empty.cta">Dar de alta un atleta</a>
       </section>
 
+      <div id="skeleton">
+        <div class="home-stats">
+          <div class="pr-card pr-card-pad home-stat"><span class="pr-skel pr-skel-line" style="width:60%"></span><span class="pr-skel" style="height:38px;width:45%"></span></div>
+          <div class="pr-card pr-card-pad home-stat"><span class="pr-skel pr-skel-line" style="width:60%"></span><span class="pr-skel" style="height:38px;width:30%"></span></div>
+          <div class="pr-card pr-card-pad home-stat"><span class="pr-skel pr-skel-line" style="width:70%"></span><span class="pr-skel" style="height:38px;width:30%"></span></div>
+        </div>
+        <div class="pr-card pr-card-pad">
+          <div class="pr-skel-row"><span class="pr-skel" style="width:34px;height:30px;border-radius:10px"></span><span class="pr-skel pr-skel-line" style="width:140px"></span><span class="pr-skel" style="height:32px;width:180px;border-radius:8px"></span></div>
+          <div class="pr-skel-row"><span class="pr-skel" style="width:34px;height:30px;border-radius:10px"></span><span class="pr-skel pr-skel-line" style="width:110px"></span><span class="pr-skel" style="height:32px;width:230px;border-radius:8px"></span></div>
+        </div>
+      </div>
+
       <div id="board" hidden>
 
         <div class="home-stats">
-          <section class="pr-card pr-card-pad home-stat has-strip" style="--pr-strip:var(--pr-accent)">
+          <section class="pr-card pr-card-pad home-stat has-strip pr-rise" style="--pr-strip:var(--pr-accent);--i:0">
             <span data-i18n="home.seats">Atletas</span>
             <b id="s-seats">0<small>/5</small></b>
             <a href="Athletes.html" data-i18n="home.manage">Ver todos</a>
           </section>
 
-          <section class="pr-card pr-card-pad home-stat">
+          <section class="pr-card pr-card-pad home-stat pr-rise" style="--i:1">
             <span data-i18n="home.todayBlocks">Bloques hoy</span>
             <b class="is-accent" id="s-blocks">0</b>
             <a href="Week.html" data-i18n="home.toWeek">Ir a la semana</a>
           </section>
 
-          <section class="pr-card pr-card-pad home-stat">
+          <section class="pr-card pr-card-pad home-stat pr-rise" style="--i:2">
             <span data-i18n="home.pendingIntake">Fichas sin completar</span>
             <b id="s-intake">0</b>
             <a href="Athletes.html" id="intake-link" hidden data-i18n="home.whoIs">Ver quiénes</a>
@@ -107,7 +119,7 @@
           <span id="today-count"></span>
         </div>
 
-        <section class="pr-card pr-card-pad">
+        <section class="pr-card pr-card-pad pr-rise" style="--i:3">
           <div class="home-day" id="day"></div>
         </section>
 
@@ -185,6 +197,7 @@
       .eq('workspace_id', wsId).eq('status', 'active').order('first_name');
 
     if (!athletes || !athletes.length) {
+      document.getElementById('skeleton').hidden = true;
       document.getElementById('empty').hidden = false;
       if (window.PR_I18N) window.PR_I18N.applyTo(document);
       return;
@@ -214,6 +227,7 @@
       : '';
 
     paintDay(athletes, evs);
+    document.getElementById('skeleton').hidden = true;
     document.getElementById('board').hidden = false;
     if (window.PR_I18N) window.PR_I18N.applyTo(document);
   }

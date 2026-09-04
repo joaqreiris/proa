@@ -52,7 +52,7 @@
           <h1 data-i18n="ath.title">Mis atletas</h1>
           <p data-i18n="ath.sub">Cada atleta activo ocupa un cupo. Los pausados y archivados no.</p>
         </div>
-        <button class="pr-btn is-primary" id="btn-new" data-i18n="ath.new">Nuevo atleta</button>
+        <button class="pr-btn is-primary" id="btn-new"><i class="ti ti-user-plus"></i><span data-i18n="ath.new">Nuevo atleta</span></button>
       </div>
 
       <div class="ath-full" id="seats-full" hidden>
@@ -71,7 +71,13 @@
         <span class="ath-seats" id="seats"></span>
       </div>
 
-      <div id="list"></div>
+      <div id="list">
+        <div class="pr-table-wrap" style="padding:6px 16px">
+          <div class="pr-skel-row"><span class="pr-skel" style="width:30px;height:30px;border-radius:10px"></span><span class="pr-skel pr-skel-line" style="width:150px"></span></div>
+          <div class="pr-skel-row"><span class="pr-skel" style="width:30px;height:30px;border-radius:10px"></span><span class="pr-skel pr-skel-line" style="width:120px"></span></div>
+          <div class="pr-skel-row"><span class="pr-skel" style="width:30px;height:30px;border-radius:10px"></span><span class="pr-skel pr-skel-line" style="width:170px"></span></div>
+        </div>
+      </div>
 
     </main>
   </div>

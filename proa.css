@@ -57,25 +57,34 @@
   --pr-s-6: 24px;  --pr-s-7: 32px;  --pr-s-8: 40px;
   --pr-s-9: 48px;  --pr-s-10:64px;  --pr-s-11:80px;
 
-  /* Radios — casi rectos. El redondeo grande es lo que hace que
-     algo se lea como «panel de administración». */
-  --pr-r-1:  2px;
-  --pr-r-2:  3px;
-  --pr-r-3:  4px;
-  --pr-r-4:  5px;
-  --pr-r-5:  6px;
-  --pr-r-6:  8px;
+  /* Radios. La primera versión los dejó casi rectos para huir del aire de
+     «panel de administración», y se pasó al otro lado: quedó rígido. Estos
+     son el punto medio — redondeo suficiente para que respire, no tanto como
+     para volverse blando. */
+  --pr-r-1:  4px;   /* puntos, barras finas */
+  --pr-r-2:  6px;   /* pastillas, muestras */
+  --pr-r-3:  8px;   /* botones, campos */
+  --pr-r-4: 10px;   /* avatares, botones de icono */
+  --pr-r-5: 14px;   /* tarjetas */
+  --pr-r-6: 18px;   /* diálogos */
   --pr-r-pill: 999px;
 
   --pr-bw: 1px;
   --pr-bw-2: 2px;
 
-  /* Motion */
-  --pr-ease: cubic-bezier(.2,.7,.2,1);
-  --pr-ease-out: cubic-bezier(.16,1,.3,1);
-  --pr-dur-1: 110ms;
-  --pr-dur-2: 190ms;
-  --pr-dur-3: 300ms;
+  /* Motion.
+     ease    → cambios de estado (color, borde): tiene que ser imperceptible.
+     out     → algo que entra y se acomoda.
+     spring  → lo que aparece de la nada (diálogos, avisos): un pelo de rebote
+               al final es lo que separa «apareció» de «se abrió».
+     El sistema entero respeta prefers-reduced-motion, más abajo. */
+  --pr-ease:        cubic-bezier(.2,.7,.2,1);
+  --pr-ease-out:    cubic-bezier(.16,1,.3,1);
+  --pr-ease-spring: cubic-bezier(.34,1.32,.5,1);
+  --pr-dur-1: 140ms;
+  --pr-dur-2: 220ms;
+  --pr-dur-3: 340ms;
+  --pr-stagger: 45ms;
 
   /* Capas */
   --pr-z-base: 1;
@@ -192,11 +201,12 @@
   --pr-ev-travel:   #0093B0;   /* viaje */
   --pr-ev-rest:     #B8B8B1;   /* descanso */
 
-  /* Sombras: casi nulas. El borde hace el trabajo. */
-  --pr-shadow-1: none;
-  --pr-shadow-2: 0 1px 2px rgba(0,0,0,0.06);
-  --pr-shadow-3: 0 2px 8px rgba(0,0,0,0.09);
-  --pr-shadow-pop: 0 6px 24px rgba(0,0,0,0.16);
+  /* Sombras en dos capas: una línea de contacto muy cerca y una difusa más
+     lejos. Una sola sombra grande se ve barata; dos dan profundidad real. */
+  --pr-shadow-1: 0 1px 1px rgba(16,18,22,0.04), 0 1px 3px rgba(16,18,22,0.05);
+  --pr-shadow-2: 0 1px 2px rgba(16,18,22,0.05), 0 4px 12px rgba(16,18,22,0.07);
+  --pr-shadow-3: 0 2px 4px rgba(16,18,22,0.05), 0 12px 28px rgba(16,18,22,0.10);
+  --pr-shadow-pop: 0 8px 16px rgba(16,18,22,0.10), 0 24px 60px rgba(16,18,22,0.20);
 
   --pr-atmo: none;
 
@@ -265,10 +275,10 @@
   --pr-ev-travel:   #22D3EE;
   --pr-ev-rest:     #4A4F58;
 
-  --pr-shadow-1: none;
-  --pr-shadow-2: 0 1px 2px rgba(0,0,0,0.5);
-  --pr-shadow-3: 0 4px 14px rgba(0,0,0,0.55);
-  --pr-shadow-pop: 0 10px 34px rgba(0,0,0,0.7);
+  --pr-shadow-1: 0 1px 1px rgba(0,0,0,0.30), 0 1px 3px rgba(0,0,0,0.28);
+  --pr-shadow-2: 0 1px 2px rgba(0,0,0,0.35), 0 4px 12px rgba(0,0,0,0.40);
+  --pr-shadow-3: 0 2px 4px rgba(0,0,0,0.35), 0 12px 28px rgba(0,0,0,0.50);
+  --pr-shadow-pop: 0 8px 16px rgba(0,0,0,0.45), 0 24px 60px rgba(0,0,0,0.65);
 
   --pr-atmo: radial-gradient(ellipse 55% 40% at 50% -8%, rgba(255,90,40,0.055) 0%, transparent 62%);
 
@@ -397,43 +407,53 @@ body.pr::before {
 /* ============================================================
    Botones
    ============================================================ */
+/* Los botones NO van en mayúsculas. Fue lo que más endureció el conjunto:
+   es el elemento que más se repite y el que más grita. En caja normal con
+   peso 600 se leen igual de firmes y respiran. */
 .pr-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--pr-s-2);
+  gap: 7px;
   height: 38px;
-  padding: 0 16px;
+  padding: 0 15px;
   border-radius: var(--pr-r-3);
-  font: 700 12.5px/1 var(--pr-font-sans);
-  letter-spacing: var(--pr-tr-btn);
-  text-transform: uppercase;
+  font: 600 14px/1 var(--pr-font-sans);
+  letter-spacing: -0.005em;
   border: var(--pr-bw) solid transparent;
   cursor: pointer;
   white-space: nowrap;
   user-select: none;
+  position: relative;
   transition: background var(--pr-dur-1) var(--pr-ease),
               border-color var(--pr-dur-1) var(--pr-ease),
               color var(--pr-dur-1) var(--pr-ease),
+              box-shadow var(--pr-dur-2) var(--pr-ease),
               transform var(--pr-dur-1) var(--pr-ease);
 }
+.pr-btn .ti { font-size: 17px; margin-left: -2px; }
 .pr-btn:focus-visible { outline: var(--pr-bw-2) solid var(--pr-accent); outline-offset: 2px; }
 .pr-btn[disabled], .pr-btn.is-busy { opacity: .42; cursor: not-allowed; pointer-events: none; }
 
-.pr-btn.is-sm    { height: 30px; padding: 0 11px; font-size: 11.5px; gap: 6px; }
-.pr-btn.is-lg    { height: 46px; padding: 0 22px; font-size: 13.5px; }
+.pr-btn.is-sm    { height: 32px; padding: 0 11px; font-size: 13px; gap: 6px; border-radius: var(--pr-r-2); }
+.pr-btn.is-sm .ti{ font-size: 15px; }
+.pr-btn.is-lg    { height: 46px; padding: 0 22px; font-size: 15px; border-radius: var(--pr-r-4); }
 .pr-btn.is-block { width: 100%; }
 
-.pr-btn.is-primary { background: var(--pr-accent); color: var(--pr-fg-on-accent); }
-.pr-btn.is-primary:hover  { background: var(--pr-accent-hover); }
-.pr-btn.is-primary:active { background: var(--pr-accent-press); transform: translateY(1px); }
+/* Se levanta un pelo al pasar por encima y se hunde al apretar. Es la
+   diferencia entre un botón y un rectángulo de color. */
+.pr-btn.is-primary { background: var(--pr-accent); color: var(--pr-fg-on-accent); box-shadow: var(--pr-shadow-1); }
+.pr-btn.is-primary:hover  { background: var(--pr-accent-hover); box-shadow: var(--pr-shadow-2); transform: translateY(-1px); }
+.pr-btn.is-primary:active { background: var(--pr-accent-press); box-shadow: none; transform: translateY(0); }
 
 .pr-btn.is-secondary {
   background: var(--pr-surface);
   color: var(--pr-fg-strong);
-  border-color: var(--pr-border-strong);
+  border-color: var(--pr-border);
+  box-shadow: var(--pr-shadow-1);
 }
-.pr-btn.is-secondary:hover { background: var(--pr-surface-2); border-color: var(--pr-fg-muted); }
+.pr-btn.is-secondary:hover { border-color: var(--pr-border-strong); box-shadow: var(--pr-shadow-2); transform: translateY(-1px); }
+.pr-btn.is-secondary:active { box-shadow: none; transform: translateY(0); }
 
 .pr-btn.is-ghost { background: transparent; color: var(--pr-fg-muted); }
 .pr-btn.is-ghost:hover { color: var(--pr-fg-strong); background: var(--pr-bg-soft); }
@@ -450,15 +470,20 @@ body.pr::before {
 
 .pr-icon-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 34px; height: 34px;
-  border-radius: var(--pr-r-3);
+  width: 36px; height: 36px;
+  border-radius: var(--pr-r-4);
   border: var(--pr-bw) solid var(--pr-border);
-  background: transparent;
+  background: var(--pr-surface);
   color: var(--pr-fg-muted);
   cursor: pointer;
-  transition: background var(--pr-dur-1), color var(--pr-dur-1), border-color var(--pr-dur-1);
+  transition: background var(--pr-dur-1) var(--pr-ease),
+              color var(--pr-dur-1) var(--pr-ease),
+              border-color var(--pr-dur-1) var(--pr-ease),
+              transform var(--pr-dur-1) var(--pr-ease);
 }
-.pr-icon-btn:hover { color: var(--pr-fg-strong); background: var(--pr-bg-soft); border-color: var(--pr-border-strong); }
+.pr-icon-btn .ti { font-size: 18px; }
+.pr-icon-btn:hover { color: var(--pr-fg-strong); border-color: var(--pr-border-strong); transform: translateY(-1px); }
+.pr-icon-btn:active { transform: translateY(0); }
 .pr-icon-btn.is-flush { border: none; }
 .pr-icon-btn:focus-visible { outline: var(--pr-bw-2) solid var(--pr-accent); outline-offset: 2px; }
 
@@ -487,7 +512,9 @@ body.pr::before {
   border-radius: var(--pr-r-3);
   font: 500 14.5px/1 var(--pr-font-sans);
   outline: none;
-  transition: border-color var(--pr-dur-1), box-shadow var(--pr-dur-1);
+  transition: border-color var(--pr-dur-1) var(--pr-ease),
+              box-shadow var(--pr-dur-2) var(--pr-ease),
+              background var(--pr-dur-1) var(--pr-ease);
 }
 .pr-textarea { height: auto; padding: 11px 13px; min-height: 100px; resize: vertical; line-height: 1.5; }
 
@@ -508,7 +535,7 @@ body.pr::before {
   background: var(--pr-surface);
   border: var(--pr-bw) solid var(--pr-border-strong);
   border-radius: var(--pr-r-3);
-  transition: border-color var(--pr-dur-1), box-shadow var(--pr-dur-1);
+  transition: border-color var(--pr-dur-1) var(--pr-ease), box-shadow var(--pr-dur-2) var(--pr-ease);
 }
 .pr-input-affix:focus-within { border-color: var(--pr-accent); box-shadow: 0 0 0 3px var(--pr-focus-ring); }
 .pr-input-affix > input {
@@ -525,9 +552,16 @@ body.pr::before {
   background: var(--pr-surface);
   border: var(--pr-bw) solid var(--pr-border);
   border-radius: var(--pr-r-5);
+  box-shadow: var(--pr-shadow-1);
+  transition: box-shadow var(--pr-dur-2) var(--pr-ease),
+              border-color var(--pr-dur-2) var(--pr-ease),
+              transform var(--pr-dur-2) var(--pr-ease);
 }
 .pr-card.is-elevated { box-shadow: var(--pr-shadow-2); }
 .pr-card.is-flat     { box-shadow: none; }
+/* Solo las tarjetas que llevan a algún lado reaccionan. Si reaccionaran
+   todas, el gesto dejaría de significar «esto se puede tocar». */
+a.pr-card:hover { box-shadow: var(--pr-shadow-3); transform: translateY(-2px); }
 .pr-card-pad         { padding: var(--pr-s-5); }
 .pr-card-pad-lg      { padding: var(--pr-s-7); }
 
@@ -543,12 +577,11 @@ body.pr::before {
    Pastillas y estados
    ============================================================ */
 .pr-pill {
-  display: inline-flex; align-items: center; gap: 6px;
-  height: 21px; padding: 0 8px;
-  border-radius: var(--pr-r-2);
-  font: 700 10.5px/1 var(--pr-font-sans);
-  letter-spacing: .07em;
-  text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 24px; padding: 0 9px;
+  border-radius: var(--pr-r-pill);
+  font: 600 12px/1 var(--pr-font-sans);
+  letter-spacing: -0.005em;
   background: var(--pr-neutral-bg);
   color: var(--pr-neutral);
   border: var(--pr-bw) solid var(--pr-neutral-bd);
@@ -561,7 +594,8 @@ body.pr::before {
 .pr-pill.is-accent  { background: var(--pr-accent-soft);color: var(--pr-accent-ink); border-color: var(--pr-accent-bd); }
 .pr-pill.is-solid   { background: var(--pr-accent); color: var(--pr-fg-on-accent); border-color: transparent; }
 
-.pr-dot { width: 8px; height: 8px; border-radius: 2px; background: currentColor; flex-shrink: 0; }
+.pr-pill .ti { font-size: 13px; margin-left: -1px; }
+.pr-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
 
 .pr-kbd {
   display: inline-flex; align-items: center; justify-content: center;
@@ -650,8 +684,8 @@ body.pr::before {
 }
 .pr-side-item {
   display: flex; align-items: center; gap: 11px;
-  padding: 8px 10px;
-  border-radius: var(--pr-r-3);
+  padding: 9px 11px;
+  border-radius: var(--pr-r-4);
   color: var(--pr-side-fg-muted);
   text-decoration: none;
   font: 600 13px/1 var(--pr-font-sans);
@@ -664,8 +698,17 @@ body.pr::before {
   background: var(--pr-side-item-active-bg);
   color: var(--pr-side-item-active-fg);
   font-weight: 700;
-  box-shadow: inset 2px 0 0 var(--pr-side-accent);
 }
+/* La marca del ítem activo entra creciendo de arriba abajo. */
+.pr-side-item.is-active::before {
+  content: "";
+  position: absolute; left: 0; top: 6px; bottom: 6px;
+  width: 3px; border-radius: 0 3px 3px 0;
+  background: var(--pr-side-accent);
+  animation: pr-side-mark var(--pr-dur-3) var(--pr-ease-out) both;
+}
+.pr-side-item { position: relative; }
+@keyframes pr-side-mark { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 .pr-side-item .pr-side-count {
   margin-left: auto;
   font: 700 11.5px/1 var(--pr-font-cond);
@@ -795,7 +838,7 @@ body.pr::before {
   vertical-align: middle;
 }
 .pr-table tbody tr:last-child td { border-bottom: 0; }
-.pr-table tbody tr { transition: background var(--pr-dur-1); }
+.pr-table tbody tr { transition: background var(--pr-dur-1) var(--pr-ease); }
 .pr-table tbody tr:hover { background: var(--pr-bg-soft); }
 .pr-table .is-num { font-family: var(--pr-font-cond); font-weight: 600; font-variant-numeric: tabular-nums; }
 .pr-table .is-right { text-align: right; }
@@ -811,7 +854,8 @@ body.pr::before {
    ============================================================ */
 .pr-modal-backdrop {
   position: fixed; inset: 0;
-  background: rgba(0,0,0,0.55);
+  background: rgba(12,14,18,0.5);
+  backdrop-filter: blur(3px);
   display: grid; place-items: center;
   padding: 20px;
   z-index: var(--pr-z-modal);
@@ -823,11 +867,18 @@ body.pr::before {
   width: 100%; max-width: 480px;
   max-height: calc(100vh - 40px);
   background: var(--pr-bg);
-  border: var(--pr-bw) solid var(--pr-border-strong);
+  border: var(--pr-bw) solid var(--pr-border);
   border-radius: var(--pr-r-6);
   display: flex; flex-direction: column;
   overflow: hidden;
   box-shadow: var(--pr-shadow-pop);
+  /* Nace un poco más chico y abajo: se lee como que se abrió, no como que
+     apareció de la nada. El rebote del final es lo que lo hace sentir vivo. */
+  animation: pr-pop var(--pr-dur-3) var(--pr-ease-spring) both;
+}
+@keyframes pr-pop {
+  from { opacity: 0; transform: translateY(10px) scale(.97); }
+  to   { opacity: 1; transform: none; }
 }
 .pr-modal.is-wide { max-width: 680px; }
 .pr-modal-head {
@@ -869,13 +920,11 @@ body.pr::before {
   border: 0; border-left: var(--pr-bw) solid var(--pr-border-strong);
   background: var(--pr-bg-soft);
   color: var(--pr-fg-strong);
-  font: 700 11.5px/1 var(--pr-font-sans);
-  letter-spacing: var(--pr-tr-btn);
-  text-transform: uppercase;
+  font: 600 13px/1 var(--pr-font-sans);
   padding: 0 16px;
   cursor: pointer;
   white-space: nowrap;
-  transition: background var(--pr-dur-1), color var(--pr-dur-1);
+  transition: background var(--pr-dur-1) var(--pr-ease), color var(--pr-dur-1) var(--pr-ease);
 }
 .pr-copy button:hover { background: var(--pr-accent); color: var(--pr-fg-on-accent); }
 
@@ -883,16 +932,15 @@ body.pr::before {
 .pr-tabs { display: flex; gap: 2px; background: var(--pr-bg-sunk); padding: 3px; border-radius: var(--pr-r-4); }
 .pr-tab {
   border: 0; background: transparent; cursor: pointer;
-  padding: 7px 14px;
+  padding: 8px 14px;
   border-radius: var(--pr-r-3);
-  font: 700 11.5px/1 var(--pr-font-sans);
-  letter-spacing: var(--pr-tr-btn);
-  text-transform: uppercase;
+  font: 600 13px/1 var(--pr-font-sans);
+  letter-spacing: -0.005em;
   color: var(--pr-fg-muted);
-  transition: background var(--pr-dur-1), color var(--pr-dur-1);
+  transition: background var(--pr-dur-2) var(--pr-ease), color var(--pr-dur-1) var(--pr-ease);
 }
 .pr-tab:hover { color: var(--pr-fg-strong); }
-.pr-tab.is-on { background: var(--pr-surface); color: var(--pr-fg-strong); box-shadow: var(--pr-shadow-2); }
+.pr-tab.is-on { background: var(--pr-surface); color: var(--pr-fg-strong); box-shadow: var(--pr-shadow-1); }
 
 /* ============================================================
    Anamnesis — las usan las dos pantallas (entrenador y atleta),
@@ -1050,6 +1098,45 @@ button.wk-ev:hover { filter: brightness(1.15); }
 .pr-progress i { display: block; height: 100%; background: var(--pr-accent); transition: width var(--pr-dur-2) var(--pr-ease); }
 
 /* ============================================================
+   Movimiento
+   ============================================================
+   Tres piezas y nada más. La animación que no comunica algo
+   (que entró contenido, que algo cambió de estado, que se está
+   cargando) sobra y termina cansando.
+   ============================================================ */
+
+/* 1. Entrada escalonada. Las tarjetas de una pantalla suben en cascada:
+      guía el ojo de arriba abajo en vez de aparecer todas de golpe.
+      El retardo se pasa con style="--i:0", "--i:1"… */
+.pr-rise {
+  animation: pr-rise var(--pr-dur-3) var(--pr-ease-out) both;
+  animation-delay: calc(var(--i, 0) * var(--pr-stagger));
+}
+@keyframes pr-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* 2. Las barras de la semana crecen desde la izquierda, como se lee el
+      tiempo. Es la animación que más dice del producto: se ve la semana
+      llenarse. */
+.pr-grow { animation: pr-grow var(--pr-dur-3) var(--pr-ease-out) both; transform-origin: left center; }
+@keyframes pr-grow { from { transform: scaleX(0); opacity: .3; } to { transform: scaleX(1); opacity: 1; } }
+
+/* 3. Esqueleto de carga: en vez de una pantalla en blanco que después salta,
+      se ve la forma de lo que viene. */
+.pr-skel {
+  background: linear-gradient(90deg,
+    var(--pr-bg-sunk) 25%, var(--pr-bg-soft) 37%, var(--pr-bg-sunk) 63%);
+  background-size: 400% 100%;
+  border-radius: var(--pr-r-2);
+  animation: pr-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes pr-shimmer { from { background-position: 100% 0 } to { background-position: 0 0 } }
+.pr-skel-line { height: 13px; }
+.pr-skel-row { display: flex; align-items: center; gap: 12px; padding: 13px 0; }
+
+/* ============================================================
    Avisos flotantes
    ============================================================ */
 .pr-toast-host {
@@ -1067,11 +1154,12 @@ button.wk-ev:hover { filter: brightness(1.15); }
   font: 600 13px/1.3 var(--pr-font-sans);
   box-shadow: var(--pr-shadow-pop);
   pointer-events: auto;
-  animation: pr-toast-in var(--pr-dur-2) var(--pr-ease-out);
+  border-radius: var(--pr-r-4);
+  animation: pr-toast-in var(--pr-dur-3) var(--pr-ease-spring);
 }
 .pr-toast.is-danger  { background: var(--pr-danger);  color: #fff; }
 .pr-toast.is-success { background: var(--pr-success); color: #fff; }
-@keyframes pr-toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes pr-toast-in { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
