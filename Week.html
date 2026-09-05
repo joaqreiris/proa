@@ -78,6 +78,8 @@
   .ag-who { font: 600 14px/1.25 var(--pr-font-sans); color: var(--pr-fg-strong); }
   .ag-meta { font: var(--pr-meta); color: var(--pr-fg-muted); margin-top: 3px; }
   .ag-meta b { color: var(--pr-fg-faint); font-weight: 600; }
+  .ag-row > .pr-pill:last-child { margin-left: 0; }
+  .ag-row .pr-pill { flex: none; }
   .ag-empty { padding: 16px 18px; font: var(--pr-body-sm); color: var(--pr-fg-faint); }
 
   @media (max-width: 640px) {
@@ -157,7 +159,7 @@
     const wsId = await window.getWorkspaceId();
 
     const { data, error } = await window.sb.from('events')
-      .select('id,date,start_time,end_time,type,title,location,status,athlete_id,athletes!inner(id,first_name,last_name,timezone,workspace_id)')
+      .select('id,date,start_time,end_time,type,title,location,status,rpe,actual_min,athlete_note,au,athlete_id,athletes!inner(id,first_name,last_name,timezone,workspace_id)')
       .eq('athletes.workspace_id', wsId)
       .gte('date', W().addDays(dates[0], -1))
       .lte('date', W().addDays(dates[6], 1));
@@ -254,8 +256,24 @@
           <span class="ag-who">${esc(fullName(r.ath))}</span>
           <span class="ag-meta">${esc(bits.join(' · '))}</span>
         </span>
-        ${e.status === 'done' ? `<span class="pr-pill is-success">${esc(t('ag.done', 'Hecho'))}</span>` : ''}
+        ${parte(e)}
       </button>`;
+  }
+
+  // Lo que devolvió el atleta. Es lo que un entrenador viene a mirar: no
+  // «¿qué le puse?» sino «¿qué hizo, y cuánto le costó?».
+  function parte(e) {
+    if (e.status === 'skipped') {
+      return `<span class="pr-pill is-danger"><i class="ti ti-x"></i>${esc(t('log.skipped', 'No lo hizo'))}</span>`;
+    }
+    if (e.status !== 'done') return '';
+    const bits = [`<span class="pr-pill is-success"><i class="ti ti-check"></i>${esc(t('ag.done', 'Hecho'))}</span>`];
+    if (e.rpe) bits.push(`<span class="pr-pill">${esc(t('se.rpeShort', 'RPE') + ' ' + e.rpe)}</span>`);
+    if (e.au)  bits.push(`<span class="pr-pill">${esc(t('log.auShort', e.au + ' AU', { n: e.au }))}</span>`);
+    if (e.athlete_note) {
+      bits.push(`<span class="pr-pill" title="${esc(e.athlete_note)}"><i class="ti ti-message-2"></i></span>`);
+    }
+    return bits.join('');
   }
 
   function paintTzNote() {

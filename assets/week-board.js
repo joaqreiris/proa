@@ -88,6 +88,7 @@
               </div>
             </div>
             <p class="pr-hint wb-mine" id="e-mine" hidden></p>
+            <div class="wb-parte" id="e-parte" hidden></div>
             <div class="pr-field">
               <label class="pr-label" for="e-title" data-i18n="wk.blockTitle">Título</label>
               <input class="pr-input" id="e-title" maxlength="80" data-i18n-ph="wk.titlePh" placeholder="Si lo dejas vacío se usa el tipo.">
@@ -245,7 +246,7 @@
       window.sb.from('availability_slots')
         .select('weekday,start_time,end_time,kind,label').eq('athlete_id', athlete.id),
       window.sb.from('events')
-        .select('id,date,start_time,end_time,type,title,notes,location,status')
+        .select('id,date,start_time,end_time,type,title,notes,location,status,rpe,actual_min,athlete_note,au,done_at')
         .eq('athlete_id', athlete.id).gte('date', monday).lte('date', dates[6]).order('start_time')
     ]);
     if (sl.error) { window.prToast(sl.error.message, 'danger'); return; }
@@ -329,6 +330,7 @@
     $('ev-msg').hidden  = true;
     $('ev-hint').hidden = !sug;
     paintMine();
+    paintParte(ev);
     $('m-ev').hidden = false;
   }
 
@@ -350,6 +352,28 @@
     el.innerHTML = `<i class="ti ti-clock-pin"></i><span>${esc(t('wk.yourTime',
       `Para ti: ${cs.hhmm}${ce ? ' – ' + ce.hhmm : ''} del ${day}.`,
       { time: cs.hhmm + (ce ? ' – ' + ce.hhmm : ''), day }))}</span>`;
+    el.hidden = false;
+  }
+
+  // Lo que devolvió el atleta. Va aquí adentro y no en otra pantalla porque es
+  // la respuesta a este bloque: se lee al lado de lo que se le había pedido.
+  function paintParte(ev2) {
+    const el = $('e-parte');
+    if (!ev2 || (ev2.status !== 'done' && ev2.status !== 'skipped' && !ev2.athlete_note)) {
+      el.hidden = true; return;
+    }
+    const bits = [];
+    if (ev2.status === 'done') {
+      bits.push(`<span class="pr-pill is-success"><i class="ti ti-check"></i>${esc(t('log.done', 'Hecho'))}</span>`);
+      if (ev2.actual_min) bits.push(`<span class="pr-pill">${esc(ev2.actual_min + ' min')}</span>`);
+      if (ev2.rpe) bits.push(`<span class="pr-pill">${esc(t('se.rpeShort', 'RPE') + ' ' + ev2.rpe)}</span>`);
+      if (ev2.au)  bits.push(`<span class="pr-pill is-accent">${esc(t('log.auShort', ev2.au + ' AU', { n: ev2.au }))}</span>`);
+    } else if (ev2.status === 'skipped') {
+      bits.push(`<span class="pr-pill is-danger"><i class="ti ti-x"></i>${esc(t('log.skipped', 'No lo hizo'))}</span>`);
+    }
+    el.innerHTML = `<span class="pr-eyebrow">${esc(t('log.parte', 'Lo que contó'))}</span>
+      <div class="wb-parte-pills">${bits.join('')}</div>
+      ${ev2.athlete_note ? `<p>${esc(ev2.athlete_note)}</p>` : ''}`;
     el.hidden = false;
   }
 

@@ -363,10 +363,8 @@
     if (wsSport) document.getElementById('n-sport').value = wsSport;
     const tzSel = document.getElementById('n-tz');
     if (!tzSel.options.length) {
-      const mine = window.prTz.mine();
-      tzSel.innerHTML = window.prTz.list().map(z =>
-        `<option value="${esc(z)}"${z === mine ? ' selected' : ''}>${esc(window.prTz.label(z))}</option>`).join('');
-      tzSel.value = mine;
+      tzSel.innerHTML = window.prTz.selectHtml(window.prTz.mine());
+      tzSel.value = window.prTz.mine();
     }
     openModal('m-new');
     document.getElementById('n-first').focus();

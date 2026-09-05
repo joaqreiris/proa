@@ -31,6 +31,15 @@
   .ap-prose.is-empty { color: var(--pr-fg-faint); }
   .ap-block { margin-bottom: 22px; }
   .ap-tabs { margin-bottom: 20px; }
+  /* Catorce días de un vistazo. Cada barra es un día; la altura, cómo se
+     sentía. Lo que importa no es el número de ayer sino la forma de la línea. */
+  .ap-wl { display: flex; align-items: flex-end; gap: 5px; height: 78px; }
+  .ap-wl div { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; gap: 5px; }
+  .ap-wl i { display: block; border-radius: var(--pr-r-2) var(--pr-r-2) 2px 2px; background: var(--pr-accent); min-height: 3px; }
+  .ap-wl i.is-empty { background: var(--pr-bg-sunk); height: 3px; }
+  .ap-wl i.is-low { background: var(--pr-danger); }
+  .ap-wl i.is-mid { background: var(--pr-warning); }
+  .ap-wl span { font: 700 9.5px/1 var(--pr-font-cond); color: var(--pr-fg-faint); text-align: center; font-variant-numeric: tabular-nums; }
   .ap-tz { margin-top: 18px; padding-top: 16px; border-top: var(--pr-bw) solid var(--pr-border-soft); }
   .ap-pane[hidden] { display: none; }
 
@@ -93,6 +102,15 @@
           <h2 data-i18n="ap.flags">Atención</h2>
         </div>
         <dl id="flags-list"></dl>
+      </section>
+
+      <section class="pr-card pr-card-pad ap-block" id="wl-card" hidden>
+        <div class="ap-card-head">
+          <h2 data-i18n="wl.how">Cómo viene</h2>
+          <span class="pr-hint" data-i18n="wl.scale">De 5 a 25. Más alto es mejor.</span>
+        </div>
+        <div class="ap-wl" id="wl-strip"></div>
+        <p class="ap-prose" id="wl-note" style="margin-top:14px"></p>
       </section>
 
       <div class="ap-cards">
@@ -262,6 +280,56 @@
       ? t('ap.free', `Le quedan <b>${h} h</b> libres en la semana, entre las 06:00 y las 24:00.`, { hours: h })
       : `<span style="color:var(--pr-fg-faint)">${esc(t('ap.noWeek', 'Todavía no cargaste sus horarios fijos.'))}</span>`;
 
+    // ── Cómo viene ──
+    // Catorce días. La barra sola no dice nada; lo que se lee es la forma —
+    // tres días bajos seguidos son una conversación, un día bajo no.
+    const from = window.prWeek.addDays(window.prToday(), -13);
+    const { data: wls } = await window.sb.from('wellness')
+      .select('date,score,sleep_h,sleep_quality,legs,energy,mood,calm,note')
+      .eq('athlete_id', id).gte('date', from).order('date');
+
+    if (wls && wls.length) {
+      const byDate = Object.fromEntries(wls.map(w => [w.date, w]));
+      const days = [];
+      for (let i = 13; i >= 0; i--) days.push(window.prWeek.addDays(window.prToday(), -i));
+
+      document.getElementById('wl-strip').innerHTML = days.map(d => {
+        const w = byDate[d];
+        const day = d.slice(8).replace(/^0/, '');
+        if (!w || w.score == null) {
+          return `<div><i class="is-empty"></i><span>${day}</span></div>`;
+        }
+        // De 5 a 25: se dibuja sobre ese rango, no sobre cero, porque un 5 y un
+        // 25 tienen que verse claramente distintos.
+        const h = Math.round(((w.score - 5) / 20) * 100);
+        const cls = w.score <= 12 ? ' is-low' : w.score <= 17 ? ' is-mid' : '';
+        const tip = [
+          t('wl.sleepQ') + ': ' + w.sleep_quality,
+          t('wl.legs') + ': ' + w.legs,
+          t('wl.energy') + ': ' + w.energy,
+          t('wl.mood') + ': ' + w.mood,
+          t('wl.calm') + ': ' + w.calm,
+          w.sleep_h ? w.sleep_h + ' h' : ''
+        ].filter(Boolean).join(' · ');
+        return `<div title="${esc(w.date + ' — ' + w.score + '/25 · ' + tip)}">
+          <i class="${cls.trim()}" style="height:${Math.max(h, 4)}%"></i><span>${day}</span></div>`;
+      }).join('');
+
+      // Lo último que escribió, que suele valer más que los cinco números.
+      const lastNote = [...wls].reverse().find(w => w.note);
+      const nEl = document.getElementById('wl-note');
+      nEl.textContent = lastNote ? '“' + lastNote.note + '” — ' + lastNote.date : '';
+      nEl.hidden = !lastNote;
+      document.getElementById('wl-card').hidden = false;
+
+      const today = byDate[window.prToday()];
+      if (today && today.score != null) {
+        document.getElementById('meta').insertAdjacentHTML('beforeend',
+          `<span class="pr-pill ${today.score <= 12 ? 'is-danger' : today.score >= 18 ? 'is-success' : 'is-warning'}">`
+          + esc(t('wl.today', 'Hoy ' + today.score + '/25', { n: today.score })) + '</span>');
+      }
+    }
+
     // ── Dónde vive ──
     // El huso del atleta es lo que permite decirle al entrenador «esto es a
     // las cuatro de la mañana tuyas». Si nunca se cargó, se propone el del
@@ -269,9 +337,8 @@
     const tzSel = document.getElementById('ap-tz');
     const mine = window.prTz.mine();
     const cur = window.prTz.valid(a.timezone) ? a.timezone : '';
-    tzSel.innerHTML = `<option value="">${esc(t('ap.tzNone', 'Sin definir') + ' — ' + t('ap.tzAssume', 'se supone el tuyo') + ': ' + window.prTz.label(mine))}</option>`
-      + window.prTz.list().map(z =>
-          `<option value="${esc(z)}"${z === cur ? ' selected' : ''}>${esc(window.prTz.label(z))}</option>`).join('');
+    const none = `<option value="">${esc(t('ap.tzNone', 'Sin definir') + ' — ' + t('ap.tzAssume', 'se supone el tuyo') + ': ' + window.prTz.label(mine))}</option>`;
+    tzSel.innerHTML = window.prTz.selectHtml(cur, none);
     tzSel.value = cur;
     tzSel.addEventListener('change', async () => {
       const v = tzSel.value || null;

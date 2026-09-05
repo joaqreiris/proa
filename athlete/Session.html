@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="as.pageTitle">Mi sesión — Proa</title>
+<meta name="theme-color" content="#FF3D00">
+<link rel="stylesheet" href="../proa.css">
+<script src="../assets/brand.js"></script>
+<script src="../assets/vendor/supabase-js-2.112.4.min.js"></script>
+<script src="../assets/supabase-init.js"></script>
+<script src="../assets/i18n.js" defer></script>
+<script src="../assets/week-grid.js" defer></script>
+<script src="../assets/block-types.js" defer></script>
+<script src="../assets/athlete-log.js" defer></script>
+<style>
+  /* Se lee de parado, entre serie y serie, con el teléfono en una mano. */
+  .as { max-width: 560px; margin: 0 auto; padding: 0 18px 96px; }
+  .as-top { display: flex; align-items: center; gap: 11px; padding: 18px 0 16px; }
+  .as-top .pr-grow { min-width: 0; }
+  .as-when { font: 700 10px/1 var(--pr-font-cond); letter-spacing: .18em; text-transform: uppercase; color: var(--pr-fg-muted); display: block; }
+  .as-name { font: var(--pr-h2); text-transform: uppercase; letter-spacing: var(--pr-tr-h); color: var(--pr-fg-strong); margin: 4px 0 0; }
+  .as-meta { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 18px; }
+
+  .as-blocks { display: flex; flex-direction: column; gap: 12px; }
+  .as-block { overflow: hidden; }
+  .as-block-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px;
+    border-bottom: var(--pr-bw) solid var(--pr-border);
+  }
+  .as-block-head .ti { font-size: 19px; flex: none; }
+  .as-block-head h2 { font: 700 15px/1.2 var(--pr-font-sans); color: var(--pr-fg-strong); margin: 0; flex: 1; min-width: 0; }
+  .as-tag { font: 700 11px/1 var(--pr-font-cond); letter-spacing: .06em; color: var(--pr-fg-faint); width: 20px; flex: none; }
+  .as-block-note { padding: 10px 16px 0; font: var(--pr-body-sm); color: var(--pr-fg-muted); margin: 0; }
+  .as-combo { padding: 10px 16px 0; }
+
+  .as-items { padding: 6px 6px 12px; }
+  .as-item { padding: 10px 10px; border-radius: var(--pr-r-3); }
+  .as-item + .as-item { border-top: var(--pr-bw) solid var(--pr-border-soft); border-radius: 0; }
+  .as-item-top { display: flex; align-items: baseline; gap: 9px; }
+  .as-item-name { font: 700 14.5px/1.25 var(--pr-font-sans); color: var(--pr-fg-strong); flex: 1; min-width: 0; }
+  .as-pres {
+    display: flex; gap: 14px; flex-wrap: wrap; margin-top: 6px;
+    font: 700 12.5px/1 var(--pr-font-cond); letter-spacing: .06em;
+    color: var(--pr-fg-muted); font-variant-numeric: tabular-nums;
+  }
+  .as-pres b { color: var(--pr-fg-strong); }
+  .as-item-note { font: var(--pr-body-sm); color: var(--pr-fg-faint); margin: 6px 0 0; }
+  .as-vid {
+    display: inline-flex; align-items: center; gap: 5px; margin-top: 8px;
+    font: 700 11px/1 var(--pr-font-sans); letter-spacing: var(--pr-tr-btn); text-transform: uppercase;
+    color: var(--pr-ev-match); text-decoration: none;
+  }
+
+  /* Las series una por una, cuando no son todas iguales. */
+  .as-sets { margin-top: 9px; display: flex; flex-direction: column; gap: 4px; }
+  .as-set {
+    display: grid; grid-template-columns: 22px 1fr 1fr 56px; gap: 8px; align-items: center;
+    font: 600 12.5px/1 var(--pr-font-cond); letter-spacing: .05em;
+    color: var(--pr-fg-muted); font-variant-numeric: tabular-nums;
+    padding: 6px 0; border-top: var(--pr-bw) solid var(--pr-border-soft);
+  }
+  .as-set b { color: var(--pr-fg-faint); }
+
+  /* El parte queda pegado abajo: es lo que hay que hacer al terminar, y no se
+     puede depender de que alguien scrollee hasta el final para encontrarlo. */
+  .as-foot {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+    padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
+    background: var(--pr-bg); border-top: var(--pr-bw) solid var(--pr-border);
+  }
+  .as-foot-in { max-width: 560px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+  .as-foot .pr-btn { flex: 1; }
+</style>
+</head>
+<body class="pr">
+
+<div class="as">
+
+  <header class="as-top">
+    <a class="pr-icon-btn is-flush" href="Week.html" aria-label="Volver"><i class="ti ti-arrow-left"></i></a>
+    <span class="pr-grow">
+      <span class="as-when" id="when">&nbsp;</span>
+      <h1 class="as-name" id="title">&nbsp;</h1>
+    </span>
+  </header>
+
+  <div class="as-meta" id="meta"></div>
+
+  <div class="as-blocks" id="blocks"></div>
+
+</div>
+
+<div class="as-foot" id="foot" hidden>
+  <div class="as-foot-in">
+    <span class="pr-pill" id="state" hidden></span>
+    <button class="pr-btn is-primary" id="log"><i class="ti ti-flag"></i><span data-i18n="log.ask">¿Cómo te fue?</span></button>
+  </div>
+</div>
+
+<script>
+(function () {
+  const t = (k, fb, vars) => (window.PR_I18N ? window.PR_I18N.t(k, vars) : null) || fb;
+  const esc = window.prEsc;
+  const W = () => window.prWeek;
+  const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+  const eventId = new URLSearchParams(location.search).get('event');
+  let ev = null;
+
+  async function load() {
+    const { data } = await window.sb.from('events')
+      .select(`id,date,start_time,end_time,type,title,notes,location,status,rpe,actual_min,athlete_note,au,
+               session_blocks(id,position,title,kind,method,rounds,rest_s,duration_min,rpe,notes,
+                 session_items(id,position,name,sets,reps,load,rest_s,tempo,side,mode,notes,
+                   exercises(video_url),
+                   session_sets(position,reps,load,rest_s,tempo,note)))`)
+      .eq('id', eventId).maybeSingle();
+    if (!data) { window.location.replace('Week.html'); return; }
+    ev = data;
+    paint();
+  }
+
+  function paint() {
+    const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
+    document.getElementById('when').textContent =
+      W().parseYMD(ev.date).toLocaleDateString(lang, { weekday: 'long', day: 'numeric', month: 'long' });
+    document.getElementById('title').textContent = ev.title || t(W().EVENT_KEY[ev.type] || 'ev.other');
+    document.title = (ev.title || 'Proa') + ' — Proa';
+
+    const time = ev.start_time
+      ? W().hhmm(ev.start_time) + (ev.end_time ? '–' + W().hhmm(ev.end_time) : '') : null;
+    document.getElementById('meta').innerHTML = [
+      time ? `<span class="pr-pill">${esc(time)}</span>` : '',
+      ev.location ? `<span class="pr-pill">${esc(ev.location)}</span>` : '',
+      ev.notes ? `<span class="pr-pill">${esc(ev.notes)}</span>` : ''
+    ].filter(Boolean).join('');
+
+    const BT = window.prBlockTypes;
+    const blocks = (ev.session_blocks || []).sort((a, b) => a.position - b.position);
+
+    document.getElementById('blocks').innerHTML = blocks.length ? blocks.map((b, bi) => {
+      const L = LETTERS[bi] || '·';
+      const items = (b.session_items || []).sort((x, y) => x.position - y.position);
+      // Cuando los ejercicios van juntos (contraste, superserie, circuito) hay
+      // que decirlo: cambia por completo cómo se hace el bloque.
+      const combo = b.method && b.method !== 'single';
+
+      return `
+      <section class="pr-card as-block has-strip pr-rise" style="--pr-strip:${BT.color(b.kind)};--i:${bi}">
+        <div class="as-block-head">
+          <span class="as-tag">${L}</span>
+          <i class="ti ${BT.get(b.kind).icon}" style="color:${BT.color(b.kind)}"></i>
+          <h2>${esc(b.title || BT.label(b.kind))}</h2>
+          ${b.duration_min ? `<span class="pr-pill">${esc(b.duration_min + ' min')}</span>` : ''}
+        </div>
+
+        ${combo ? `<div class="as-combo">
+          <span class="pr-pill is-accent">${esc(t('se.m.' + b.method))}</span>
+          ${b.rounds ? `<span class="pr-pill">${esc(t('as.rounds', b.rounds + ' rondas', { n: b.rounds }))}</span>` : ''}
+          ${b.rest_s ? `<span class="pr-pill">${esc(t('as.restBetween', b.rest_s + ' s entre rondas', { n: b.rest_s }))}</span>` : ''}
+        </div>` : ''}
+
+        ${b.notes ? `<p class="as-block-note">${esc(b.notes)}</p>` : ''}
+
+        <div class="as-items">
+          ${items.length ? items.map((it, ii) => itemHtml(it, L + (ii + 1))) .join('')
+                         : `<p class="as-item-note" style="padding:8px 10px">${esc(t('as.blockEmpty', 'Sin ejercicios cargados.'))}</p>`}
+        </div>
+      </section>`;
+    }).join('') : `<section class="pr-empty">
+        <i class="ti ti-stack-2"></i>
+        <h3>${esc(t('as.empty.title', 'Todavía no hay nada cargado'))}</h3>
+        <p>${esc(t('as.empty.body', 'Tu entrenador está armando esta sesión.'))}</p>
+      </section>`;
+
+    // El estado del parte, arriba del botón.
+    const st = document.getElementById('state');
+    if (ev.status === 'done') {
+      st.className = 'pr-pill is-success';
+      st.textContent = t('log.done', 'Hecho') + (ev.rpe ? ' · ' + t('se.rpeShort', 'RPE') + ' ' + ev.rpe : '');
+      st.hidden = false;
+    } else if (ev.status === 'skipped') {
+      st.className = 'pr-pill';
+      st.textContent = t('log.skipped', 'No lo hizo');
+      st.hidden = false;
+    } else { st.hidden = true; }
+    document.getElementById('foot').hidden = false;
+
+    if (window.PR_I18N) window.PR_I18N.applyTo(document);
+  }
+
+  function itemHtml(it, tag) {
+    const sets = (it.session_sets || []).sort((a, b) => a.position - b.position);
+    const vid = it.exercises && it.exercises.video_url;
+
+    // La prescripción pareja solo se muestra si NO hay series una por una:
+    // dos versiones del mismo dato en pantalla es pedir una contradicción.
+    const pres = sets.length ? '' : [
+      it.sets ? `<span><b>${esc(it.sets)}</b> ${esc(t('se.sets', 'series'))}</span>` : '',
+      it.reps ? `<span><b>${esc(it.reps)}</b> ${esc(t('se.reps', 'reps'))}</span>` : '',
+      it.load ? `<span><b>${esc(it.load)}</b></span>` : '',
+      it.rest_s ? `<span>${esc(it.rest_s + ' s')}</span>` : ''
+    ].filter(Boolean).join('');
+
+    const extra = [
+      it.side && it.side !== 'both' ? t('se.s.' + it.side) : '',
+      it.tempo, it.notes
+    ].filter(Boolean).join(' · ');
+
+    return `
+      <div class="as-item">
+        <div class="as-item-top">
+          <span class="as-tag">${esc(tag)}</span>
+          <span class="as-item-name">${esc(it.name)}</span>
+        </div>
+        ${pres ? `<div class="as-pres">${pres}</div>` : ''}
+        ${sets.length ? `<div class="as-sets">
+          ${sets.map((s, i) => `<div class="as-set">
+            <b>${i + 1}</b>
+            <span>${esc(s.reps || '—')}</span>
+            <span>${esc(s.load || '—')}</span>
+            <span>${esc(s.rest_s != null ? s.rest_s + ' s' : '')}</span>
+          </div>`).join('')}
+        </div>` : ''}
+        ${extra ? `<p class="as-item-note">${esc(extra)}</p>` : ''}
+        ${vid ? `<a class="as-vid" href="${esc(vid)}" target="_blank" rel="noopener">
+          <i class="ti ti-brand-youtube"></i><span data-i18n="se.watch">Ver el video</span></a>` : ''}
+      </div>`;
+  }
+
+  document.getElementById('log').addEventListener('click', () => window.prLog.open(ev, load));
+
+  async function boot() {
+    if (!(await window.requireAthlete())) return;
+    if (window.PR_I18N && window.PR_I18N.ready) { try { await window.PR_I18N.ready; } catch (e) {} }
+    if (!eventId) { window.location.replace('Week.html'); return; }
+    await load();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>

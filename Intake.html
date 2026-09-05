@@ -142,7 +142,7 @@
     const h = window.prWeek.freeHours(slots);
     document.getElementById('free').innerHTML = slots.length
       ? t('ap.free', `Le quedan <b>${h} h</b> libres en la semana, entre las 06:00 y las 24:00.`, { hours: h })
-      : `<span style="color:var(--pr-fg-faint)">${esc(t('in.weekEmpty', 'Cargá sus horarios con el + de cada día.'))}</span>`;
+      : `<span style="color:var(--pr-fg-faint)">${esc(t('in.weekEmpty', 'Carga sus horarios con el + de cada día.'))}</span>`;
   }
 
   async function loadSlots() {

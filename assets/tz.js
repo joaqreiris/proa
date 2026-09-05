@@ -173,5 +173,46 @@
     return FALLBACK.slice();
   }
 
-  window.prTz = { mine, valid, offset, toUtc, fromUtc, convert, dayDiff, nowIn, gmt, city, label, list };
+  // ── El selector ────────────────────────────────────────────────────────
+  //
+  // `Intl` devuelve los husos ordenados por su nombre interno, y ese nombre no
+  // es el que se ve: 'America/Argentina/Buenos_Aires' se muestra como «Buenos
+  // Aires» pero se ordena por la A de Argentina, así que Buenos Aires aparece
+  // lejísimos de Montevideo y la lista se lee como si estuviera desordenada.
+  //
+  // Acá se ordena por lo que el ojo lee: por continente, y adentro por ciudad.
+  // Y arriba de todo, el huso de quien está mirando — que es la respuesta
+  // correcta la mayor parte de las veces.
+  function selectHtml(selected, extraFirst) {
+    const esc = window.prEsc;
+    const t = (k, fb) => (window.PR_I18N ? window.PR_I18N.t(k) : null) || fb;
+    const me = mine();
+
+    const opt = (z, sel) =>
+      `<option value="${esc(z)}"${sel ? ' selected' : ''}>${esc(label(z))}</option>`;
+
+    const groups = {};
+    for (const z of list()) {
+      if (z === me) continue;                    // ya está arriba
+      const region = z.includes('/') ? z.split('/')[0] : 'Other';
+      (groups[region] = groups[region] || []).push(z);
+    }
+
+    const order = ['America', 'Europe', 'Africa', 'Asia', 'Australia', 'Pacific',
+                   'Atlantic', 'Indian', 'Antarctica', 'Arctic', 'Other'];
+    const names = Object.keys(groups).sort((a, b) => {
+      const ia = order.indexOf(a), ib = order.indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+    });
+
+    return (extraFirst || '')
+      + `<optgroup label="${esc(t('tz.mine', 'Tu huso'))}">${opt(me, selected === me)}</optgroup>`
+      + names.map(r => {
+          const zs = groups[r].sort((a, b) => city(a).localeCompare(city(b), 'es'));
+          return `<optgroup label="${esc(t('tz.' + r, r))}">`
+            + zs.map(z => opt(z, z === selected)).join('') + `</optgroup>`;
+        }).join('');
+  }
+
+  window.prTz = { mine, valid, offset, toUtc, fromUtc, convert, dayDiff, nowIn, gmt, city, label, list, selectHtml };
 })();

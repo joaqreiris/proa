@@ -182,6 +182,44 @@ const run = async () => {
     is('la agenda cuenta los dos bloques de la semana',
        await page.locator('#n-blocks').innerText(), '2');
 
+    // ── El modal del alta, en una ventana baja ────────────────────────────
+    // El formulario es largo. Si el cuerpo del modal no puede encogerse, el
+    // pie se va fuera de la pantalla y el botón de guardar no existe.
+    await page.setViewportSize({ width: 1280, height: 680 });
+    await page.goto(`http://localhost:${PORT}/Athletes.html`, { waitUntil: 'networkidle' });
+    await page.click('#btn-new');
+    await page.waitForSelector('#m-new:not([hidden])');
+
+    const fits = await page.evaluate(() => {
+      const b = document.getElementById('new-save').getBoundingClientRect();
+      return b.bottom <= window.innerHeight && b.top >= 0 && b.height > 0;
+    });
+    fits ? ok('el botón de guardar se ve, aunque el formulario sea largo')
+         : no('el botón de guardar queda fuera de la pantalla', fits);
+
+    // ── El selector de husos ──────────────────────────────────────────────
+    const tz = await page.evaluate(() => {
+      const sel = document.getElementById('n-tz');
+      const groups = [...sel.querySelectorAll('optgroup')].map(g => g.label);
+      const mvd = [...sel.options].find(o => o.value === 'America/Montevideo');
+      return {
+        groups: groups.slice(0, 3),
+        montevideo: mvd ? mvd.textContent : null,
+        inGroup: mvd ? mvd.parentElement.label : null,
+        first: sel.options[0] ? sel.options[0].value : null
+      };
+    });
+    tz.montevideo && tz.montevideo.includes('Montevideo')
+      ? ok('Montevideo está en la lista') : no('falta Montevideo', tz);
+    // Se compara el valor, no la etiqueta: la etiqueta cambia con el idioma
+    // del navegador y la prueba no puede depender de eso.
+    tz.first === PNH
+      ? ok('y arriba de todo va el huso de quien está cargando')
+      : no('el propio huso no está primero', tz);
+    tz.inGroup && tz.inGroup.toLowerCase().includes('am')
+      ? ok('agrupado por continente, no por el nombre interno')
+      : no('sin agrupar', tz);
+
     errs.length === 0 ? ok('ninguna página tiró errores') : no('errores', errs.slice(0, 3));
   } finally {
     await browser.close();

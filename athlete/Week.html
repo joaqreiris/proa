@@ -12,6 +12,7 @@
 <script src="../assets/i18n.js" defer></script>
 <script src="../assets/week-grid.js" defer></script>
 <script src="../assets/recovery-methods.js" defer></script>
+<script src="../assets/athlete-log.js" defer></script>
 <style>
   /* Se usa de parado en un gimnasio: una columna, todo grande, sin menú. */
   .aw { max-width: 560px; margin: 0 auto; padding: 0 18px 64px; }
@@ -53,6 +54,32 @@
   .aw-block-time { font: 700 12px/1 var(--pr-font-cond); letter-spacing: .08em; color: var(--pr-fg-muted); font-variant-numeric: tabular-nums; margin-left: auto; flex: none; }
   .aw-block-meta { font: var(--pr-body-sm); color: var(--pr-fg-muted); margin: 5px 0 0; }
 
+  /* Un bloque del día es un botón entero: se toca con el pulgar, de parado. */
+  button.aw-block { width: 100%; text-align: left; cursor: pointer; font: inherit; padding: 0;
+    transition: border-color var(--pr-dur-1) var(--pr-ease), transform var(--pr-dur-1) var(--pr-ease); }
+  button.aw-block:hover { border-color: var(--pr-border-strong); transform: translateY(-1px); }
+  .aw-block.is-done { border-color: var(--pr-success); }
+  .aw-block.is-skipped { opacity: .62; }
+  .aw-block-state { display: flex; align-items: center; gap: 7px; margin-top: 9px; flex-wrap: wrap; }
+  .aw-ask { font: 700 11px/1 var(--pr-font-cond); letter-spacing: .12em; text-transform: uppercase; color: var(--pr-accent-ink); }
+
+  /* El parte del día: cinco preguntas de un toque. */
+  .aw-wl { display: flex; flex-direction: column; gap: 14px; margin-top: 4px; }
+  .aw-wl-q > span { display: block; font: 600 13px/1.3 var(--pr-font-sans); color: var(--pr-fg-strong); margin-bottom: 7px; }
+  .aw-faces { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .aw-face {
+    height: 44px; border-radius: var(--pr-r-3); cursor: pointer;
+    border: var(--pr-bw) solid var(--pr-border); background: var(--pr-surface);
+    font: 700 15px/1 var(--pr-font-cond); color: var(--pr-fg-faint);
+    transition: all var(--pr-dur-1) var(--pr-ease);
+  }
+  .aw-face:hover { border-color: var(--pr-border-strong); color: var(--pr-fg-strong); }
+  .aw-face.is-on { background: var(--pr-accent); border-color: var(--pr-accent); color: var(--pr-fg-on-accent); }
+  .aw-wl-sleep { display: flex; align-items: center; gap: 9px; }
+  .aw-wl-sleep input { width: 88px; text-align: center; font-variant-numeric: tabular-nums; }
+  .aw-wl-sleep span { font: var(--pr-body-sm); color: var(--pr-fg-muted); }
+  .aw-wl-done { display: flex; align-items: center; gap: 8px; font: var(--pr-body-sm); color: var(--pr-success); }
+
   .aw-weekwrap { margin-top: 4px; }
   .aw-weekwrap .wk-day.is-date { width: 46px; }
   .aw-weekwrap .wk-track-cal { height: 34px; }
@@ -88,7 +115,18 @@
       <div class="aw-today" id="today-list"></div>
     </section>
 
-    <section class="pr-card pr-rise" style="--i:2" id="week-card" hidden>
+    <section class="pr-card pr-rise" style="--i:2" id="wl-card" hidden>
+      <h3 data-i18n="wl.title">¿Cómo amaneciste?</h3>
+      <p data-i18n="wl.sub">Cinco toques. Le sirve a tu entrenador para saber cuánto exigirte hoy.</p>
+      <div class="aw-wl" id="wl-form"></div>
+      <div class="pr-modal-foot" style="padding:14px 0 0;border:0">
+        <span class="aw-wl-done" id="wl-done" hidden><i class="ti ti-check"></i><span data-i18n="wl.saved">Anotado</span></span>
+        <span class="pr-grow"></span>
+        <button class="pr-btn is-primary is-sm" id="wl-save"><i class="ti ti-check"></i><span data-i18n="common.save">Guardar</span></button>
+      </div>
+    </section>
+
+    <section class="pr-card pr-rise" style="--i:3" id="week-card" hidden>
       <h3 data-i18n="aw.weekTitle">Tu semana</h3>
       <div class="wk aw-weekwrap">
         <div id="wk-scale"></div>
@@ -139,7 +177,18 @@
           + (window.prRecovery.summary(r) ? ' (' + window.prRecovery.summary(r) + ')' : ''))
         .join(' · ');
       const meta = [rec, e.location, e.notes].filter(Boolean).join(' · ');
-      return `<div class="aw-block">
+
+      // Debajo de cada bloque, en qué quedó. Un bloque sin reportar lo pide;
+      // uno reportado muestra lo que se contestó, para poder corregirlo.
+      const state = e.status === 'done'
+        ? `<span class="pr-pill is-success"><i class="ti ti-check"></i>${esc(t('log.done', 'Hecho'))}</span>`
+          + (e.rpe ? `<span class="pr-pill">${esc(t('se.rpeShort', 'RPE') + ' ' + e.rpe)}</span>` : '')
+          + (e.au ? `<span class="pr-pill">${esc(t('log.auShort', e.au + ' AU', { n: e.au }))}</span>` : '')
+        : e.status === 'skipped'
+        ? `<span class="pr-pill"><i class="ti ti-x"></i>${esc(t('log.skipped', 'No lo hizo'))}</span>`
+        : `<span class="aw-ask">${esc(t('log.ask', '¿Cómo te fue?'))}</span>`;
+
+      return `<button type="button" class="aw-block${e.status === 'done' ? ' is-done' : e.status === 'skipped' ? ' is-skipped' : ''}" data-ev="${e.id}">
         <i class="bar" style="background:${W().EVENT_COLOR[e.type] || W().EVENT_COLOR.other}"></i>
         <div class="aw-block-body">
           <div class="aw-block-top">
@@ -147,10 +196,107 @@
             ${time ? `<span class="aw-block-time">${esc(time)}</span>` : ''}
           </div>
           ${meta ? `<p class="aw-block-meta">${esc(meta)}</p>` : ''}
+          <div class="aw-block-state">${state}</div>
         </div>
-      </div>`;
+      </button>`;
     }).join('');
   }
+
+  let allEvents = [], athleteId = null;
+
+  document.getElementById('today-list').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-ev]');
+    if (!b) return;
+    const ev = allEvents.find(x => x.id === b.dataset.ev);
+    if (!ev) return;
+    // Un bloque de gimnasio o de campo tiene ejercicios que hay que leer, así
+    // que se abre la sesión — y ahí abajo está el parte. Lo que no tiene nada
+    // que leer abre el parte directamente.
+    if (ev.type === 'gym' || ev.type === 'field') {
+      window.location.href = 'Session.html?event=' + ev.id;
+      return;
+    }
+    window.prLog.open(ev, reload);
+  });
+
+  // Después de guardar se vuelve a leer: lo que se ve tiene que ser lo que
+  // quedó en la base, no lo que la pantalla cree.
+  async function reload() {
+    const { data } = await window.sb.from('events')
+      .select(EV_COLS).eq('athlete_id', athleteId)
+      .gte('date', W().mondayOf(window.prToday()))
+      .lte('date', W().weekDates(W().mondayOf(window.prToday()))[6])
+      .order('start_time');
+    allEvents = data || [];
+    paintToday(allEvents);
+  }
+
+  const EV_COLS = 'id,date,start_time,end_time,type,title,notes,location,status,rpe,actual_min,athlete_note,au,recovery_items(position,method,duration_min,temp_c,temp_hot_c,cycles,pressure)';
+
+  // ── El parte del día ─────────────────────────────────────────────────────
+  // Las cinco preguntas van todas en la misma dirección: 1 es lo peor y 5 lo
+  // mejor. Si en una el 5 fuera malo, nadie podría leer la fila de un vistazo.
+  const WL = [
+    ['sleep_quality', 'wl.sleepQ'],
+    ['legs',          'wl.legs'],
+    ['energy',        'wl.energy'],
+    ['mood',          'wl.mood'],
+    ['calm',          'wl.calm']
+  ];
+  let wl = {};
+
+  function paintWellness() {
+    document.getElementById('wl-form').innerHTML = `
+      <div class="aw-wl-q aw-wl-sleep">
+        <label class="pr-label" for="wl-h" style="margin:0" data-i18n="wl.sleepH">Cuánto dormiste</label>
+        <input class="pr-input" id="wl-h" type="number" inputmode="decimal" min="0" max="24" step="0.5" value="${wl.sleep_h == null ? '' : wl.sleep_h}">
+        <span data-i18n="wl.hours">horas</span>
+      </div>
+      ${WL.map(([k, key]) => `
+        <div class="aw-wl-q">
+          <span data-i18n="${key}">${esc(t(key))}</span>
+          <div class="aw-faces" data-wl="${k}">
+            ${[1, 2, 3, 4, 5].map(n =>
+              `<button type="button" class="aw-face${wl[k] === n ? ' is-on' : ''}" data-v="${n}">${n}</button>`).join('')}
+          </div>
+        </div>`).join('')}
+      <div class="pr-field" style="margin:0">
+        <label class="pr-label" for="wl-note" data-i18n="wl.note">Algo más</label>
+        <input class="pr-input" id="wl-note" value="${esc(wl.note || '')}" data-i18n-ph="wl.notePh" placeholder="Molestias, cómo dormiste…">
+      </div>`;
+    document.getElementById('wl-done').hidden = !wl.created_at;
+    if (window.PR_I18N) window.PR_I18N.applyTo(document.getElementById('wl-form'));
+  }
+
+  document.getElementById('wl-form').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-v]');
+    if (!b) return;
+    const k = b.closest('[data-wl]').dataset.wl;
+    // Volver a tocar el mismo número lo borra: cambiar de opinión no puede
+    // obligar a recargar la página.
+    wl[k] = wl[k] === Number(b.dataset.v) ? null : Number(b.dataset.v);
+    b.closest('[data-wl]').querySelectorAll('.aw-face').forEach(x =>
+      x.classList.toggle('is-on', Number(x.dataset.v) === wl[k]));
+  });
+
+  document.getElementById('wl-save').addEventListener('click', async () => {
+    const h = document.getElementById('wl-h').value.trim();
+    const row = {
+      athlete_id: athleteId, date: window.prToday(),
+      sleep_h: h === '' ? null : Number(h),
+      note: document.getElementById('wl-note').value.trim() || null
+    };
+    WL.forEach(([k]) => { row[k] = wl[k] || null; });
+    if (row.sleep_h !== null && !(Number.isFinite(row.sleep_h) && row.sleep_h >= 0 && row.sleep_h <= 24)) {
+      window.prToast(t('wl.badHours', 'Las horas de sueño tienen que ser un número entre 0 y 24.'), 'danger');
+      return;
+    }
+    const { error } = await window.sb.from('wellness').upsert(row, { onConflict: 'athlete_id,date' });
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    wl = Object.assign(wl, row, { created_at: wl.created_at || new Date().toISOString() });
+    document.getElementById('wl-done').hidden = false;
+    window.prToast(t('wl.thanks', 'Anotado. Gracias.'), 'success');
+  });
 
   async function boot() {
     if (!(await window.requireAthlete())) return;
@@ -182,14 +328,21 @@
     const monday = W().mondayOf(window.prToday());
     const dates  = W().weekDates(monday);
 
-    const [intakeQ, slotQ, evQ] = await Promise.all([
+    athleteId = data.id;
+
+    const [intakeQ, slotQ, evQ, wlQ] = await Promise.all([
       window.sb.from('athlete_intake').select('completed_at').eq('athlete_id', data.id).maybeSingle(),
       window.sb.from('availability_slots').select('weekday,start_time,end_time,kind,label').eq('athlete_id', data.id),
-      window.sb.from('events').select('id,date,start_time,end_time,type,title,notes,location,status,recovery_items(position,method,duration_min,temp_c,temp_hot_c,cycles,pressure)')
-        .eq('athlete_id', data.id).gte('date', monday).lte('date', dates[6]).order('start_time')
+      window.sb.from('events').select(EV_COLS)
+        .eq('athlete_id', data.id).gte('date', monday).lte('date', dates[6]).order('start_time'),
+      window.sb.from('wellness').select('*').eq('athlete_id', data.id).eq('date', window.prToday()).maybeSingle()
     ]);
 
     const events = evQ.data || [];
+    allEvents = events;
+    wl = wlQ.data || {};
+    paintWellness();
+    document.getElementById('wl-card').hidden = false;
 
     // ¿Ya completó su ficha? Es lo primero que tiene que hacer.
     const done = !!(intakeQ.data && intakeQ.data.completed_at);
