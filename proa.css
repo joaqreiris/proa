@@ -644,6 +644,16 @@ a.pr-card:hover { box-shadow: var(--pr-shadow-3); transform: translateY(-2px); }
 }
 .pr-legend-item i { width: 9px; height: 9px; border-radius: 2px; display: block; flex: none; }
 
+/* La leyenda de la semana lleva el icono DENTRO del color, no al lado: el par
+   se aprende junto, que es lo que después permite leer un bloque de media hora
+   donde no entra el nombre. */
+.pr-legend-item i.wk-legend-ico {
+  width: 16px; height: 16px;
+  border-radius: var(--pr-r-1);
+  display: grid; place-items: center;
+  font-size: 11px; color: #fff;
+}
+
 /* ============================================================
    Primitivas de layout
    ============================================================ */
@@ -1096,7 +1106,25 @@ button.wk-slot:hover { filter: brightness(1.12); }
   color: #fff;
   overflow: hidden; white-space: nowrap;
   box-shadow: 0 0 0 1.5px var(--pr-surface);
+  /* El ancho del bloque ES su duración, así que no se puede elegir: en media
+     hora no entra un nombre. Se mide el bloque para decidir qué mostrar. */
+  container-type: inline-size;
 }
+
+/* El icono nunca se va: es lo único que queda cuando el bloque es angosto, y
+   por eso el par color+icono tiene que alcanzar para leer la semana. Cuando
+   queda solo, va al medio —pegado al borde parece un texto que se cortó. */
+.wk-ev > .ti { flex: none; font-size: 12px; margin-inline: auto; }
+
+/* El nombre entra entero o no entra. Aparecer recortado a la mitad —«Gimna»—
+   no informa y ensucia; con el icono puesto, callarse se lee mejor. El
+   ellipsis queda igual para el título largo que no entra ni con espacio. */
+.wk-ev-t { display: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+@container (min-width: 76px) {
+  .wk-ev > .ti { margin-inline: 0; }
+  .wk-ev-t { display: block; margin-left: 4px; }
+}
+
 button.wk-ev { cursor: pointer; }
 button.wk-ev:hover { filter: brightness(1.15); }
 .wk-ev.is-done::before {

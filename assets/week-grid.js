@@ -51,6 +51,21 @@
     match: 'ev.match', team_training: 'ev.team', gym: 'ev.gym', field: 'ev.field',
     recovery: 'ev.recovery', meal: 'ev.meal', travel: 'ev.travel', rest: 'ev.rest', other: 'ev.other'
   };
+  // Un icono fijo por tipo, del mismo juego que el resto de la app (Tabler).
+  // En la semana el ancho del bloque es su duración, así que en media hora no
+  // entra un nombre: el icono es lo que queda, y por eso no puede cambiar de
+  // un entrenador a otro — se aprende igual que el color. La leyenda los
+  // muestra juntos para que ese par se aprenda una sola vez.
+  const EVENT_ICON = {
+    match: 'ball-football', team_training: 'users', gym: 'barbell', field: 'run',
+    recovery: 'massage', meal: 'tools-kitchen-2', travel: 'plane', rest: 'bed-flat',
+    other: 'briefcase'
+  };
+  // Decorativo a propósito: el nombre del bloque ya va en el texto y en el
+  // aria-label, y un lector de pantalla que además diga «pelota» solo agrega
+  // ruido a lo que ya dijo.
+  const icon = (e) =>
+    `<i class="ti ti-${EVENT_ICON[e.type] || EVENT_ICON.other}" aria-hidden="true"></i>`;
 
   // ── Fechas ────────────────────────────────────────────────────────────────
   // Siempre en local. Construir con new Date(y, m-1, d) y NO con toISOString:
@@ -201,7 +216,7 @@
                     + `background:${EVENT_COLOR[e.type] || EVENT_COLOR.other};`
                     + `animation-delay:${120 + d * 40}ms`;
         return `<${tag} class="wk-ev pr-grow${e.status === 'done' ? ' is-done' : ''}"${attrs(e)} style="${style}"
-                 title="${esc(label + ' · ' + hhmm(e.start_time))}">${esc(label)}</${tag}>`;
+                 title="${esc(label + ' · ' + hhmm(e.start_time))}" aria-label="${esc(label)}">${icon(e)}<span class="wk-ev-t">${esc(label)}</span></${tag}>`;
       }).join('')
       + free.map((e, i) => {
         const label = e.title || t(EVENT_KEY[e.type] || 'ev.other', '');
@@ -210,7 +225,7 @@
                     + `background:${EVENT_COLOR[e.type] || EVENT_COLOR.other};`
                     + `animation-delay:${120 + d * 40}ms`;
         return `<${tag} class="wk-ev is-allday pr-grow${e.status === 'done' ? ' is-done' : ''}"${attrs(e)} style="${style}"
-                 title="${esc(label + ' · ' + t('wk.noTime', 'sin horario'))}">${esc(label)}</${tag}>`;
+                 title="${esc(label + ' · ' + t('wk.noTime', 'sin horario'))}" aria-label="${esc(label)}">${icon(e)}<span class="wk-ev-t">${esc(label)}</span></${tag}>`;
       }).join('');
 
       const dt = parseYMD(ymd);
@@ -283,7 +298,7 @@
 
   function eventLegendHtml() {
     return `<div class="pr-legend wk-legend">` + EVENT_TYPES.filter(k => k !== 'other').map(k =>
-      `<span class="pr-legend-item"><i style="background:${EVENT_COLOR[k]}"></i>`
+      `<span class="pr-legend-item"><i class="ti ti-${EVENT_ICON[k]} wk-legend-ico" style="background:${EVENT_COLOR[k]}" aria-hidden="true"></i>`
       + `<span data-i18n="${EVENT_KEY[k]}">${esc(t(EVENT_KEY[k]))}</span></span>`).join('') + `</div>`;
   }
 
@@ -300,7 +315,7 @@
   window.prWeek = {
     render, freeHours, dayOptions, legendHtml, scaleHtml, toMin, hhmm,
     H0, H1, SPAN, KIND_COLOR, KIND_KEY, DAY_KEYS,
-    EVENT_TYPES, EVENT_COLOR, EVENT_KEY, eventTypeOptions, eventLegendHtml,
+    EVENT_TYPES, EVENT_COLOR, EVENT_KEY, EVENT_ICON, eventTypeOptions, eventLegendHtml,
     parseYMD, addDays, mondayOf, weekDates, firstFreeSlot
   };
 })();
