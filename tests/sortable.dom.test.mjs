@@ -7,17 +7,15 @@
 //
 //   node tests/sortable.dom.test.mjs
 //
-// Playwright vive en el repo de ClavaMetrics; el script lo busca ahí solo.
+// Playwright no está instalado en Proa: lo busca solo. Ver tests/playwright.mjs.
 
 import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { chromium } from './playwright.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
-const req = createRequire('/Users/joaquinreiris/Desktop/Clava Metrics/package.json');
-const { chromium } = req('playwright');
 
 let pass = 0, fail = 0;
 const ok = (m) => { console.log('  OK    ' + m); pass++; };

@@ -11,15 +11,13 @@
 //
 // REGLA DE LIMPIEZA: borra SOLO el espacio de trabajo y los dos usuarios que creó.
 
-import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { chromium } from './playwright.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
-const req = createRequire('/Users/joaquinreiris/Desktop/Clava Metrics/package.json');
-const { chromium } = req('playwright');
 
 const URL_ = 'https://lryftqfhztzhawplljsu.supabase.co';
 const REF = 'lryftqfhztzhawplljsu';
