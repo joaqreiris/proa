@@ -11,6 +11,10 @@
 <script src="assets/supabase-init.js"></script>
 <script src="assets/i18n.js" defer></script>
 <script src="assets/week-grid.js" defer></script>
+<script src="assets/tz.js"></script>
+<script src="assets/recovery-methods.js" defer></script>
+<script src="assets/sortable.js"></script>
+<script src="assets/week-board.js" defer></script>
 <style>
   .ap-wrap { max-width: 900px; }
   .ap-hero { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
@@ -26,6 +30,9 @@
   .ap-prose { font: var(--pr-body); color: var(--pr-fg); white-space: pre-wrap; margin: 0; }
   .ap-prose.is-empty { color: var(--pr-fg-faint); }
   .ap-block { margin-bottom: 22px; }
+  .ap-tabs { margin-bottom: 20px; }
+  .ap-tz { margin-top: 18px; padding-top: 16px; border-top: var(--pr-bw) solid var(--pr-border-soft); }
+  .ap-pane[hidden] { display: none; }
 
   /* Banderas de salud: lo que un preparador tiene que ver ANTES de escribir la
      primera serie. Va arriba de todo y con el color de peligro. */
@@ -67,6 +74,19 @@
         <a class="pr-btn is-primary" id="btn-intake" href="#"><i class="ti ti-clipboard-text"></i><span data-i18n="ap.editIntake">Editar anamnesis</span></a>
       </div>
 
+      <div class="pr-tabs ap-tabs" role="tablist">
+        <button class="pr-tab is-on" data-tab="week" role="tab" data-i18n="ap.tabWeek">Su semana</button>
+        <button class="pr-tab" data-tab="profile" role="tab" data-i18n="ap.tabProfile">Su ficha</button>
+      </div>
+
+      <!-- La semana planificada: la pantalla de trabajo, dentro del perfil.
+           El tablero se lo trae assets/week-board.js, modales incluidos. -->
+      <div class="ap-pane" id="pane-week">
+        <section class="pr-card pr-card-pad" id="wb-host"></section>
+      </div>
+
+      <div class="ap-pane" id="pane-profile" hidden>
+
       <section class="ap-flags" id="flags" hidden>
         <div class="ap-flags-head">
           <i class="ti ti-alert-triangle"></i>
@@ -78,6 +98,11 @@
       <div class="ap-cards">
         <section class="pr-card pr-card-pad has-strip" style="--pr-strip:var(--pr-ev-gym)">
           <dl class="ap-dl" id="basics"></dl>
+          <div class="pr-field ap-tz">
+            <label class="pr-label" for="ap-tz" data-i18n="ap.timezone">Dónde vive</label>
+            <select class="pr-select" id="ap-tz"></select>
+            <span class="pr-hint" data-i18n="ap.timezoneHint">Sus horarios se guardan con el reloj de este lugar. Si tú estás en otro huso, la app te los traduce.</span>
+          </div>
         </section>
         <section class="pr-card pr-card-pad">
           <dl class="ap-dl" id="numbers"></dl>
@@ -110,6 +135,8 @@
           <div><dt data-i18n="in.current">Molestias actuales</dt><dd id="current"></dd></div>
         </dl>
       </section>
+
+      </div><!-- /pane-profile -->
 
     </main>
   </div>
@@ -235,8 +262,45 @@
       ? t('ap.free', `Le quedan <b>${h} h</b> libres en la semana, entre las 06:00 y las 24:00.`, { hours: h })
       : `<span style="color:var(--pr-fg-faint)">${esc(t('ap.noWeek', 'Todavía no cargaste sus horarios fijos.'))}</span>`;
 
+    // ── Dónde vive ──
+    // El huso del atleta es lo que permite decirle al entrenador «esto es a
+    // las cuatro de la mañana tuyas». Si nunca se cargó, se propone el del
+    // entrenador, que es lo más probable — pero se guarda solo si lo elige.
+    const tzSel = document.getElementById('ap-tz');
+    const mine = window.prTz.mine();
+    const cur = window.prTz.valid(a.timezone) ? a.timezone : '';
+    tzSel.innerHTML = `<option value="">${esc(t('ap.tzNone', 'Sin definir') + ' — ' + t('ap.tzAssume', 'se supone el tuyo') + ': ' + window.prTz.label(mine))}</option>`
+      + window.prTz.list().map(z =>
+          `<option value="${esc(z)}"${z === cur ? ' selected' : ''}>${esc(window.prTz.label(z))}</option>`).join('');
+    tzSel.value = cur;
+    tzSel.addEventListener('change', async () => {
+      const v = tzSel.value || null;
+      const { error } = await window.sb.from('athletes').update({ timezone: v }).eq('id', id);
+      if (error) { window.prToast(error.message, 'danger'); return; }
+      a.timezone = v;
+      window.prToast(t('ap.tzSaved', 'Listo. Sus horarios se leen con el reloj de ahí.'), 'success');
+      await window.prWeekBoard.mount({ host: 'wb-host', athlete: a });
+    });
+
+    // ── Pestañas ──
+    document.querySelector('.ap-tabs').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-tab]');
+      if (!b) return;
+      document.querySelectorAll('.ap-tabs .pr-tab').forEach(x => x.classList.toggle('is-on', x === b));
+      document.getElementById('pane-week').hidden    = b.dataset.tab !== 'week';
+      document.getElementById('pane-profile').hidden = b.dataset.tab !== 'profile';
+      try { history.replaceState(null, '', '?id=' + id + '#' + b.dataset.tab); } catch (err) {}
+    });
+    if (location.hash === '#profile') {
+      document.querySelector('[data-tab="profile"]').click();
+    }
+
     document.getElementById('main').hidden = false;
     if (window.PR_I18N) window.PR_I18N.applyTo(document);
+
+    // El tablero se monta al final: necesita que la página ya esté visible
+    // para poder medir la grilla.
+    await window.prWeekBoard.mount({ host: 'wb-host', athlete: a });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

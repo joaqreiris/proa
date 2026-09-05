@@ -87,8 +87,11 @@ curl -s -X DELETE "$URL/rest/v1/workspaces?id=eq.$WID" -H "apikey: $SVC" -H "Aut
 for U in "$U1" "$U2"; do
   curl -s -X DELETE "$URL/auth/v1/admin/users/$U" -H "apikey: $SVC" -H "Authorization: Bearer $SVC" >/dev/null
 done
-LEFT=$(curl -s "$URL/rest/v1/workspaces?select=id" -H "apikey: $SVC" -H "Authorization: Bearer $SVC")
-[ "$LEFT" = "[]" ] && ok "base limpia" || no "quedaron restos" "$LEFT"
+# El control mira SOLO el espacio de trabajo que creó esta prueba. Preguntar
+# por «todos los workspaces de la base» daba por resto el trabajo real del
+# usuario — y esa pregunta mal hecha ya llevó una vez a borrarlo.
+LEFT=$(curl -s "$URL/rest/v1/workspaces?select=id&id=eq.$WID" -H "apikey: $SVC" -H "Authorization: Bearer $SVC")
+[ "$LEFT" = "[]" ] && ok "quedó limpio lo que creó la prueba" || no "restos de esta prueba" "$LEFT"
 
 echo
 echo "RESULTADO: $pass bien, $fail mal"

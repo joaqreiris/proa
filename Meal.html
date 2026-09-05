@@ -77,7 +77,7 @@
 
   <div class="pr-shell-main">
     <header class="pr-topbar">
-      <a class="pr-icon-btn is-flush" href="Week.html" aria-label="Volver"><i class="ti ti-arrow-left"></i></a>
+      <a class="pr-icon-btn is-flush" id="back" href="Athletes.html" aria-label="Volver"><i class="ti ti-arrow-left"></i></a>
       <h1 id="top-title">&nbsp;</h1>
     </header>
 
@@ -338,7 +338,7 @@
   async function boot() {
     if (!(await window.requireCoach())) return;
     if (window.PR_I18N && window.PR_I18N.ready) { try { await window.PR_I18N.ready; } catch (e) {} }
-    if (!eventId) { window.location.replace('Week.html'); return; }
+    if (!eventId) { window.location.replace('Athletes.html'); return; }
     if (window.prSidebar) window.prSidebar.mount('week');
 
     wsId = await window.getWorkspaceId();
@@ -346,8 +346,10 @@
     const { data } = await window.sb.from('events')
       .select('id,date,start_time,end_time,type,title,athlete_id,athletes(first_name,last_name)')
       .eq('id', eventId).maybeSingle();
-    if (!data) { window.location.replace('Week.html'); return; }
+    if (!data) { window.location.replace('Athletes.html'); return; }
     ev = data;
+    // Volver es volver a su perfil, que es de donde se entró.
+    document.getElementById('back').href = 'Athlete.html?id=' + ev.athlete_id + '#week';
 
     const who = `${ev.athletes.first_name} ${ev.athletes.last_name || ''}`.trim();
     const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';

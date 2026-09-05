@@ -1265,6 +1265,38 @@ button.wk-ev:hover { filter: brightness(1.15); }
 }
 
 /* ============================================================
+   TABLERO DE LA SEMANA (assets/week-board.js)
+   Vive en el perfil del atleta, así que su estilo es compartido
+   y no puede quedarse dentro de una página.
+   ============================================================ */
+.wb-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.wb-nav { display: flex; align-items: center; gap: 8px; }
+.wb-range {
+  font: 700 13px/1 var(--pr-font-cond);
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--pr-fg-strong);
+  min-width: 180px; text-align: center;
+}
+.wb-sum { display: flex; gap: 22px; flex-wrap: wrap; margin: 16px 0 0; }
+.wb-sum div { display: flex; flex-direction: column; gap: 4px; }
+.wb-sum b { font: 700 26px/1 var(--pr-font-cond); font-variant-numeric: tabular-nums; color: var(--pr-fg-strong); }
+.wb-sum span { font: 700 10px/1 var(--pr-font-cond); letter-spacing: .16em; text-transform: uppercase; color: var(--pr-fg-muted); }
+.wb-sum div.is-accent b { color: var(--pr-accent-ink); }
+
+/* El aviso de huso horario. Solo aparece cuando el que mira está en otro lado
+   del mundo que el atleta: si no, no hay nada que aclarar. */
+.wb-tz, .wb-mine {
+  display: flex; align-items: flex-start; gap: 8px;
+  margin: 0 0 14px;
+  padding: 9px 12px;
+  border-radius: var(--pr-r-3);
+  background: var(--pr-bg-sunk);
+  font: var(--pr-body-sm); color: var(--pr-fg-muted);
+}
+.wb-tz .ti, .wb-mine .ti { color: var(--pr-accent-ink); flex: none; font-size: 16px; margin-top: 1px; }
+.wb-mine { margin: 0; }
+
+/* ============================================================
    ARRASTRAR PARA REORDENAR (assets/sortable.js)
    ============================================================ */
 

@@ -11,6 +11,7 @@
 <script src="assets/supabase-init.js"></script>
 <script src="assets/i18n.js" defer></script>
 <script src="assets/week-grid.js" defer></script>
+<script src="assets/tz.js"></script>
 <style>
   .home-wrap { max-width: 1000px; }
 
@@ -50,6 +51,7 @@
   }
   .home-block b { font: 700 13px/1 var(--pr-font-sans); color: var(--pr-fg-strong); }
   .home-block span { font: 700 11.5px/1 var(--pr-font-cond); letter-spacing: .08em; color: var(--pr-fg-muted); font-variant-numeric: tabular-nums; }
+  .home-block em { font-style: normal; font: 600 10.5px/1 var(--pr-font-cond); letter-spacing: .06em; color: var(--pr-fg-faint); font-variant-numeric: tabular-nums; }
   .home-rest { font: var(--pr-body-sm); color: var(--pr-fg-faint); margin: 0; }
 </style>
 </head>
@@ -150,16 +152,20 @@
 
     host.innerHTML = withWork.map(a => {
       const mine = events.filter(e => e.athlete_id === a.id)
-        .sort((x, y) => W().toMin(x.start_time || '99:99') - W().toMin(y.start_time || '99:99'));
+        .sort((x, y) => W().toMin(x._hhmm || '99:99') - W().toMin(y._hhmm || '99:99'));
       const full = `${a.first_name} ${a.last_name || ''}`.trim();
 
       const blocks = mine.map(e => {
         const name = e.title || t(W().EVENT_KEY[e.type] || 'ev.other', '');
-        const time = e.start_time
-          ? W().hhmm(e.start_time) + (e.end_time ? '–' + W().hhmm(e.end_time) : '')
+        const time = e._hhmm
+          ? e._hhmm + (e._end ? '–' + e._end : '')
           : t('wk.noTime', 'sin horario');
+        // Cuando el atleta vive en otro huso, debajo va SU hora: la de arriba
+        // es la mía, que es la que me dice si voy a estar despierto.
+        const theirs = e._same || !e._hhmm ? ''
+          : `<em>${esc(W().hhmm(e.start_time) + ' ' + window.prTz.city(e._tz))}</em>`;
         return `<span class="home-block" style="border-left-color:${W().EVENT_COLOR[e.type] || W().EVENT_COLOR.other}">
-          <b>${esc(name)}</b><span>${esc(time)}</span></span>`;
+          <b>${esc(name)}</b><span>${esc(time)}</span>${theirs}</span>`;
       }).join('');
 
       return `<div class="home-ath">
@@ -193,7 +199,7 @@
       W().parseYMD(today).toLocaleDateString(lang, { weekday: 'long', day: 'numeric', month: 'long' });
 
     const { data: athletes } = await window.sb.from('athletes')
-      .select('id,first_name,last_name,athlete_intake(completed_at)')
+      .select('id,first_name,last_name,timezone,athlete_intake(completed_at)')
       .eq('workspace_id', wsId).eq('status', 'active').order('first_name');
 
     if (!athletes || !athletes.length) {
@@ -206,10 +212,22 @@
     // El filtro va sobre la tabla unida: la base devuelve solo los eventos de
     // hoy de MIS atletas, en vez de traer todo y filtrar acá.
     const { data: events } = await window.sb.from('events')
-      .select('id,athlete_id,start_time,end_time,type,title,athletes!inner(workspace_id)')
-      .eq('date', today).eq('athletes.workspace_id', wsId);
+      .select('id,athlete_id,date,start_time,end_time,type,title,athletes!inner(workspace_id)')
+      .gte('date', W().addDays(today, -1)).lte('date', W().addDays(today, 1))
+      .eq('athletes.workspace_id', wsId);
 
-    const evs = events || [];
+    const myTz = window.prTz.mine();
+    const tzOf = {};
+    athletes.forEach(a => { tzOf[a.id] = window.prTz.valid(a.timezone) ? a.timezone : myTz; });
+
+    // Cada evento se traduce a mi hora y se queda solo si cae en MI hoy.
+    const evs = (events || []).map(e => {
+      const tz = tzOf[e.athlete_id] || myTz;
+      if (!e.start_time) return Object.assign({}, e, { _tz: tz, _same: tz === myTz, _ymd: e.date, _hhmm: null, _end: null });
+      const s = window.prTz.convert(e.date, W().hhmm(e.start_time), tz, myTz);
+      const en = e.end_time ? window.prTz.convert(e.date, W().hhmm(e.end_time), tz, myTz) : null;
+      return Object.assign({}, e, { _tz: tz, _same: tz === myTz, _ymd: s.ymd, _hhmm: s.hhmm, _end: en ? en.hhmm : null });
+    }).filter(e => e._ymd === today);
     const pending = athletes.filter(a => {
       const i = Array.isArray(a.athlete_intake) ? a.athlete_intake[0] : a.athlete_intake;
       return !(i && i.completed_at);
