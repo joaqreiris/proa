@@ -1285,6 +1285,41 @@ button.wk-ev:hover { filter: brightness(1.15); }
 }
 
 /* ============================================================
+   ARRASTRAR BLOQUES EN LA SEMANA (assets/week-drag.js)
+   ============================================================ */
+.wk-ev[data-event] { cursor: grab; touch-action: none; }
+.wk-dragging, .wk-dragging * { cursor: grabbing !important; user-select: none !important; }
+.wk-ev.is-moving { opacity: .3; }
+
+/* La copia que sigue al dedo. */
+.wk-drag {
+  z-index: 120; opacity: .95;
+  border-radius: var(--pr-r-2);
+  box-shadow: var(--pr-shadow-pop);
+  animation: none !important;
+}
+.wk-drag.is-copy { outline: var(--pr-bw-2) solid var(--pr-accent); outline-offset: 2px; }
+
+/* El hueco: dónde va a caer. Es lo único que convierte arrastrar en algo
+   preciso; sin esto, soltar es apostar. */
+.wk-drop {
+  position: absolute; z-index: 3; pointer-events: none;
+  border: var(--pr-bw-2) dashed var(--pr-fg-muted);
+  border-radius: var(--pr-r-2);
+  background: color-mix(in srgb, var(--pr-fg) 8%, transparent);
+}
+.wk-drop.is-copy { border-color: var(--pr-accent); background: var(--pr-accent-soft); }
+.wk-drop-tag {
+  position: fixed; top: 0; left: 0; z-index: 121; pointer-events: none;
+  white-space: nowrap;
+  padding: 3px 7px; border-radius: var(--pr-r-2);
+  background: var(--pr-fg-strong); color: var(--pr-bg);
+  font: 700 10.5px/1.3 var(--pr-font-cond); letter-spacing: .06em;
+  font-variant-numeric: tabular-nums;
+}
+.wk-drop-tag.is-copy { background: var(--pr-accent); color: var(--pr-fg-on-accent); }
+
+/* ============================================================
    EL PARTE DEL ATLETA (assets/athlete-log.js)
    Se llena cansado y en el teléfono: todo grande y de un toque.
    ============================================================ */
@@ -1360,6 +1395,21 @@ button.wk-ev:hover { filter: brightness(1.15); }
   border-radius: var(--pr-r-3);
   padding: 12px 14px;
 }
+/* Los siete días, para decir «martes y jueves» de un vistazo. */
+.wb-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.wb-day {
+  height: 42px; cursor: pointer;
+  border: var(--pr-bw) solid var(--pr-border); border-radius: var(--pr-r-3);
+  background: var(--pr-surface);
+  font: 700 11px/1 var(--pr-font-cond); letter-spacing: .08em; text-transform: uppercase;
+  color: var(--pr-fg-muted);
+  transition: all var(--pr-dur-1) var(--pr-ease);
+}
+.wb-day:hover:not(:disabled) { border-color: var(--pr-border-strong); color: var(--pr-fg-strong); }
+.wb-day.is-on { background: var(--pr-accent); border-color: var(--pr-accent); color: var(--pr-fg-on-accent); }
+/* El día del bloque original va marcado y bloqueado: ahí ya está. */
+.wb-day.is-src { opacity: .55; cursor: default; }
+
 .wb-parte-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 9px; }
 .wb-parte p { margin: 10px 0 0; font: var(--pr-body-sm); color: var(--pr-fg); white-space: pre-wrap; }
 .wb-mine { margin: 0; }

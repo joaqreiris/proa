@@ -690,5 +690,18 @@
   "tz.Indian": "Índico",
   "tz.Antarctica": "Antártida",
   "tz.Arctic": "Ártico",
-  "tz.Other": "Otros"
+  "tz.Other": "Otros",
+  "wk.moved": "Movido.",
+  "wk.copiedHere": "Copiado.",
+  "wk.dragHint": "Arrastra un bloque para moverlo de día u hora. Con Option, lo copias.",
+  "wk.repeat": "Repetir este bloque",
+  "wk.repeatHint": "Se copia entero, con sus ejercicios, a la misma hora de los días que elijas.",
+  "wk.repeatDays": "Qué días",
+  "wk.repeatWeeks": "Durante cuántas semanas",
+  "wk.repeatWeeksHint": "Contando esta. Con 4, queda cargado el mes.",
+  "wk.repeatCount": "Se van a crear {n} copias.",
+  "wk.repeatNone": "Todavía no hay nada que crear.",
+  "wk.repeatPick": "Elige al menos un día.",
+  "wk.repeatDo": "Repetir",
+  "wk.repeated": "{n} copias creadas."
 }

@@ -110,6 +110,7 @@
           <div class="pr-modal-foot">
             <button class="pr-btn is-danger is-sm" type="button" id="e-del" hidden><i class="ti ti-trash"></i></button>
             <button class="pr-btn is-ghost is-sm" type="button" id="e-dup" hidden title="" data-i18n-attr="title:wk.duplicate"><i class="ti ti-copy"></i></button>
+            <button class="pr-btn is-ghost is-sm" type="button" id="e-rep" hidden title="" data-i18n-attr="title:wk.repeat"><i class="ti ti-repeat"></i></button>
             <button class="pr-btn is-ghost is-sm" type="button" id="e-share" hidden title="" data-i18n-attr="title:wk.toAthletes"><i class="ti ti-users-plus"></i></button>
             <a class="pr-btn is-secondary" id="e-open" href="#" hidden><i class="ti ti-list-details"></i><span data-i18n="wk.openSession">Abrir sesión</span></a>
             <span class="pr-grow"></span>
@@ -196,6 +197,38 @@
           <div class="pr-modal-foot">
             <button class="pr-btn is-ghost" type="button" data-close data-i18n="common.cancel">Cancelar</button>
             <button class="pr-btn is-primary" type="submit"><i class="ti ti-users-plus"></i><span data-i18n="wk.apply">Aplicar</span></button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="pr-modal-backdrop" id="m-rep" hidden>
+      <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-rep-title">
+        <div class="pr-modal-head">
+          <div>
+            <h2 id="m-rep-title" data-i18n="wk.repeat">Repetir este bloque</h2>
+            <span class="pr-mono" id="rep-sub"></span>
+          </div>
+          <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
+        </div>
+        <form id="f-rep">
+          <div class="pr-modal-body">
+            <p class="pr-hint" style="margin:0" data-i18n="wk.repeatHint">Se copia entero, con sus ejercicios, a la misma hora de los días que elijas.</p>
+            <div class="pr-field">
+              <label class="pr-label" data-i18n="wk.repeatDays">Qué días</label>
+              <div class="wb-days" id="rep-days"></div>
+            </div>
+            <div class="pr-field">
+              <label class="pr-label" for="rep-weeks" data-i18n="wk.repeatWeeks">Durante cuántas semanas</label>
+              <input class="pr-input" id="rep-weeks" type="number" inputmode="numeric" min="1" max="26" value="1" style="width:100px">
+              <span class="pr-hint" data-i18n="wk.repeatWeeksHint">Contando esta. Con 4, queda cargado el mes.</span>
+            </div>
+            <p class="pr-hint" id="rep-count" style="margin:0"></p>
+            <p id="rep-msg" role="alert" hidden style="margin:0;color:var(--pr-danger);font:600 13px/1.45 var(--pr-font-sans)"></p>
+          </div>
+          <div class="pr-modal-foot">
+            <button class="pr-btn is-ghost" type="button" data-close data-i18n="common.cancel">Cancelar</button>
+            <button class="pr-btn is-primary" type="submit"><i class="ti ti-repeat"></i><span data-i18n="wk.repeatDo">Repetir</span></button>
           </div>
         </form>
       </div>
@@ -315,6 +348,7 @@
     $('e-del').hidden     = !ev;
     $('e-dup').hidden     = !ev;
     $('e-share').hidden   = !ev || athletes.length < 2;
+    $('e-rep').hidden     = !ev;
 
     const openBtn = $('e-open');
     const dest = ev && (['gym', 'field'].includes(ev.type) ? 'Session.html'
@@ -466,6 +500,22 @@
       if (add) { openEvent(null, add.dataset.addDate); return; }
       const ev = e.target.closest('[data-event]');
       if (ev) openEvent(events.find(x => x.id === ev.dataset.event));
+    });
+
+    // Arrastrar para mover; con Option, para copiar. La grilla ya sabe dónde
+    // está cada bloque; hacerle abrir un modal para cambiar de día era pedirle
+    // al entrenador que le explicara a la app algo que la app ya ve.
+    window.prWeekDrag.enable({
+      host: 'wb-rows',
+      async onDrop({ id, date, start, end, copy }) {
+        const { error } = await window.sb.rpc('move_event', {
+          p_event: id, p_date: date, p_start: start, p_end: end, p_copy: !!copy
+        });
+        if (error) { window.prToast(error.message, 'danger'); await loadWeek(); return; }
+        window.prToast(t(copy ? 'wk.copiedHere' : 'wk.moved', copy ? 'Copiado.' : 'Movido.'), 'success');
+        monday = W().mondayOf(date);
+        await loadWeek();
+      }
     });
 
     $('wb-prev').addEventListener('click', () => { monday = W().addDays(monday, -7); loadWeek(); });
@@ -649,6 +699,51 @@
       window.prToast(t('wk.applied', `Aplicado a ${data} atletas.`, { n: data }), 'success');
     });
 
+    // ── Repetir un bloque ──
+    // «Gimnasio martes y jueves durante un mes» es media planificación. Antes
+    // había que hacerlo copiando de a uno; ahora se dice una vez.
+    $('e-rep').addEventListener('click', () => {
+      const id = editingId;
+      $('m-ev').hidden = true;
+      openRepeat(events.find(x => x.id === id));
+    });
+
+    $('rep-days').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-wd]');
+      if (!b) return;
+      b.classList.toggle('is-on');
+      paintRepCount();
+    });
+    $('rep-weeks').addEventListener('input', paintRepCount);
+
+    $('f-rep').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = $('rep-msg');
+      msg.hidden = true;
+      const dates = repDates();
+      if (!dates.length) {
+        msg.textContent = t('wk.repeatPick', 'Elige al menos un día.');
+        msg.hidden = false; return;
+      }
+
+      // Una copia por fecha. Si alguna falla se avisa y se recarga: mejor ver
+      // lo que quedó de verdad que un número que puede ser mentira.
+      let n = 0;
+      for (const d of dates) {
+        const { error } = await window.sb.rpc('move_event', {
+          p_event: repEvent.id, p_date: d,
+          p_start: repEvent.start_time ? W().hhmm(repEvent.start_time) : null,
+          p_end: repEvent.end_time ? W().hhmm(repEvent.end_time) : null,
+          p_copy: true
+        });
+        if (error) { msg.textContent = error.message; msg.hidden = false; break; }
+        n++;
+      }
+      $('m-rep').hidden = true;
+      if (n) window.prToast(t('wk.repeated', n + ' copias creadas.', { n }), 'success');
+      await loadWeek();
+    });
+
     // ── Copiar la semana ──
     $('wb-copy').addEventListener('click', () => {
       if (!events.length) { window.prToast(t('wk.copyEmpty', 'Esta semana no tiene nada que copiar.'), 'danger'); return; }
@@ -684,6 +779,53 @@
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') document.querySelectorAll('.pr-modal-backdrop').forEach(m => m.hidden = true);
     });
+  }
+
+  // ── Repetir ──────────────────────────────────────────────────────────────
+  let repEvent = null;
+
+  function openRepeat(ev2) {
+    if (!ev2) return;
+    repEvent = ev2;
+    const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
+    const src = W().parseYMD(ev2.date);
+    $('rep-sub').textContent = (ev2.title || t(W().EVENT_KEY[ev2.type] || 'ev.other'))
+      + ' · ' + src.toLocaleDateString(lang, { weekday: 'long', day: 'numeric', month: 'long' });
+
+    // El día del propio bloque viene marcado y no se puede desmarcar: repetir
+    // «los martes» incluye el martes en el que ya está.
+    const own = (src.getDay() + 6) % 7;
+    $('rep-days').innerHTML = W().DAY_KEYS.map((k, i) => `
+      <button type="button" class="wb-day${i === own ? ' is-on is-src' : ''}"
+              data-wd="${i}"${i === own ? ' disabled' : ''}>${esc(t(k).slice(0, 3))}</button>`).join('');
+    $('rep-weeks').value = 1;
+    $('rep-msg').hidden = true;
+    paintRepCount();
+    $('m-rep').hidden = false;
+    if (window.PR_I18N) window.PR_I18N.applyTo($('m-rep'));
+  }
+
+  // Las fechas que se van a crear. No incluye la del bloque original: esa ya
+  // existe, y duplicarla encima sería dejarle dos iguales el mismo día.
+  function repDates() {
+    const weeks = Math.max(1, Math.min(26, Number($('rep-weeks').value) || 1));
+    const picked = [...$('rep-days').querySelectorAll('.is-on')].map(b => Number(b.dataset.wd));
+    const mon0 = W().mondayOf(repEvent.date);
+    const out = [];
+    for (let w = 0; w < weeks; w++) {
+      for (const wd of picked) {
+        const d = W().addDays(mon0, w * 7 + wd);
+        if (d !== repEvent.date) out.push(d);
+      }
+    }
+    return out;
+  }
+
+  function paintRepCount() {
+    const n = repDates().length;
+    $('rep-count').textContent = n
+      ? t('wk.repeatCount', `Se van a crear ${n} copias.`, { n })
+      : t('wk.repeatNone', 'Todavía no hay nada que crear.');
   }
 
   // ── Montaje ──────────────────────────────────────────────────────────────

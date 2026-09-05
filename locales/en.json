@@ -690,5 +690,18 @@
   "tz.Indian": "Indian Ocean",
   "tz.Antarctica": "Antarctica",
   "tz.Arctic": "Arctic",
-  "tz.Other": "Other"
+  "tz.Other": "Other",
+  "wk.moved": "Moved.",
+  "wk.copiedHere": "Copied.",
+  "wk.dragHint": "Drag a block to change its day or time. Hold Option to copy it.",
+  "wk.repeat": "Repeat this block",
+  "wk.repeatHint": "It's copied whole, exercises included, at the same time on the days you pick.",
+  "wk.repeatDays": "Which days",
+  "wk.repeatWeeks": "For how many weeks",
+  "wk.repeatWeeksHint": "Including this one. With 4, the month is done.",
+  "wk.repeatCount": "{n} copies will be created.",
+  "wk.repeatNone": "Nothing to create yet.",
+  "wk.repeatPick": "Pick at least one day.",
+  "wk.repeatDo": "Repeat",
+  "wk.repeated": "{n} copies created."
 }
