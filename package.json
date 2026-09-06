@@ -4,6 +4,7 @@
   "private": true,
   "description": "Proa by Clava — entrenamiento individual: un entrenador, un atleta.",
   "scripts": {
-    "dev": "python3 -m http.server 4173"
+    "dev": "python3 -m http.server 4173",
+    "test": "node tests/run.mjs"
   }
 }

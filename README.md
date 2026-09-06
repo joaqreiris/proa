@@ -17,6 +17,19 @@ npm run dev            # sirve la carpeta en http://localhost:4173
 
 Después se entra por `http://localhost:4173/Login.html`.
 
+## Cómo se prueba
+
+```bash
+npm test                       # todas las que se puedan correr sin credenciales
+npm test -- week               # solo las que tengan «week» en el nombre
+npm test -- --lista            # cuáles hay y qué necesita cada una
+SUPABASE_SERVICE_KEY=... npm test   # también las que hablan con la base
+```
+
+Las que tocan la base de verdad **no se hacen pasar por buenas** cuando falta la
+clave: se saltan y se listan aparte, porque «sin correr» no es lo mismo que
+«bien». Sin la clave son unos veinte segundos.
+
 ## Cómo se despliega
 
 Vercel toma la rama `main` y publica la carpeta tal cual (`outputDirectory: "."`).
@@ -36,17 +49,36 @@ auth-callback.html    Vuelta del correo de confirmación
 set-password.html     Contraseña nueva desde el enlace de recuperación
 Onboarding.html       Alta del entrenador: crea su espacio de trabajo
 Home.html             Inicio del entrenador
+Athletes.html         Listado, alta y edición de la ficha; borrar pide el nombre
+Athlete.html          Ficha de un atleta: su semana y sus datos
+Intake.html           Anamnesis y grilla de horarios
+Week.html             La agenda del entrenador
+Session.html          Editor de sesión (gimnasio y campo)
+Meal.html             Menú del día
+Exercises.html        Biblioteca de ejercicios
+athlete/              Lo que ve el atleta con su cuenta: su semana, su sesión
 
 assets/
   brand.js            La marca (la proa) y el tema. Se carga PRIMERO, sin defer.
   supabase-init.js    Cliente de Supabase, contexto y las dos puertas de acceso.
   i18n.js             Motor de idiomas. Copiado de ClavaMetrics, prefijo PR_.
   sidebar.js          Riel lateral compartido.
+  week-grid.js        La semana: la dibuja, sabe los colores y las dos vistas.
+  week-board.js       El tablero del entrenador con todos sus modales.
+  week-drag.js        Arrastrar y soltar bloques en la semana.
+  sortable.js         Reordenar listas arrastrando (bloques, series, comidas).
+  block-types.js      Los tipos de bloque del editor de sesión.
+  nutrition-calc.js   Macros y calorías.
+  recovery-methods.js Los métodos de recuperación y sus campos.
+  athlete-log.js      El parte del atleta.
+  tz.js               Husos horarios. El entrenador y el atleta pueden no estar
+                      en el mismo lado del mundo.
   vendor/             supabase-js con la versión fija.
 
 locales/              es · en · pt
 db/schema.sql         Esquema de la base. Fuente de verdad.
 supabase/migrations/  Lo que se aplica de verdad contra el proyecto.
+tests/                Pruebas. `npm test` las corre; `run.mjs` es el corredor.
 ```
 
 ---
@@ -71,7 +103,13 @@ supabase/migrations/  Lo que se aplica de verdad contra el proyecto.
 
 Cada acento declara **cuatro** valores (`--a`, `--a-lift`, `--a-on`, `--a-on-lift`) y el navegador deriva el resto con `color-mix`. Al agregar uno hay que tocar tres lugares: el bloque en `proa.css`, la lista de `assets/brand.js` y la restricción de `workspaces.accent` en la base. En `workspaces.accent` se guarda el **identificador**, nunca un código de color.
 
-**No copiar módulos de ClavaMetrics todavía.** El calendario, el planificador de gimnasio, las comidas y las evaluaciones se traen en su tramo, y se adaptan al modelo de espacio de trabajo en el mismo movimiento. Copiarlos ahora obliga a adaptarlos dos veces.
+**Un bloque suelto sí se puede pintar, y eso no contradice lo de arriba.** `events.color` (null = el de su tipo) sirve para que UN bloque salte a la vista: el partido que importa, la sesión que no se mueve. Lo que no se toca es qué significa cada color: gimnasio sigue siendo naranja en todas las cuentas. La diferencia es entre pintar un bloque y repintar un idioma. Cuando hay color propio, la tinta del texto la decide `inkOn()` comparando contrastes —blanco sobre amarillo no se lee—, así que no hay que elegirla a mano.
+
+**La orientación de la semana es de cada persona, no del espacio.** `profiles.week_layout` (`rows` o `cols`, null = filas). Se guarda además en el navegador para pintar sin esperar a la red. Un atleta con dos entrenadores no puede ver su semana cambiar de forma según quién se la armó, que es lo que pasaría si la eligiera el espacio de trabajo.
+
+**La semana no sabe para dónde corre el tiempo.** El render escribe la posición en variables (`--a` y `--len` sobre el eje del tiempo, `--lane` y `--laneh` al través) y el CSS decide cuál eje es cuál. Al tocar la grilla o el arrastre hay que pensar en «a lo largo del tiempo» y «al través», no en izquierda y arriba, o una de las dos vistas se rompe en silencio.
+
+**Los módulos de ClavaMetrics se traen adaptados, nunca copiados tal cual.** Ya se trajeron el calendario, el editor de sesión, las comidas y la recuperación, y cada uno se adaptó al modelo de espacio de trabajo en el mismo movimiento. Lo que falte traer va igual: adaptándolo al llegar, no después.
 
 ---
 
@@ -91,6 +129,17 @@ supabase db push -p '<contraseña de la base>'
 
 Tablas del Tramo 0: `profiles`, `workspaces`, `workspace_members`, `athletes`, `athlete_accounts`.
 Tramo 1: `athlete_invites`, `athlete_intake`, `availability_slots`, más las funciones `create_athlete_invite`, `invite_preview` y `accept_athlete_invite`.
+Tramo 2: `events`, más `copy_week`, `copy_day`, `move_event` y `clone_event`.
+Tramo 3: `session_blocks`, `session_items`, `session_sets`, `meal_items`, `recovery_items`, `exercises`, `foods`.
+Tramo 4: `wellness`, y las columnas de devolución de `events` (`rpe`, `actual_min`, `athlete_note`, `au`, `done_at`).
+
+**`clone_event` enumera a mano las columnas de `events`.** Copiar un bloque, un
+día, una semana o pasárselo a varios atletas pasan todos por ahí. Esa lista ya se
+quedó corta tres veces —la duración, el RPE y el color— y el síntoma nunca es un
+error: la copia sale distinta del original y hay que ir a mirar SQL para
+entender por qué. Al agregar una columna a `events` hay que decidir si se copia;
+`tests/clone-columns.test.mjs` compara las dos listas y avisa si aparece una
+nueva sin decidir.
 
 **`invite_preview` es anónima a propósito.** La pantalla del enlace la abre alguien que todavía no tiene cuenta, y necesita mostrar quién lo invita. Devuelve exactamente cuatro campos y nada más; `tests/invite-smoke.sh` lo verifica comparando el juego exacto de claves. Al tocarla, hay que mantener esa lista corta.
 
@@ -129,10 +178,10 @@ Vercel publica la rama `main` sola. **No usar `cleanUrls`** en `vercel.json`: si
 | | | |
 |---|---|---|
 | **0** | Cimientos | **hecho** — repo, base, marca, entrar, registrarse, alta del entrenador |
-| **1** | El atleta y su cuenta | **hecho** — alta con cupos, invitación por enlace, ingreso del atleta, anamnesis con la grilla de horarios, perfil y ajustes |
-| 2 | La semana | el calendario con la disponibilidad real pintada de fondo |
-| 3 | Los editores | gimnasio, campo, menú, recuperación, biblioteca de ejercicios |
-| 4 | El ida y vuelta | marcar lo hecho, esfuerzo, parte diario, video, comentarios |
-| 5 | Cobro | escalones de cupos con Paddle |
+| **1** | El atleta y su cuenta | **hecho** — alta con cupos, invitación por enlace, ingreso del atleta, anamnesis con la grilla de horarios, perfil y ajustes. Su ficha se edita y se puede borrar, con el nombre escrito a mano |
+| **2** | La semana | **hecho** — el calendario con la disponibilidad real de fondo, arrastrar para mover, copiar con Option o Command, repetir en varios días, y las dos orientaciones (días en filas o en columnas) |
+| **3** | Los editores | **hecho** — gimnasio, campo, menú, recuperación, biblioteca de ejercicios |
+| **4** | El ida y vuelta | **hecho** — marcar lo hecho, esfuerzo, parte diario, comentarios |
+| 5 | Cobro | escalones de cupos con Paddle. **Lo único que falta**, y antes hay que decidir precios |
 
 El plan completo, con el modelo de datos y las decisiones tomadas, está en `docs/plan.md`.
