@@ -118,6 +118,8 @@
           <h1 id="ml-title">&nbsp;</h1>
           <div class="ml-meta" id="ml-meta"></div>
         </div>
+        <button class="pr-btn is-secondary" id="save-recipe" hidden><i class="ti ti-bookmark"></i><span data-i18n="rc.save">Guardar como plato</span></button>
+        <button class="pr-btn is-secondary" id="add-recipe"><i class="ti ti-tools-kitchen-2"></i><span data-i18n="rc.add">Añadir plato</span></button>
         <button class="pr-btn is-primary" id="add"><i class="ti ti-plus"></i><span data-i18n="ml.addFood">Añadir alimento</span></button>
       </div>
 
@@ -144,6 +146,30 @@
 </div>
 
 <!-- Selector de alimentos -->
+<!-- Los platos guardados. Una boloñesa son siete alimentos cargados de a uno,
+     y la semana que viene otra vez. -->
+<div class="pr-modal-backdrop" id="m-recipe" hidden>
+  <div class="pr-modal is-wide" role="dialog" aria-modal="true" aria-labelledby="m-rec-title">
+    <div class="pr-modal-head">
+      <h2 id="m-rec-title" data-i18n="rc.pick">Elegir un plato</h2>
+      <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar" data-i18n-attr="aria-label:common.close"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="pr-modal-body">
+      <div class="rc-head">
+        <div class="pr-input-affix pr-grow">
+          <i class="ti ti-search"></i>
+          <input id="rp-q" data-i18n-ph="rc.searchPh" placeholder="Buscar un plato…" autocomplete="off">
+        </div>
+        <div class="pr-field rc-serv">
+          <label class="pr-label" for="rp-serv" data-i18n="rc.servings">Porciones</label>
+          <input class="pr-input" id="rp-serv" value="1" inputmode="text">
+        </div>
+      </div>
+      <div class="fp-list" id="rp-list"></div>
+    </div>
+  </div>
+</div>
+
 <div class="pr-modal-backdrop" id="m-food" hidden>
   <div class="pr-modal is-wide" role="dialog" aria-modal="true" aria-labelledby="m-food-title">
     <div class="pr-modal-head">
@@ -200,6 +226,7 @@
 
   function paint() {
     const host = document.getElementById('rows');
+    document.getElementById('save-recipe').hidden = true;
     if (!items.length) {
       host.innerHTML = `<section class="pr-empty">
         <i class="ti ti-tools-kitchen-2"></i>
@@ -262,6 +289,11 @@
           <button class="pr-icon-btn is-flush" data-del="${it.id}" aria-label="${esc(t('se.delItem'))}"><i class="ti ti-x"></i></button>
         </div>`;
       }).join('');
+
+      // Guardar como plato solo tiene sentido si hay alimentos del catálogo con
+      // su cantidad: un plato de cosas escritas a mano no se puede reusar.
+      document.getElementById('save-recipe').hidden =
+        !items.some(i => i.food_id && i.qty_g != null);
 
       const mt = window.prNutri.sumMacros(items);
       host.insertAdjacentHTML('beforeend', `
@@ -444,6 +476,137 @@
     const m = window.prNutri.macrosForQuantity(f, gramos);
     await addItem({ food_id: f.id, name: foodName(f), qty_g: gramos,
                     unit_qty: porUnidad ? 1 : null, ...m });
+  });
+
+  // ── Platos guardados ──────────────────────────────────────────────────────
+  // Un plato es una lista de ingredientes con sus gramos. Se guarda apuntando
+  // al alimento del catálogo, no con las calorías copiadas: si mañana se
+  // corrige un valor, la receta se corrige sola. Al mandarlo al menú sí se
+  // copian, porque ahí importa que el plan de la semana pasada no cambie solo.
+  let recipes = [];
+
+  async function loadRecipes() {
+    const { data } = await window.sb.from('recipes')
+      .select('id,name,servings,recipe_items(food_id,name,qty_g,unit_qty,position)')
+      .eq('workspace_id', wsId).order('name');
+    recipes = data || [];
+  }
+
+  // Cuántas calorías tiene el plato entero, con los valores de hoy.
+  function recipeMacros(r) {
+    const tot = { kcal: 0, protein_g: 0, carbs_g: 0, fats_g: 0, fiber_g: 0 };
+    for (const it of (r.recipe_items || [])) {
+      const f = foods.find(x => x.id === it.food_id);
+      if (!f || it.qty_g == null) continue;
+      const m = window.prNutri.macrosForQuantity(f, Number(it.qty_g));
+      for (const k in tot) tot[k] += Number(m[k]) || 0;
+    }
+    return tot;
+  }
+
+  function paintRecipes() {
+    const q = (document.getElementById('rp-q').value || '').trim().toLowerCase();
+    const list = recipes.filter(r => !q || r.name.toLowerCase().includes(q));
+    const host = document.getElementById('rp-list');
+
+    if (!recipes.length) {
+      host.innerHTML = `<p class="pr-hint" style="margin:0;padding:14px">${esc(t('rc.none',
+        'Todavía no hay platos. Armá una comida y guardala con «Guardar como plato»: la próxima vez entra de una.'))}</p>`;
+      return;
+    }
+    if (!list.length) { host.innerHTML = `<p class="pr-hint" style="margin:0;padding:14px">${esc(t('ml.noHits'))}</p>`; return; }
+
+    host.innerHTML = list.map(r => {
+      const m = recipeMacros(r);
+      const n = (r.recipe_items || []).length;
+      return `<div class="rc-row">
+        <button type="button" class="rc-pick" data-recipe="${r.id}">
+          <b>${esc(r.name)}</b>
+          <small>${n} ${esc(t(n === 1 ? 'rc.item' : 'rc.items'))} · ${Math.round(m.kcal)} kcal${
+            Number(r.servings) !== 1 ? ' · ' + esc(t('rc.forServings', 'para {n}', { n: window.prNutri.formatAmount(r.servings) })) : ''}</small>
+        </button>
+        <button type="button" class="pr-icon-btn is-flush" data-del-recipe="${r.id}"
+                title="${esc(t('rc.remove', 'Borrar este plato'))}"><i class="ti ti-trash"></i></button>
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('add-recipe').addEventListener('click', async () => {
+    await loadRecipes();
+    document.getElementById('rp-q').value = '';
+    document.getElementById('rp-serv').value = '1';
+    paintRecipes();
+    document.getElementById('m-recipe').hidden = false;
+    document.getElementById('rp-q').focus();
+  });
+  document.getElementById('rp-q').addEventListener('input', paintRecipes);
+
+  // Elegir un plato: entran sus ingredientes, escalados por las porciones que
+  // se pidan. «Media receta» sin rehacer las cuentas a mano.
+  document.getElementById('rp-list').addEventListener('click', async (e) => {
+    const del = e.target.closest('[data-del-recipe]');
+    if (del) {
+      const r = recipes.find(x => x.id === del.dataset.delRecipe);
+      if (!r || !confirm(t('rc.removeAsk', '¿Borrar «{n}»? Las comidas ya cargadas no cambian.', { n: r.name }))) return;
+      const { error } = await window.sb.from('recipes').delete().eq('id', r.id).select('id');
+      if (error) { window.prToast(error.message, 'danger'); return; }
+      await loadRecipes();
+      paintRecipes();
+      return;
+    }
+
+    const b = e.target.closest('[data-recipe]');
+    if (!b) return;
+    const r = recipes.find(x => x.id === b.dataset.recipe);
+    if (!r) return;
+
+    const porciones = window.prNutri.parseAmount(document.getElementById('rp-serv').value) || 1;
+    const escala = porciones / (Number(r.servings) || 1);
+
+    const ingr = (r.recipe_items || []).slice().sort((x, y) => x.position - y.position);
+    // Se agregan al final de lo que ya haya en la comida.
+    const pos = items.length ? Math.max(...items.map(i => i.position)) + 1 : 0;
+
+    const filas = ingr.map((it, i) => {
+      const f = foods.find(x => x.id === it.food_id);
+      const g = it.qty_g == null ? null : Math.round(Number(it.qty_g) * escala * 10) / 10;
+      const m = f && g != null ? window.prNutri.macrosForQuantity(f, g) : {};
+      return Object.assign({
+        event_id: eventId, position: pos + i,
+        food_id: it.food_id, name: it.name, qty_g: g,
+        unit_qty: it.unit_qty == null ? null : Math.round(Number(it.unit_qty) * escala * 100) / 100,
+      }, m);
+    });
+    if (!filas.length) { window.prToast(t('rc.empty', 'Ese plato no tiene ingredientes.'), 'danger'); return; }
+
+    const { error } = await window.sb.from('meal_items').insert(filas);
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    document.getElementById('m-recipe').hidden = true;
+    window.prToast(t('rc.added', '{n} agregado.', { n: r.name }), 'success');
+    await load();
+  });
+
+  // Guardar lo que ya está cargado como plato. Armar la comida dos veces —una
+  // para el atleta y otra para la receta— sería el trabajo que esto evita.
+  document.getElementById('save-recipe').addEventListener('click', async () => {
+    const conAlimento = items.filter(i => i.food_id && i.qty_g != null);
+    if (!conAlimento.length) {
+      window.prToast(t('rc.needFoods', 'Para guardar un plato hacen falta alimentos del catálogo con su cantidad.'), 'danger');
+      return;
+    }
+    const nombre = prompt(t('rc.namePrompt', '¿Cómo se llama este plato?'), ev.title || '');
+    if (!nombre || !nombre.trim()) return;
+
+    const { data: r, error } = await window.sb.from('recipes')
+      .insert({ workspace_id: wsId, name: nombre.trim(), servings: 1 }).select('id').single();
+    if (error) { window.prToast(error.message, 'danger'); return; }
+
+    const { error: e2 } = await window.sb.from('recipe_items').insert(conAlimento.map((i, n) => ({
+      recipe_id: r.id, position: n, food_id: i.food_id, name: i.name,
+      qty_g: i.qty_g, unit_qty: i.unit_qty,
+    })));
+    if (e2) { window.prToast(e2.message, 'danger'); return; }
+    window.prToast(t('rc.saved', 'Plato guardado. Ya se puede usar en cualquier comida.'), 'success');
   });
 
   document.getElementById('fp-free').addEventListener('click', async () => {

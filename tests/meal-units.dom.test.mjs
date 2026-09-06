@@ -47,12 +47,31 @@ const FALSO = `
   ];
   const tabla = (t) => {
     const filas = t === 'events' ? [EV] : t === 'foods' ? [HUEVO, ARROZ]
-                : t === 'meal_items' ? window.__items : [];
+                : t === 'meal_items' ? window.__items
+                : t === 'recipes' ? (window.__recipes || [])
+                : [];
     const propios = {
+      __creada: null,
       update(row) { window.__guardado.push({ t, row }); return q; },
-      insert(row) { window.__guardado.push({ t, op: 'insert', row }); return q; },
+      insert(row) {
+        window.__guardado.push({ t, op: 'insert', row });
+        // Lo que devuelve un insert con .select().single() es la fila creada,
+        // no la primera de la tabla. Sin esto, guardar un plato devuelve null y
+        // el código se cae al pedirle el id.
+        propios.__creada = Object.assign({ id: t === 'recipes' ? 'r-1' : 'x-1' }, row);
+        // Un plato guardado vuelve como tal: así se puede probar el ciclo
+        // entero —guardar y volver a meterlo— sin base de verdad.
+        if (t === 'recipes') {
+          window.__recipes = (window.__recipes || []).concat([
+            Object.assign({ id: 'r-1', recipe_items: [] }, row)]);
+        }
+        if (t === 'recipe_items' && window.__recipes && window.__recipes[0]) {
+          window.__recipes[0].recipe_items = [].concat(row);
+        }
+        return q;
+      },
       delete() { window.__guardado.push({ t, op: 'delete' }); return q; },
-      single: () => Promise.resolve({ data: filas[0] || null, error: null }),
+      single: () => Promise.resolve({ data: propios.__creada || filas[0] || null, error: null }),
       maybeSingle: () => Promise.resolve({ data: t === 'events' ? EV : null, error: null }),
       then: (res) => Promise.resolve({ data: filas, error: null }).then(res),
     };
@@ -121,6 +140,43 @@ try {
   is('guarda 110 gramos', u && u.row.qty_g, 110);
   is('y recuerda que eran 2 unidades', u && u.row.unit_qty, 2);
   is('las calorías salen de los gramos', u && Math.round(u.row.kcal), 157);
+
+  console.log('\nUNA COMIDA SE GUARDA COMO PLATO Y VUELVE ENTERA');
+  // Una boloñesa son siete alimentos cargados de a uno, y la semana que viene
+  // otra vez. Se arma una vez y se usa siempre.
+  page.on('dialog', (d) => d.accept('Boloñesa'));
+  await page.evaluate(() => { window.__guardado = []; });
+  is('el botón de guardar aparece con alimentos cargados',
+    await page.isVisible('#save-recipe'), true);
+  await page.click('#save-recipe');
+  await page.waitForTimeout(500);
+
+  const guardadoPlato = await page.evaluate(() => window.__guardado);
+  const receta = guardadoPlato.find((g) => g.t === 'recipes');
+  const ingredientes = guardadoPlato.find((g) => g.t === 'recipe_items');
+  is('se guarda el plato con su nombre', receta && receta.row.name, 'Boloñesa');
+  is('con los ingredientes que tenían alimento y cantidad', (ingredientes && ingredientes.row.length) || 0, 2);
+  // El escrito a mano no entra: sin alimento del catálogo no se puede reusar.
+  is('y no el escrito a mano',
+    (ingredientes && ingredientes.row.some((i) => i.name === 'Torta de la abuela')) || false, false);
+
+  console.log('\nY SE VUELVE A METER, EN MEDIA PORCIÓN');
+  await page.evaluate(() => { window.__guardado = []; });
+  await page.click('#add-recipe');
+  await page.waitForTimeout(400);
+  const hay = await page.evaluate(() => document.querySelectorAll('#rp-list [data-recipe]').length);
+  is('el plato aparece en la lista', hay, 1);
+
+  await page.fill('#rp-serv', '1/2');
+  await page.click('#rp-list [data-recipe]');
+  await page.waitForTimeout(500);
+  const metido = await page.evaluate(() => window.__guardado.filter((g) => g.t === 'meal_items'));
+  const filas = metido[0] && metido[0].row;
+  is('entran sus ingredientes de una', (filas && filas.length) || 0, 2);
+  // El huevo estaba en 55 g: media receta son 27.5.
+  const medioHuevo = filas && filas.find((f) => f.name === 'Huevo entero');
+  is('con las cantidades a la mitad', medioHuevo && medioHuevo.qty_g, 27.5);
+  is('y sus calorías recalculadas', medioHuevo && Math.round(medioHuevo.kcal), 39);
 
   console.log('\nMEDIA TAZA SE ESCRIBE «1/2», NO «0.5»');
   // Nadie mide en decimales cuando cocina. Obligar a traducir mentalmente antes
