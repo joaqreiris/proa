@@ -208,9 +208,14 @@
     const copy = !!e.altKey;
     cleanup();
 
+    // Soltar donde estaba no es un cambio, y eso vale también con Option: una
+    // copia exactamente encima del original no se ve —parecen un solo bloque—
+    // y el que la hizo se entera cuando mueve uno y aparece el otro debajo.
+    // Duplicar sin moverse ya existe, con su botón, dentro del bloque.
     const same = d.target && d.target.date === d.track.dataset.date;
     const startNow = d.allday ? null : hhmm(d.target.start);
-    if (!d.target || (same && !copy && startNow === startOf(d.el))) { drag = null; return; }
+    const noSeMovio = same && startNow === startOf(d.el);
+    if (!d.target || noSeMovio) { drag = null; return; }
 
     const fn = d.host.__onDrop;
     if (fn) {
