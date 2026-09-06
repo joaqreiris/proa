@@ -36,6 +36,7 @@
         <span class="wb-range" id="wb-range"></span>
         <button class="pr-icon-btn" id="wb-next" aria-label="Semana siguiente"><i class="ti ti-chevron-right"></i></button>
         <button class="pr-btn is-sm is-ghost" id="wb-today" data-i18n="wk.today">Hoy</button>
+        <span class="wb-flip" id="wb-flip"></span>
       </div>
       <span class="pr-grow"></span>
       <button class="pr-btn is-sm is-secondary" id="wb-copy-day"><i class="ti ti-calendar-plus"></i><span data-i18n="wk.copyDay">Copiar día</span></button>
@@ -293,6 +294,8 @@
   function paint() {
     const dates = W().weekDates(monday);
     W().render({ host: 'wb-rows', dates, slots, events, editable: true });
+    const flip = document.getElementById('wb-flip');
+    if (flip) flip.innerHTML = W().layoutToggleHtml();
 
     const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
     const a = W().parseYMD(dates[0]), b = W().parseYMD(dates[6]);
@@ -836,7 +839,9 @@
     if (!mounted) {
       host.innerHTML = BOARD;
       document.body.insertAdjacentHTML('beforeend', MODALS);
-      $('wb-scale').outerHTML = W().scaleHtml();
+      // Las dos escalas conviven y el CSS muestra la que corresponda: así dar
+      // vuelta la semana no obliga a volver a dibujar nada.
+      $('wb-scale').outerHTML = W().scaleHtml() + W().scaleColsHtml();
       $('wb-legend').outerHTML = W().eventLegendHtml();
       $('e-type').innerHTML = W().eventTypeOptions('gym');
       wire();

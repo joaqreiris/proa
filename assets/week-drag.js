@@ -56,6 +56,21 @@
     }, true);
   }
 
+  // De qué lado corre el tiempo. Devuelve, para un rectángulo o para un evento
+  // de puntero, la coordenada del eje temporal de la vista que está puesta. Con
+  // esto el resto del gesto no se entera de la orientación: el imán, el
+  // recorte al día, el umbral de los 6 px y la copia con Option son los mismos.
+  function vertical() { return !!(W().getLayout && W().getLayout() === 'cols'); }
+
+  function eje(o) {
+    const v = vertical();
+    return {
+      puntero: v ? o.clientY : o.clientX,
+      desde:   v ? o.top     : o.left,
+      largo:   v ? o.height  : o.width,
+    };
+  }
+
   function onDown(e, host) {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
     const el = e.target.closest('.wk-ev[data-event]');
@@ -76,9 +91,9 @@
     };
 
     const r = el.getBoundingClientRect(), tr = track.getBoundingClientRect();
-    const perPx = (W().SPAN * 60) / tr.width;
-    drag.lenMin = Math.round(r.width * perPx);
-    drag.grabMin = Math.round((e.clientX - r.left) * perPx);
+    const perPx = (W().SPAN * 60) / eje(tr).largo;
+    drag.lenMin = Math.round(eje(r).largo * perPx);
+    drag.grabMin = Math.round((eje(e).puntero - eje(r).desde) * perPx);
     drag.dx = e.clientX - r.left;
     drag.dy = e.clientY - r.top;
     drag.w = r.width; drag.h = r.height;
@@ -99,11 +114,11 @@
 
     const track = trackUnder(e.clientX, e.clientY) || drag.track;
     const tr = track.getBoundingClientRect();
-    const perPx = (W().SPAN * 60) / tr.width;
+    const perPx = (W().SPAN * 60) / eje(tr).largo;
 
     let start = W().H0 * 60;
     if (!drag.allday) {
-      start = W().H0 * 60 + (e.clientX - tr.left) * perPx - drag.grabMin;
+      start = W().H0 * 60 + (eje(e).puntero - eje(tr).desde) * perPx - drag.grabMin;
       start = Math.round(start / SNAP) * SNAP;
       // Que entre entero en el día: ni antes de las 06:00 ni pasadas las 24:00.
       start = Math.max(W().H0 * 60, Math.min(start, W().H1 * 60 - drag.lenMin));
@@ -139,10 +154,18 @@
     document.body.appendChild(drag.tag);
   }
 
+  // El día se elige con el eje transversal (en filas, la Y; en columnas, la X) y
+  // sobre el del tiempo se perdonan 60 px para afuera: soltar un poco pasado el
+  // borde tiene que caer en el día, no en la nada.
   function trackUnder(x, y) {
+    const v = vertical();
     for (const tr of drag.host.querySelectorAll('.wk-track')) {
       const r = tr.getBoundingClientRect();
-      if (y >= r.top && y <= r.bottom && x >= r.left - 60 && x <= r.right + 60) return tr;
+      const dentroDelDia = v ? (x >= r.left && x <= r.right) : (y >= r.top && y <= r.bottom);
+      const cercaEnTiempo = v
+        ? (y >= r.top - 60 && y <= r.bottom + 60)
+        : (x >= r.left - 60 && x <= r.right + 60);
+      if (dentroDelDia && cercaEnTiempo) return tr;
     }
     return null;
   }
@@ -151,12 +174,19 @@
   function paintDrop(track, start, copy) {
     if (drag.drop.parentElement !== track) track.appendChild(drag.drop);
     const total = W().SPAN * 60;
+    const v = vertical();
+    // Mismas dos medidas, puestas en el eje que corresponda: a lo largo del
+    // tiempo va dónde empieza y cuánto dura; al través, todo el ancho del día.
+    const desde = ((start - W().H0 * 60) / total) * 100;
+    const largo = (drag.lenMin / total) * 100;
     if (drag.allday) {
-      drag.drop.style.cssText = 'left:0;width:100%;top:66%;height:34%';
+      drag.drop.style.cssText = v
+        ? 'top:0;height:100%;left:66%;width:34%'
+        : 'left:0;width:100%;top:66%;height:34%';
     } else {
-      drag.drop.style.cssText =
-        'left:' + ((start - W().H0 * 60) / total) * 100 + '%;'
-        + 'width:' + (drag.lenMin / total) * 100 + '%;top:0;height:100%';
+      drag.drop.style.cssText = v
+        ? 'top:' + desde + '%;height:' + largo + '%;left:0;width:100%'
+        : 'left:' + desde + '%;width:' + largo + '%;top:0;height:100%';
     }
     drag.drop.classList.toggle('is-copy', !!copy);
 

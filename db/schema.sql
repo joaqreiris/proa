@@ -44,6 +44,11 @@ create table if not exists public.profiles (
   avatar_url   text,
   language     text,
   timezone     text,
+  -- Orientación de la semana: 'rows' = un día por fila y las horas de
+  -- izquierda a derecha; 'cols' = un día por columna y las horas bajando.
+  -- Es de cada persona, no del espacio: un atleta con dos entrenadores no
+  -- puede ver su semana cambiar de forma según quién se la armó.
+  week_layout  text check (week_layout is null or week_layout in ('rows', 'cols')),
   onboarded_at timestamptz,
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now()

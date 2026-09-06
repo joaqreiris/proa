@@ -1087,6 +1087,105 @@ button.wk-slot:hover { filter: brightness(1.12); }
 }
 .wk-add:hover { border-color: var(--pr-accent); color: var(--pr-accent-ink); border-style: solid; }
 .wk-legend { margin-top: 14px; }
+/* El botón de dar vuelta la semana, en la barra y en la tarjeta del atleta. */
+.wb-flip { display: inline-flex; margin-left: 4px; }
+.aw-week-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.aw-week-head h3 { margin: 0; }
+.aw-week-head > span { margin-left: auto; }
+
+/* ══ La semana de costado ═══════════════════════════════════════════════════
+   Los días en columnas y las horas bajando, como un calendario de toda la
+   vida. No hay un segundo HTML: el render escribe la posición en variables
+   —--a y --len sobre el eje del tiempo, --lane y --laneh al través— y acá se
+   dice cuál de los dos ejes es el tiempo. Cambiar de vista es una clase.
+
+   Por qué existen las dos: en una fila por día se lee la semana entera de un
+   vistazo, que es lo que quiere el entrenador; en columnas se lee un día con
+   detalle, que es lo que quiere el que lo va a hacer. */
+.wk-cols {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  align-items: start;
+}
+.wk-cols .wk-row { flex-direction: column; align-items: stretch; gap: 6px; }
+
+/* El día pasa de etiqueta al costado a encabezado de columna. */
+.wk-cols .wk-day,
+.wk-cols .wk-day.is-date {
+  width: auto;
+  justify-content: center;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--pr-border);
+}
+
+/* La pista deja de medir 46px de alto para medir el día entero: una hora son
+   --wk-hour, y las dieciocho que se planifican dan la altura. */
+.wk-cols .wk-track,
+.wk-cols .wk-track-cal {
+  --wk-hour: 38px;
+  /* flex:none es obligatorio: al dar vuelta la fila, el flex:1 que la pista
+     trae de la vista en filas pasa a mandar sobre el alto y la deja en nada. */
+  flex: none;
+  height: calc(18 * var(--wk-hour));
+  width: auto;
+}
+/* Las rayas cada tres horas se dan vuelta con la pista. */
+.wk-cols .wk-track::before {
+  background: repeating-linear-gradient(to bottom,
+    transparent 0, transparent calc(16.666% - 1px),
+    var(--pr-border) calc(16.666% - 1px), var(--pr-border) 16.666%);
+}
+
+/* Y acá se invierten los ejes: lo que era izquierda y ancho pasa a ser arriba
+   y alto. */
+.wk-cols .wk-busy {
+  top: var(--a); height: var(--len);
+  left: 0; right: 0; width: auto; bottom: auto;
+}
+.wk-cols .wk-ev {
+  top: var(--a); height: var(--len);
+  left: var(--lane); width: var(--laneh);
+}
+/* La animación de entrada también: crecer a lo ancho en una columna se ve como
+   un error. */
+.wk-cols .pr-grow { animation-name: pr-grow-y; transform-origin: center top; }
+@keyframes pr-grow-y { from { transform: scaleY(0); opacity: .3; } to { transform: scaleY(1); opacity: 1; } }
+
+/* Un bloque alto y angosto puede poner el nombre debajo del icono en vez de al
+   lado, que es como entra de verdad en una columna. */
+.wk-cols .wk-ev { align-items: flex-start; padding: 4px 5px; }
+.wk-cols .wk-ev > .ti { margin-inline: auto; }
+.wk-cols .wk-ev.is-allday { border-radius: var(--pr-r-1); }
+
+.wk-cols .wk-add { width: 100%; }
+
+/* El texto vuelve a la izquierda: en una columna el bloque es ancho, así que
+   el icono no necesita centrarse como cuando queda solo en la vista de filas. */
+.wk-cols .wk-ev { align-items: center; padding: 0 6px; }
+.wk-cols .wk-ev > .ti { margin-inline: 0; }
+.wk-cols .wk-ev-t { display: block; margin-left: 4px; }
+
+/* La caja pasa a tener la escala de horas a la izquierda y la semana al lado. */
+.wk-box-cols { flex-direction: row; gap: 8px; align-items: start; }
+.wk-box-cols .wk-scale { display: none; }
+.wk-box-cols > div:last-child { flex: 1; min-width: 0; }
+
+/* Una marca por hora, alineada con la pista: mismo alto de hora, y el rótulo
+   se apoya en la línea que le toca. */
+.wk-scale-cols {
+  --wk-hour: 38px;
+  display: none;
+  flex: none;
+  padding-top: 25px;
+}
+.wk-box-cols .wk-scale-cols { display: block; }
+.wk-scale-cols span {
+  display: block; height: var(--wk-hour);
+  font: 600 9.5px/1 var(--pr-font-cond);
+  letter-spacing: .1em; color: var(--pr-fg-faint);
+  text-align: right;
+}
 .wk-free { font: var(--pr-body-sm); color: var(--pr-fg-muted); margin: 12px 0 0; }
 .wk-free b { color: var(--pr-fg-strong); font-family: var(--pr-font-cond); font-size: 16px; }
 
@@ -1096,12 +1195,25 @@ button.wk-slot:hover { filter: brightness(1.12); }
    Lo que queda gris claro es el hueco real. */
 .wk-track-cal { height: 46px; }
 .wk-busy {
-  position: absolute; top: 0; bottom: 0;
+  position: absolute;
+  left: var(--a); width: var(--len); top: 0; bottom: 0;
   opacity: .26;
   display: block;
 }
+/* La capa de fondo entra creciendo, pero con SU animación y no con la de
+   pr-grow: aquella termina en opacity 1 y, como las animaciones ganan sobre las
+   declaraciones normales, dejaba los horarios fijos pintados a full en vez de
+   apagados detrás. Con el fondo opaco no se distingue lo que el atleta ya tiene
+   ocupado de lo que el entrenador planificó, que es toda la gracia de la vista. */
+.wk-busy.pr-grow { animation-name: wk-busy-in; }
+@keyframes wk-busy-in { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.wk-cols .wk-busy.pr-grow { animation-name: wk-busy-in-y; }
+@keyframes wk-busy-in-y { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 .wk-ev {
   position: absolute;
+  /* El tiempo corre a lo largo de --a/--len y las coincidencias se reparten en
+     --lane/--laneh. Qué eje es cada cosa lo decide la orientación, más abajo. */
+  left: var(--a); width: var(--len); top: var(--lane); height: var(--laneh);
   border: 0;
   border-radius: var(--pr-r-1);
   display: flex; align-items: center;

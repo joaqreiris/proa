@@ -18,6 +18,101 @@
   const t = (k, fb) => (window.PR_I18N ? window.PR_I18N.t(k) : null) || fb || k;
   const esc = (s) => window.prEsc ? window.prEsc(s) : String(s == null ? '' : s);
 
+  // ── Orientación ───────────────────────────────────────────────────────────
+  // 'rows' = un día por fila y las horas de izquierda a derecha; 'cols' = un
+  // día por columna y las horas bajando. La elige cada persona, no el espacio:
+  // el entrenador suele querer ver la semana entera de un vistazo y el que la
+  // va a hacer suele querer ver bien SU día.
+  //
+  // Se guarda en dos lugares a propósito. En el navegador, para pintar la
+  // primera vez sin esperar a la red —si no, la semana aparece de una forma y
+  // salta a la otra—. Y en profiles.week_layout, para que siga siendo la misma
+  // desde otro teléfono. Si la columna todavía no existe en la base, la app no
+  // se rompe: se queda con lo local.
+  const LAYOUTS = ['rows', 'cols'];
+  const LS_KEY = 'pr_week_layout';
+  let layout = 'rows';
+  try {
+    const guardado = typeof localStorage !== 'undefined' ? localStorage.getItem(LS_KEY) : null;
+    if (LAYOUTS.indexOf(guardado) >= 0) layout = guardado;
+  } catch (e) { /* modo privado: se sigue con el de fábrica */ }
+
+  let layoutPedido = false;
+
+  function getLayout() { return layout; }
+
+  // Las semanas que están puestas en pantalla, para poder darlas vuelta sin
+  // volver a pedirle nada a la base: el HTML es el mismo en las dos vistas, lo
+  // único que cambia es de qué lado corre el tiempo. Se limpian solas cuando
+  // dejan de estar en el documento.
+  const montadas = new Set();
+
+  function applyLayout(host) {
+    if (!host) return;
+    montadas.add(host);
+    host.classList.toggle('wk-cols', layout === 'cols');
+    // La escala de horas es hermana de la grilla, no hija: para poder ponerla
+    // de costado hay que marcar también la caja que contiene a las dos.
+    const caja = host.closest('.wk');
+    if (caja) caja.classList.toggle('wk-box-cols', layout === 'cols');
+  }
+
+  function repaintLayout() {
+    montadas.forEach((h) => {
+      if (!document.contains(h)) { montadas.delete(h); return; }
+      applyLayout(h);
+    });
+    // Los botones cambian de icono y de texto según hacia dónde llevan.
+    document.querySelectorAll('[data-week-layout]').forEach((b) => {
+      const caja = document.createElement('div');
+      caja.innerHTML = layoutToggleHtml();
+      b.replaceWith(caja.firstElementChild);
+    });
+  }
+
+  // Se avisa por evento para que cualquier pantalla que tenga la semana puesta
+  // se repinte sola, sin que el botón tenga que conocerlas.
+  function setLayout(v, opts) {
+    if (LAYOUTS.indexOf(v) < 0 || v === layout) return layout;
+    layout = v;
+    try { if (typeof localStorage !== 'undefined') localStorage.setItem(LS_KEY, v); } catch (e) {}
+    if (typeof document !== 'undefined') {
+      repaintLayout();
+      document.dispatchEvent(new CustomEvent('pr:weeklayout', { detail: { layout: v } }));
+    }
+    if (!opts || opts.persist !== false) persistLayout(v);
+    return layout;
+  }
+
+  async function persistLayout(v) {
+    if (!window.sb || !window.sb.auth) return;
+    try {
+      const { data } = await window.sb.auth.getUser();
+      const uid = data && data.user && data.user.id;
+      if (!uid) return;
+      await window.sb.from('profiles').update({ week_layout: v }).eq('id', uid);
+    } catch (e) {
+      // Que no se pueda guardar la preferencia no es motivo para romperle la
+      // pantalla a nadie: ya quedó aplicada y guardada en el navegador.
+      console.warn('[prWeek] no se pudo guardar la orientación', e);
+    }
+  }
+
+  // Lo que diga la base gana sobre lo local, pero solo al arrancar.
+  async function loadLayout() {
+    if (!window.sb || !window.sb.auth) return layout;
+    try {
+      const { data } = await window.sb.auth.getUser();
+      const uid = data && data.user && data.user.id;
+      if (!uid) return layout;
+      const { data: prof, error } = await window.sb.from('profiles')
+        .select('week_layout').eq('id', uid).maybeSingle();
+      if (error || !prof || !prof.week_layout) return layout;
+      if (prof.week_layout !== layout) setLayout(prof.week_layout, { persist: false });
+    } catch (e) { /* la columna puede no existir todavía */ }
+    return layout;
+  }
+
   const H0 = 6, H1 = 24, SPAN = H1 - H0;
   const DAY_KEYS = ['day.mon','day.tue','day.wed','day.thu','day.fri','day.sat','day.sun'];
   const FALLBACK  = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
@@ -99,6 +194,16 @@
       + ['06','09','12','15','18','21'].map(h => `<span>${h}</span>`).join('') + `</div>`;
   }
 
+  // De costado hacen falta más marcas: en filas seis rótulos alcanzan porque el
+  // ojo interpola sobre una línea corta, pero en una columna de setecientos
+  // píxeles adivinar la hora de un bloque a ojo es imposible.
+  function scaleColsHtml() {
+    const horas = [];
+    for (let h = H0; h < H1; h++) horas.push(String(h).padStart(2, '0'));
+    return `<div class="wk-scale-cols" aria-hidden="true">`
+      + horas.map(h => `<span>${h}</span>`).join('') + `</div>`;
+  }
+
   // Reparte en carriles los eventos que se pisan, para que ninguno tape a otro.
   function lanes(items) {
     const ends = [];
@@ -170,6 +275,11 @@
 
   // ── Calendario: disponibilidad de fondo + eventos encima ──────────────────
   function renderWeek(host, opts) {
+    applyLayout(host);
+    // La primera semana que se pinta va con lo que diga el navegador, y recién
+    // ahí se pregunta a la base. Al revés se vería el salto: la vista aparece
+    // de una forma y cambia sola medio segundo después.
+    if (!layoutPedido) { layoutPedido = true; loadLayout(); }
     const dates    = opts.dates;
     const slots    = opts.slots || [];
     const events   = opts.events || [];
@@ -184,7 +294,7 @@
         const b = Math.min(toMin(s.end_time),   H1 * 60);
         if (b <= a) return '';
         return `<span class="wk-busy pr-grow" title="${esc(s.label || t(KIND_KEY[s.kind] || '', ''))}"
-                 style="left:${((a - H0*60)/(SPAN*60))*100}%;width:${((b-a)/(SPAN*60))*100}%;
+                 style="--a:${((a - H0*60)/(SPAN*60))*100}%;--len:${((b-a)/(SPAN*60))*100}%;
                  background:${KIND_COLOR[s.kind] || KIND_COLOR.commitment};animation-delay:${d * 40}ms"></span>`;
       }).join('');
 
@@ -208,11 +318,14 @@
       const attrs = (e) => editable ? ` type="button" data-event="${e.id}"` : '';
 
       const evs = timed.map(e => {
-        const left  = ((e._a - H0 * 60) / (SPAN * 60)) * 100;
-        const width = ((e._b - e._a) / (SPAN * 60)) * 100;
+        const a   = ((e._a - H0 * 60) / (SPAN * 60)) * 100;
+        const len = ((e._b - e._a) / (SPAN * 60)) * 100;
         const label = e.title || t(EVENT_KEY[e.type] || 'ev.other', '');
         const h = topH / laneCount;
-        const style = `left:${left}%;width:${width}%;top:${e._lane * h}%;height:${h}%;`
+        // Posición en variables y no en left/width: el eje del tiempo lo elige
+        // el CSS según la orientación, y así el mismo HTML sirve para las dos.
+        // --a y --len van sobre el tiempo; --lane y --laneh, al través.
+        const style = `--a:${a}%;--len:${len}%;--lane:${e._lane * h}%;--laneh:${h}%;`
                     + `background:${EVENT_COLOR[e.type] || EVENT_COLOR.other};`
                     + `animation-delay:${120 + d * 40}ms`;
         return `<${tag} class="wk-ev pr-grow${e.status === 'done' ? ' is-done' : ''}"${attrs(e)} style="${style}"
@@ -221,7 +334,9 @@
       + free.map((e, i) => {
         const label = e.title || t(EVENT_KEY[e.type] || 'ev.other', '');
         const w = 100 / free.length;
-        const style = `left:${i * w}%;width:${w}%;top:${topH}%;height:${100 - topH}%;`
+        // La banda de los que no tienen hora vive al final del eje del tiempo,
+        // repartida al través entre los que haya.
+        const style = `--a:${topH}%;--len:${100 - topH}%;--lane:${i * w}%;--laneh:${w}%;`
                     + `background:${EVENT_COLOR[e.type] || EVENT_COLOR.other};`
                     + `animation-delay:${120 + d * 40}ms`;
         return `<${tag} class="wk-ev is-allday pr-grow${e.status === 'done' ? ' is-done' : ''}"${attrs(e)} style="${style}"
@@ -302,6 +417,32 @@
       + `<span data-i18n="${EVENT_KEY[k]}">${esc(t(EVENT_KEY[k]))}</span></span>`).join('') + `</div>`;
   }
 
+  // El botón vive acá y no en cada pantalla: son dos vistas de lo mismo y el
+  // control tiene que verse igual y decir lo mismo en todas.
+  function layoutToggleHtml() {
+    const esCols = layout === 'cols';
+    return `<button type="button" class="pr-icon-btn wk-flip" data-week-layout
+              title="${esc(t(esCols ? 'wk.layout.toRows' : 'wk.layout.toCols'))}"
+              aria-label="${esc(t(esCols ? 'wk.layout.toRows' : 'wk.layout.toCols'))}">
+              <i class="ti ti-${esCols ? 'layout-rows' : 'layout-columns'}"></i>
+            </button>`;
+  }
+
+  // Un solo oyente para toda la app: cualquier botón con data-week-layout da
+  // vuelta la semana, esté en la pantalla que esté.
+  //
+  // El guard no es paranoia: este módulo también se carga sin navegador —las
+  // pruebas de la lógica de fechas lo evalúan en Node pelado— y ahí no hay
+  // document al que engancharse.
+  if (typeof document !== 'undefined') {
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-week-layout]');
+      if (!b) return;
+      e.preventDefault();
+      setLayout(layout === 'cols' ? 'rows' : 'cols');
+    });
+  }
+
   function dayOptions() {
     return DAY_KEYS.map((k, i) => `<option value="${i}">${esc(t(k, FALLBACK[i]))}</option>`).join('');
   }
@@ -316,6 +457,7 @@
     render, freeHours, dayOptions, legendHtml, scaleHtml, toMin, hhmm,
     H0, H1, SPAN, KIND_COLOR, KIND_KEY, DAY_KEYS,
     EVENT_TYPES, EVENT_COLOR, EVENT_KEY, EVENT_ICON, eventTypeOptions, eventLegendHtml,
-    parseYMD, addDays, mondayOf, weekDates, firstFreeSlot
+    parseYMD, addDays, mondayOf, weekDates, firstFreeSlot,
+    getLayout, setLayout, loadLayout, applyLayout, layoutToggleHtml, scaleColsHtml
   };
 })();

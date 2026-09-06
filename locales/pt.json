@@ -718,5 +718,7 @@
   "wk.repeatNone": "Ainda não há nada para criar.",
   "wk.repeatPick": "Escolha pelo menos um dia.",
   "wk.repeatDo": "Repetir",
-  "wk.repeated": "{n} cópias criadas."
+  "wk.repeated": "{n} cópias criadas.",
+  "wk.layout.toCols": "Ver os dias em colunas",
+  "wk.layout.toRows": "Ver os dias em linhas"
 }

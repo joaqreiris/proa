@@ -127,7 +127,10 @@
     </section>
 
     <section class="pr-card pr-rise" style="--i:3" id="week-card" hidden>
-      <h3 data-i18n="aw.weekTitle">Tu semana</h3>
+      <div class="aw-week-head">
+        <h3 data-i18n="aw.weekTitle">Tu semana</h3>
+        <span id="wk-flip"></span>
+      </div>
       <div class="wk aw-weekwrap">
         <div id="wk-scale"></div>
         <div id="wk-rows"></div>
@@ -302,7 +305,7 @@
     if (!(await window.requireAthlete())) return;
     if (window.PR_I18N && window.PR_I18N.ready) { try { await window.PR_I18N.ready; } catch (e) {} }
 
-    document.getElementById('wk-scale').outerHTML = W().scaleHtml();
+    document.getElementById('wk-scale').outerHTML = W().scaleHtml() + W().scaleColsHtml();
     document.getElementById('wk-legend').outerHTML = W().eventLegendHtml();
 
     // Las reglas de acceso ya limitan al atleta a su propia fila.
@@ -357,6 +360,7 @@
 
     if (events.length) {
       W().render({ host: 'wk-rows', dates, slots: slotQ.data || [], events, editable: false });
+      document.getElementById('wk-flip').innerHTML = W().layoutToggleHtml();
       document.getElementById('week-card').hidden = false;
     } else {
       document.getElementById('soon-card').hidden = false;
