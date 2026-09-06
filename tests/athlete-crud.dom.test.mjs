@@ -85,7 +85,22 @@ const FALSO_SUPABASE = `
 `;
 
 const server = spawn('python3', ['-m', 'http.server', String(PORT)], { cwd: root, stdio: 'ignore' });
-await new Promise((r) => setTimeout(r, 900));
+
+// Esperar a que conteste, no a que pasen 900 ms. Con la espera fija la prueba
+// fallaba de a ratos —el puerto todavía ocupado por la corrida anterior, o la
+// máquina cargada— y un rojo que no significa nada es peor que no probar.
+await (async () => {
+  for (let i = 0; i < 60; i++) {
+    try {
+      const r = await fetch(`http://localhost:${PORT}/Athletes.html`, { method: 'HEAD' });
+      if (r.ok) return;
+    } catch (e) { /* todavía no está */ }
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  console.error(`El servidor no levantó en el puerto ${PORT} después de 9 s.`);
+  server.kill();
+  process.exit(1);
+})();
 
 const browser = await chromium.launch();
 try {
