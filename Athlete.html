@@ -14,6 +14,7 @@
 <script src="assets/tz.js"></script>
 <script src="assets/recovery-methods.js" defer></script>
 <script src="assets/sortable.js"></script>
+<script src="assets/nutrition-calc.js"></script>
 <script src="assets/week-drag.js"></script>
 <script src="assets/week-board.js" defer></script>
 <style>
@@ -36,6 +37,21 @@
      sentía. Lo que importa no es el número de ayer sino la forma de la línea. */
   .ap-wl { display: flex; align-items: flex-end; gap: 5px; height: 78px; }
   .ap-wl div { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; gap: 5px; }
+  /* El objetivo nutricional, en la ficha. */
+  .nt-sum { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .nt-sum div { display: flex; flex-direction: column; gap: 3px; }
+  .nt-sum b { font: 700 24px/1 var(--pr-font-cond); color: var(--pr-fg-strong); font-variant-numeric: tabular-nums; }
+  .nt-sum span { font: 700 10px/1 var(--pr-font-cond); letter-spacing: .14em; text-transform: uppercase; color: var(--pr-fg-faint); }
+  .nt-stale { margin: 10px 0 0; font: var(--pr-body-sm); color: var(--pr-warning); font-weight: 600; }
+  /* El resultado del cálculo, dentro del modal. Se muestra de dónde sale cada
+     número: en reposo, gasto del día y objetivo, en ese orden. */
+  .nt-out { margin: 4px 0 18px; }
+  .nt-out-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); gap: 10px;
+    padding: 12px; border-radius: var(--pr-r-3); background: var(--pr-bg-sunk); }
+  .nt-out-row div { display: flex; flex-direction: column; gap: 3px; }
+  .nt-out-row span { font: 700 9.5px/1 var(--pr-font-cond); letter-spacing: .12em; text-transform: uppercase; color: var(--pr-fg-faint); }
+  .nt-out-row b { font: 700 19px/1 var(--pr-font-cond); color: var(--pr-fg); font-variant-numeric: tabular-nums; }
+  .nt-out-row .is-goal b { color: var(--pr-accent-ink); }
   .ap-wl i { display: block; border-radius: var(--pr-r-2) var(--pr-r-2) 2px 2px; background: var(--pr-accent); min-height: 3px; }
   .ap-wl i.is-empty { background: var(--pr-bg-sunk); height: 3px; }
   .ap-wl i.is-low { background: var(--pr-danger); }
@@ -129,6 +145,17 @@
         </section>
       </div>
 
+      <!-- Objetivo nutricional. Vive acá, en la ficha, porque sale de los datos
+           de la ficha: peso, altura, edad. El menú del día lo lee y va midiendo
+           contra él. -->
+      <section class="pr-card pr-card-pad ap-block" id="nut-card">
+        <div class="ap-card-head">
+          <h2 data-i18n="nt.title">Objetivo nutricional</h2>
+          <button class="pr-btn is-sm is-secondary" id="nut-edit"><i class="ti ti-calculator"></i><span data-i18n="nt.calc">Calcular</span></button>
+        </div>
+        <div id="nut-body"></div>
+      </section>
+
       <section class="pr-card pr-card-pad ap-block">
         <div class="ap-card-head"><h2 data-i18n="in.week">Su semana ocupada</h2></div>
         <div class="wk">
@@ -163,6 +190,90 @@
 </div>
 
 <script src="assets/sidebar.js" defer></script>
+<!-- Calculadora del objetivo. Las cuentas están en assets/nutrition-calc.js y
+     los coeficientes están verificados contra los papers originales. -->
+<div class="pr-modal-backdrop" id="m-nut" hidden>
+  <div class="pr-modal is-wide" role="dialog" aria-modal="true" aria-labelledby="m-nut-title">
+    <div class="pr-modal-head">
+      <h2 id="m-nut-title" data-i18n="nt.title">Objetivo nutricional</h2>
+      <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar" data-i18n-attr="aria-label:common.close"><i class="ti ti-x"></i></button>
+    </div>
+    <form id="f-nut">
+      <div class="pr-modal-body">
+        <span class="pr-eyebrow" data-i18n="nt.g.data">Con qué se calcula</span>
+        <div class="pr-modal-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="nt-weight" data-i18n="in.weight">Peso</label>
+            <input class="pr-input" id="nt-weight" inputmode="decimal" placeholder="kg">
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="nt-height" data-i18n="in.height">Altura</label>
+            <input class="pr-input" id="nt-height" inputmode="decimal" placeholder="cm">
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="nt-age" data-i18n="nt.age">Edad</label>
+            <input class="pr-input" id="nt-age" inputmode="numeric">
+          </div>
+        </div>
+
+        <span class="pr-eyebrow" data-i18n="nt.g.goal">A dónde va</span>
+        <div class="pr-modal-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="nt-goal" data-i18n="nt.goal">Objetivo</label>
+            <select class="pr-select" id="nt-goal">
+              <option value="fat_loss" data-i18n="nt.goal.fat">Perder grasa</option>
+              <option value="maintain" data-i18n="nt.goal.keep">Mantener</option>
+              <option value="muscle_gain" data-i18n="nt.goal.gain">Ganar músculo</option>
+            </select>
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="nt-act" data-i18n="nt.activity">Actividad</label>
+            <select class="pr-select" id="nt-act">
+              <option value="1.2" data-i18n="nt.act.1">Poca: entrena y para</option>
+              <option value="1.375" data-i18n="nt.act.2">Ligera: 1–3 días</option>
+              <option value="1.55" data-i18n="nt.act.3">Media: 3–5 días</option>
+              <option value="1.725" selected data-i18n="nt.act.4">Alta: 6–7 días</option>
+              <option value="1.9" data-i18n="nt.act.5">Muy alta: doble turno</option>
+            </select>
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="nt-formula" data-i18n="nt.formula">Fórmula</label>
+            <select class="pr-select" id="nt-formula"></select>
+          </div>
+        </div>
+
+        <div class="nt-out" id="nt-out"></div>
+
+        <span class="pr-eyebrow" data-i18n="nt.g.fine">Ajuste fino</span>
+        <div class="pr-modal-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="nt-prot" data-i18n="nt.protPerKg">Proteína g/kg</label>
+            <input class="pr-input" id="nt-prot" inputmode="decimal">
+            <span class="pr-hint" data-i18n="nt.protHint">Para ganar masa, entre 1,6 y 2,2. En déficit conviene el techo del rango: sostiene el músculo mientras baja la grasa.</span>
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="nt-fat" data-i18n="nt.fatPerKg">Grasa g/kg</label>
+            <input class="pr-input" id="nt-fat" inputmode="decimal">
+            <span class="pr-hint" data-i18n="nt.fatHint">Piso de 0,8: por debajo se resiente lo hormonal.</span>
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="nt-kcal" data-i18n="nt.kcal">Calorías del día</label>
+            <input class="pr-input" id="nt-kcal" inputmode="numeric">
+            <span class="pr-hint" data-i18n="nt.kcalHint">Se puede escribir a mano si prefieres otro número.</span>
+          </div>
+        </div>
+        <p class="auth-msg" id="nut-msg" role="alert" hidden style="margin:0;color:var(--pr-danger);font:600 13px/1.45 var(--pr-font-sans)"></p>
+      </div>
+      <div class="pr-modal-foot">
+        <button class="pr-btn is-ghost is-sm is-danger" type="button" id="nut-clear" hidden data-i18n="nt.clear">Quitar objetivo</button>
+        <span class="pr-grow"></span>
+        <button class="pr-btn is-ghost" type="button" data-close data-i18n="common.cancel">Cancelar</button>
+        <button class="pr-btn is-primary" type="submit"><i class="ti ti-check"></i><span data-i18n="common.save">Guardar</span></button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 (function () {
   const t = (k, fb, vars) => (window.PR_I18N ? window.PR_I18N.t(k, vars) : null) || fb;
@@ -368,6 +479,8 @@
       document.querySelector('[data-tab="profile"]').click();
     }
 
+    await pintarObjetivo(a, intake);
+
     document.getElementById('main').hidden = false;
     if (window.PR_I18N) window.PR_I18N.applyTo(document);
 
@@ -376,9 +489,165 @@
     await window.prWeekBoard.mount({ host: 'wb-host', athlete: a });
   }
 
+  // ── Objetivo nutricional ──────────────────────────────────────────────────
+  // Las cuentas viven en assets/nutrition-calc.js, con los coeficientes
+  // verificados contra los papers. Acá solo se juntan los datos que ya están en
+  // la ficha, se muestra el resultado y se guarda.
+  let nutTarget = null, nutAthlete = null, nutIntake = null;
+
+  const N = () => window.prNutri;
+
+  async function pintarObjetivo(a, intake) {
+    nutAthlete = a; nutIntake = intake;
+    const { data } = await window.sb.from('nutrition_targets')
+      .select('*').eq('athlete_id', a.id).maybeSingle();
+    nutTarget = data || null;
+
+    const host = document.getElementById('nut-body');
+    if (!nutTarget) {
+      host.innerHTML = `<p class="pr-hint" style="margin:0">${esc(t('nt.none',
+        'Sin objetivo. Se calcula con el peso, la altura y la edad, y el menú del día va midiendo contra él.'))}</p>`;
+      return;
+    }
+
+    const objetivo = t('nt.goal.' + ({ fat_loss: 'fat', maintain: 'keep', muscle_gain: 'gain' }[nutTarget.goal] || 'keep'));
+    // Si el peso de hoy no es con el que se calculó, la meta quedó vieja y hay
+    // que decirlo: un objetivo que no se revisa deja de ser un objetivo.
+    const pesoHoy = intake && intake.weight_kg;
+    const viejo = nutTarget.weight_kg && pesoHoy && Math.abs(Number(pesoHoy) - Number(nutTarget.weight_kg)) >= 2;
+
+    host.innerHTML = `
+      <div class="nt-sum">
+        <div><b>${nutTarget.kcal || '—'}</b><span data-i18n="nt.kcalShort">kcal</span></div>
+        <div><b>${nutTarget.protein_g || '—'}</b><span data-i18n="ml.p">Prot</span></div>
+        <div><b>${nutTarget.carbs_g || '—'}</b><span data-i18n="ml.c">Carb</span></div>
+        <div><b>${nutTarget.fats_g || '—'}</b><span data-i18n="ml.f">Gras</span></div>
+      </div>
+      <p class="pr-hint" style="margin:8px 0 0">${esc(objetivo)}${
+        nutTarget.rmr ? ' · ' + esc(t('nt.rmrIs', 'gasto en reposo {n} kcal', { n: nutTarget.rmr })) : ''}</p>
+      ${viejo ? `<p class="nt-stale">${esc(t('nt.stale',
+        'Calculado con {n} kg y hoy pesa {m}. Conviene rehacerlo.',
+        { n: nutTarget.weight_kg, m: pesoHoy }))}</p>` : ''}`;
+    if (window.PR_I18N) window.PR_I18N.applyTo(host);
+  }
+
+  function recalcular() {
+    const num = (id) => { const v = Number(document.getElementById(id).value); return Number.isFinite(v) && v > 0 ? v : null; };
+    const peso = num('nt-weight'), altura = num('nt-height'), edad = num('nt-age');
+    const modelo = document.getElementById('nt-formula').value;
+    const goal = document.getElementById('nt-goal').value;
+    const act = Number(document.getElementById('nt-act').value);
+    const out = document.getElementById('nt-out');
+
+    const sexo = nutAthlete && nutAthlete.sex === 'f' ? 'female' : 'male';
+    const rmr = N().computeRMR(modelo, { weightKg: peso, heightCm: altura, age: edad, sex: sexo });
+    if (rmr == null || peso == null) {
+      out.innerHTML = `<p class="pr-hint" style="margin:0">${esc(t('nt.needData',
+        'Falta el peso, la altura o la edad para poder calcular.'))}</p>`;
+      return null;
+    }
+
+    const tdee = N().computeTDEE(rmr, act);
+    const plan = N().planForGoal(tdee, peso, goal, {
+      proteinPerKg: Number(document.getElementById('nt-prot').value) || null,
+      fatPerKg: Number(document.getElementById('nt-fat').value) || null,
+    });
+
+    // Las calorías escritas a mano mandan sobre el cálculo.
+    const aMano = Number(document.getElementById('nt-kcal').value);
+    const kcal = Number.isFinite(aMano) && aMano > 0 ? aMano : plan.kcal;
+    const macros = N().suggestTargets(kcal, peso, { proteinPerKg: plan.proteinPerKg, fatPerKg: plan.fatPerKg });
+
+    out.innerHTML = `
+      <div class="nt-out-row">
+        <div><span data-i18n="nt.rmr">En reposo</span><b>${rmr}</b></div>
+        <div><span data-i18n="nt.tdee">Gasto del día</span><b>${tdee}</b></div>
+        <div class="is-goal"><span data-i18n="nt.target">Objetivo</span><b>${kcal}</b></div>
+        <div><span data-i18n="ml.p">Prot</span><b>${macros.protein_g} g</b></div>
+        <div><span data-i18n="ml.c">Carb</span><b>${macros.carbs_g} g</b></div>
+        <div><span data-i18n="ml.f">Gras</span><b>${macros.fats_g} g</b></div>
+      </div>`;
+    if (window.PR_I18N) window.PR_I18N.applyTo(out);
+    return { rmr, tdee, kcal, macros, plan, peso, modelo, goal, act };
+  }
+
+  function abrirObjetivo() {
+    const sel = document.getElementById('nt-formula');
+    if (!sel.options.length) {
+      const modelos = N().RMR_MODELS || {};
+      // Solo las que se pueden calcular con lo que hay: sin porcentaje de grasa
+      // no se puede usar una fórmula que lo pide.
+      sel.innerHTML = Object.keys(modelos)
+        .filter(k => !(modelos[k].needs || []).includes('bodyFat'))
+        .map(k => `<option value="${k}"${modelos[k].recommended ? ' selected' : ''}>${esc(modelos[k].label)}</option>`).join('');
+      if (!sel.value) sel.value = 'mifflin';
+    }
+
+    const g = (id, v) => { document.getElementById(id).value = v == null ? '' : v; };
+    g('nt-weight', (nutTarget && nutTarget.weight_kg) || (nutIntake && nutIntake.weight_kg));
+    g('nt-height', nutIntake && nutIntake.height_cm);
+    g('nt-age', age(nutAthlete && nutAthlete.birth_date));
+    g('nt-kcal', '');
+    document.getElementById('nt-goal').value = (nutTarget && nutTarget.goal) || 'maintain';
+    if (nutTarget && nutTarget.activity) document.getElementById('nt-act').value = String(nutTarget.activity);
+    if (nutTarget && nutTarget.formula) sel.value = nutTarget.formula;
+
+    const preset = N().GOALS[document.getElementById('nt-goal').value] || N().GOALS.maintain;
+    g('nt-prot', (nutTarget && nutTarget.protein_per_kg) || preset.proteinPerKg);
+    g('nt-fat', (nutTarget && nutTarget.fat_per_kg) || preset.fatPerKg);
+
+    document.getElementById('nut-clear').hidden = !nutTarget;
+    document.getElementById('nut-msg').hidden = true;
+    recalcular();
+    document.getElementById('m-nut').hidden = false;
+  }
+
+  document.getElementById('nut-edit').addEventListener('click', abrirObjetivo);
+  ['nt-weight','nt-height','nt-age','nt-act','nt-formula','nt-prot','nt-fat','nt-kcal']
+    .forEach(id => document.getElementById(id).addEventListener('input', recalcular));
+
+  // Cambiar el objetivo trae sus valores de referencia: la proteína no es la
+  // misma buscando bajar grasa que manteniendo.
+  document.getElementById('nt-goal').addEventListener('change', () => {
+    const preset = N().GOALS[document.getElementById('nt-goal').value] || N().GOALS.maintain;
+    document.getElementById('nt-prot').value = preset.proteinPerKg;
+    document.getElementById('nt-fat').value = preset.fatPerKg;
+    document.getElementById('nt-kcal').value = '';
+    recalcular();
+  });
+
+  document.getElementById('f-nut').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const r = recalcular();
+    const msg = document.getElementById('nut-msg');
+    if (!r) { msg.textContent = t('nt.needData', 'Falta el peso, la altura o la edad para poder calcular.'); msg.hidden = false; return; }
+
+    const { error } = await window.sb.from('nutrition_targets').upsert({
+      athlete_id: nutAthlete.id, formula: r.modelo, rmr: r.rmr, activity: r.act,
+      goal: r.goal, weight_kg: r.peso,
+      protein_per_kg: r.plan.proteinPerKg, fat_per_kg: r.plan.fatPerKg,
+      kcal: r.kcal, protein_g: r.macros.protein_g, carbs_g: r.macros.carbs_g, fats_g: r.macros.fats_g,
+    }, { onConflict: 'athlete_id' });
+    if (error) { msg.textContent = error.message; msg.hidden = false; return; }
+
+    document.getElementById('m-nut').hidden = true;
+    window.prToast(t('nt.saved', 'Objetivo guardado.'), 'success');
+    await pintarObjetivo(nutAthlete, nutIntake);
+  });
+
+  document.getElementById('nut-clear').addEventListener('click', async () => {
+    if (!confirm(t('nt.clearAsk', '¿Quitar el objetivo de este atleta?'))) return;
+    const { error } = await window.sb.from('nutrition_targets').delete().eq('athlete_id', nutAthlete.id).select('athlete_id');
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    document.getElementById('m-nut').hidden = true;
+    await pintarObjetivo(nutAthlete, nutIntake);
+  });
+
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 })();
 </script>
+
+
 </body>
 </html>

@@ -47,6 +47,9 @@
   /* Escrito a mano no hay medida que elegir, y «1 porción» necesita el ancho. */
   .ml-amount.is-free { grid-template-columns: 1fr; }
   .ml-amount.is-free .ml-qty { text-align: center; }
+  /* Cuánto falta para el objetivo del día. */
+  .ml-left { display: block; margin-top: 3px; font: 600 11.5px/1 var(--pr-font-sans); color: var(--pr-fg-muted); }
+  .ml-left.is-over { color: var(--pr-warning); }
   .ml-unit {
     height: 34px; padding: 0 4px; min-width: 0;
     border: var(--pr-bw) solid transparent; border-radius: var(--pr-r-2);
@@ -284,19 +287,29 @@
     ];
     document.getElementById('day').innerHTML = rows.map(([k, val, goal, color]) => {
       const pct = goal ? Math.min(100, Math.round((val / goal) * 100)) : 0;
+      // Cuánto falta, que es la pregunta que uno se hace mirando esto. Y si se
+      // pasó, se dice también: no es lo mismo llegar que pasarse.
+      const dif = goal ? Math.round(goal - val) : null;
+      const pasado = dif != null && dif < 0;
       return `<div>
         <div class="ml-bar-top">
           <b>${Math.round(val)}</b>
           <em>${goal ? '/ ' + goal : ''}</em>
         </div>
-        <div class="ml-bar"><i style="width:${pct}%;background:${color}"></i></div>
+        <div class="ml-bar"><i style="width:${pct}%;background:${pasado ? 'var(--pr-warning)' : color}"></i></div>
         <span style="font:700 10px/1 var(--pr-font-cond);letter-spacing:.14em;text-transform:uppercase;color:var(--pr-fg-muted);display:block;margin-top:6px">${esc(k === 'kcal' ? 'kcal' : t(k))}</span>
+        ${dif == null ? '' : `<span class="ml-left${pasado ? ' is-over' : ''}">${
+          esc(t(pasado ? 'nt.over' : 'nt.left', pasado ? 'Se pasó' : 'Falta'))} ${Math.abs(dif)}</span>`}
       </div>`;
     }).join('');
 
-    document.getElementById('day-note').textContent = target
-      ? ''
-      : t('ml.noTarget', 'Sin objetivo cargado — se puede definir en la ficha del atleta.');
+    // Sin objetivo, el cartel lleva a donde se define en vez de solo
+    // mencionarlo: decir dónde está algo y hacer que lo busquen es peor que no
+    // decir nada.
+    const nota = document.getElementById('day-note');
+    nota.innerHTML = target ? '' :
+      `<a class="pr-link" href="Athlete.html?id=${esc(ev.athlete_id)}#profile">${
+        esc(t('ml.noTarget', 'Sin objetivo cargado — se puede definir en la ficha del atleta.'))}</a>`;
   }
 
   // ── Editar la cantidad recalcula los macros ──────────────────────────────

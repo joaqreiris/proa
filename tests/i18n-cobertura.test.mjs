@@ -45,6 +45,11 @@ function html() {
   return [...raiz, ...atleta].sort();
 }
 
+const locales = {};
+for (const lang of ['es', 'en', 'pt']) {
+  locales[lang] = JSON.parse(readFileSync(join(root, 'locales', `${lang}.json`), 'utf8'));
+}
+
 // ── 1. Texto entre etiquetas, sin data-i18n ─────────────────────────────────
 const ETIQUETAS = 'h1|h2|h3|h4|h5|h6|p|button|label|span|option|th|td|a|li|dt|dd|legend|summary';
 const sinClave = [];
@@ -132,10 +137,35 @@ if (enJs.length === 0) ok('todos pasan por el motor de idiomas');
 else no(`hay ${enJs.length} mensajes escritos a mano`, enJs);
 
 // ── 4. Que las tres tablas de idiomas digan lo mismo ────────────────────────
-const locales = {};
-for (const lang of ['es', 'en', 'pt']) {
-  locales[lang] = JSON.parse(readFileSync(join(root, 'locales', `${lang}.json`), 'utf8'));
+// ── 3b. Que las claves que se usan existan ──────────────────────────────────
+// Que las tres tablas coincidan entre sí no dice nada de si la clave que pide
+// la pantalla está en alguna. Un data-i18n con una clave inventada no falla:
+// muestra la clave. Así aparecieron «ML.PROT» y «ML.CARB» en la ficha del
+// atleta, porque los macros se llaman ml.p y ml.c.
+const inventadas = [];
+for (const rel of html()) {
+  const src = readFileSync(join(root, rel), 'utf8');
+  for (const m of src.matchAll(/data-i18n(?:-html)?="([\w.]+)"/g)) {
+    if (!(m[1] in locales.es)) inventadas.push({ archivo: rel, clave: m[1] });
+  }
+  // Y las de los atributos, que van como «aria-label:clave».
+  for (const m of src.matchAll(/data-i18n-attr="[\w-]+:([\w.]+)"/g)) {
+    if (!(m[1] in locales.es)) inventadas.push({ archivo: rel, clave: m[1] });
+  }
 }
+// El propio motor de idiomas queda afuera: su documentación escribe
+// data-i18n="key" como ejemplo del formato, y no es una clave de verdad.
+for (const rel of readdirSync(join(root, 'assets')).filter((f) => f.endsWith('.js') && f !== 'i18n.js')) {
+  const src = readFileSync(join(root, 'assets', rel), 'utf8');
+  for (const m of src.matchAll(/data-i18n(?:-html)?="([\w.]+)"/g)) {
+    if (!(m[1] in locales.es)) inventadas.push({ archivo: 'assets/' + rel, clave: m[1] });
+  }
+}
+
+console.log('\nLAS CLAVES QUE PIDEN LAS PANTALLAS EXISTEN');
+if (inventadas.length === 0) ok('ninguna clave inventada');
+else no(`hay ${inventadas.length} claves que no están en locales/es.json`, inventadas);
+
 console.log('\nLAS TRES TABLAS DE IDIOMAS');
 const claves = Object.keys(locales.es);
 for (const lang of ['en', 'pt']) {

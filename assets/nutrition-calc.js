@@ -153,6 +153,55 @@
       };
     },
 
+    // ── Del gasto al objetivo ────────────────────────────────────────────────
+    // Cuánto se corre el objetivo diario respecto del gasto, según a dónde va
+    // el atleta. Los rangos son los de uso corriente en la literatura:
+    //
+    //   Perder grasa   −15% a −20%. Eso da alrededor de 0,5% del peso por
+    //                  semana; más agresivo cuesta masa magra, que es
+    //                  justamente lo que no se quiere perder.
+    //   Ganar músculo  +10% a +15%. Más que eso no construye más rápido: lo
+    //                  que sobra se va a grasa.
+    //
+    // Se devuelve el punto medio, y queda editable: esto es un punto de
+    // partida, no una receta.
+    GOALS: {
+      fat_loss:    { factor: 0.825, proteinPerKg: 2.2, fatPerKg: 0.8 },
+      maintain:    { factor: 1.00,  proteinPerKg: 1.8, fatPerKg: 1.0 },
+      muscle_gain: { factor: 1.125, proteinPerKg: 1.8, fatPerKg: 1.0 },
+    },
+
+    // La proteína no sale de una sola cifra: en déficit se sube para preservar
+    // masa magra, y para hipertrofia el rango útil va de 1,6 a 2,2 g/kg —por
+    // encima de 1,6 el beneficio adicional es chico, y por encima de 2,2 no se
+    // observa—. Ver Morton et al., Br J Sports Med 2018;52:376-384.
+    PROTEIN_RANGE: { min: 1.6, max: 2.2 },
+
+    // El plan completo a partir del gasto y el objetivo. Devuelve también de
+    // dónde salió cada número, para poder mostrarlo y no pedir fe.
+    planForGoal(tdeeKcal, weightKg, goal = 'maintain', over = {}) {
+      if (tdeeKcal == null || weightKg == null) return null;
+      const g = this.GOALS[goal] || this.GOALS.maintain;
+      const factor       = over.factor       != null ? Number(over.factor)       : g.factor;
+      const proteinPerKg = over.proteinPerKg != null ? Number(over.proteinPerKg) : g.proteinPerKg;
+      const fatPerKg     = over.fatPerKg     != null ? Number(over.fatPerKg)     : g.fatPerKg;
+
+      const kcal = round(tdeeKcal * factor, 0);
+      const macros = this.suggestTargets(kcal, weightKg, { proteinPerKg, fatPerKg });
+      return Object.assign({ kcal, factor, proteinPerKg, fatPerKg, tdee: round(tdeeKcal, 0) }, macros);
+    },
+
+    // Lo que falta —o lo que sobró— para llegar al objetivo del día.
+    // El signo importa: pasarse de proteína no es lo mismo que quedarse corto.
+    remaining(target, eaten) {
+      const t = target || {}, e = eaten || {};
+      const dif = (k) => (t[k] == null ? null : round(Number(t[k]) - (Number(e[k]) || 0), 0));
+      return {
+        kcal: dif('kcal'), protein_g: dif('protein_g'),
+        carbs_g: dif('carbs_g'), fats_g: dif('fats_g'),
+      };
+    },
+
     // Metadata para la UI: label, cita, explicación, inputs requeridos.
     RMR_MODELS: {
       ten_haaf: {
