@@ -181,6 +181,14 @@
         <i class="ti ti-search"></i>
         <input id="fp-q" data-i18n-ph="ml.searchPh" placeholder="Buscar un alimento…" autocomplete="off">
       </div>
+      <!-- Comida, bebida y suplemento se buscan en momentos distintos: al armar
+           un desayuno no se está pensando en la creatina. -->
+      <div class="pr-tabs fp-tabs" role="tablist">
+        <button type="button" class="pr-tab is-on" data-kind="all"   role="tab" data-i18n="fg.all">Todo</button>
+        <button type="button" class="pr-tab"       data-kind="food"  role="tab" data-i18n="fg.food">Comida</button>
+        <button type="button" class="pr-tab"       data-kind="drink" role="tab" data-i18n="fg.drink">Bebidas</button>
+        <button type="button" class="pr-tab"       data-kind="supp"  role="tab" data-i18n="fg.supp">Suplementos</button>
+      </div>
       <div class="fp-list" id="fp-list"></div>
     </div>
     <div class="pr-modal-foot">
@@ -443,26 +451,71 @@
   });
 
   // ── Selector de alimentos ────────────────────────────────────────────────
+  // El orden de los grupos no es alfabético: primero lo que sostiene el plan
+  // —las proteínas—, después lo que lo llena, y al final lo que lo condimenta.
+  const ORDEN_GRUPOS = ['meat', 'fish', 'dairy', 'legume', 'grain', 'veg', 'fruit', 'nuts', 'fat', 'other', 'drink', 'supp'];
+  let tipoAlimento = 'all';
+
+  // Bebida y suplemento son grupos propios; comida es todo lo demás.
+  const esDeTipo = (f, tipo) => tipo === 'all' ? true
+    : tipo === 'drink' ? f.food_group === 'drink'
+    : tipo === 'supp'  ? f.food_group === 'supp'
+    : !['drink', 'supp'].includes(f.food_group);
+
   function paintFoods() {
     const q = document.getElementById('fp-q').value.trim().toLowerCase();
-    const hit = foods.filter(f => !q ||
+    const hit = foods.filter(f => esDeTipo(f, tipoAlimento)).filter(f => !q ||
       [f.name, f.name_es, f.name_pt].filter(Boolean).some(v => v.toLowerCase().includes(q))
-    ).slice(0, 80);
-    document.getElementById('fp-list').innerHTML = hit.length ? hit.map(f => `
+    ).slice(0, 120);
+
+    const host = document.getElementById('fp-list');
+    if (!hit.length) {
+      host.innerHTML = `<p class="px-none">${esc(t('ml.noHits', 'Nada con eso. Puedes escribirlo suelto abajo.'))}</p>`;
+      return;
+    }
+
+    const fila = (f) => `
       <button type="button" class="fp-row" data-food="${f.id}">
         <span class="fp-name">${esc(foodName(f))}</span>
         <span class="fp-macros">${Math.round(f.kcal)} kcal · ${r1(f.protein_g)}P ${r1(f.carbs_g)}C ${r1(f.fats_g)}G</span>
-      </button>`).join('')
-      : `<p class="px-none">${esc(t('ml.noHits', 'Nada con eso. Puedes escribirlo suelto abajo.'))}</p>`;
+      </button>`;
+
+    // Buscando no se agrupa: lo que se quiere es la lista corta de resultados,
+    // no navegar por categorías.
+    if (q) { host.innerHTML = hit.map(fila).join(''); return; }
+
+    const porGrupo = new Map();
+    for (const f of hit) {
+      const g = f.food_group || 'other';
+      if (!porGrupo.has(g)) porGrupo.set(g, []);
+      porGrupo.get(g).push(f);
+    }
+    const grupos = [...porGrupo.keys()].sort((a, b) => {
+      const ia = ORDEN_GRUPOS.indexOf(a), ib = ORDEN_GRUPOS.indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    });
+    host.innerHTML = grupos.map(g =>
+      `<span class="fp-group">${esc(t('fg.' + g, g))}</span>` + porGrupo.get(g).map(fila).join('')
+    ).join('');
   }
 
   document.getElementById('add').addEventListener('click', () => {
     document.getElementById('fp-q').value = '';
+    tipoAlimento = 'all';
+    document.querySelectorAll('.fp-tabs .pr-tab').forEach((x, i) => x.classList.toggle('is-on', i === 0));
     paintFoods();
     document.getElementById('m-food').hidden = false;
     document.getElementById('fp-q').focus();
   });
   document.getElementById('fp-q').addEventListener('input', paintFoods);
+
+  document.querySelector('.fp-tabs').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-kind]');
+    if (!b) return;
+    tipoAlimento = b.dataset.kind;
+    document.querySelectorAll('.fp-tabs .pr-tab').forEach(x => x.classList.toggle('is-on', x === b));
+    paintFoods();
+  });
 
   document.getElementById('fp-list').addEventListener('click', async (e) => {
     const b = e.target.closest('[data-food]');
@@ -669,7 +722,7 @@
       + (ev.start_time ? `<span>·</span><span>${esc(W().hhmm(ev.start_time))}</span>` : '');
 
     const [{ data: fd }, { data: tg }] = await Promise.all([
-      window.sb.from('foods').select('id,name,name_es,name_pt,kcal,protein_g,carbs_g,fats_g,fiber_g,unit_name,unit_g')
+      window.sb.from('foods').select('id,name,name_es,name_pt,food_group,kcal,protein_g,carbs_g,fats_g,fiber_g,unit_name,unit_g')
         .or(`workspace_id.is.null,workspace_id.eq.${wsId}`).order('name'),
       window.sb.from('nutrition_targets').select('*').eq('athlete_id', ev.athlete_id).maybeSingle()
     ]);

@@ -31,11 +31,20 @@ const FALSO = `
   const EV = { id: 'e-1', athlete_id: 'a-1', date: '2026-09-07', start_time: '08:15',
                type: 'meal', title: 'Desayuno', athletes: { first_name: 'Ignacio', last_name: 'Amarilla' } };
   const HUEVO = { id: 'f-1', name: 'Whole egg', name_es: 'Huevo entero', name_pt: 'Ovo inteiro',
-                  kcal: 143, protein_g: 13, carbs_g: 0.7, fats_g: 10, fiber_g: 0,
+                  food_group: 'dairy', kcal: 143, protein_g: 13, carbs_g: 0.7, fats_g: 10, fiber_g: 0,
                   unit_name: 'unit', unit_g: 55 };
   const ARROZ = { id: 'f-2', name: 'White rice', name_es: 'Arroz blanco cocido', name_pt: 'Arroz branco',
-                  kcal: 130, protein_g: 2.7, carbs_g: 28, fats_g: 0.3, fiber_g: 0.4,
+                  food_group: 'grain', kcal: 130, protein_g: 2.7, carbs_g: 28, fats_g: 0.3, fiber_g: 0.4,
                   unit_name: 'cup', unit_g: 158 };
+  const CAFE  = { id: 'f-3', name: 'Coffee', name_es: 'Café', name_pt: 'Café',
+                  food_group: 'drink', kcal: 1, protein_g: 0.1, carbs_g: 0, fats_g: 0, fiber_g: 0,
+                  unit_name: 'cup', unit_g: 240 };
+  const CREA  = { id: 'f-4', name: 'Creatine', name_es: 'Creatina', name_pt: 'Creatina',
+                  food_group: 'supp', kcal: 0, protein_g: 0, carbs_g: 0, fats_g: 0, fiber_g: 0,
+                  unit_name: null, unit_g: null };
+  const POLLO = { id: 'f-5', name: 'Chicken', name_es: 'Pechuga de pollo', name_pt: 'Frango',
+                  food_group: 'meat', kcal: 165, protein_g: 31, carbs_g: 0, fats_g: 3.6, fiber_g: 0,
+                  unit_name: null, unit_g: null };
   const guardadoLocal = (() => { try { return JSON.parse(localStorage.getItem('t_items') || 'null'); } catch (e) { return null; } })();
   window.__items = guardadoLocal || [
     { id: 'i-1', event_id: 'e-1', position: 0, food_id: 'f-1', name: 'Huevo entero',
@@ -46,7 +55,7 @@ const FALSO = `
       qty_g: null, unit_qty: null, qty_text: '1 porción', kcal: 0, protein_g: 0, carbs_g: 0, fats_g: 0, fiber_g: 0 },
   ];
   const tabla = (t) => {
-    const filas = t === 'events' ? [EV] : t === 'foods' ? [HUEVO, ARROZ]
+    const filas = t === 'events' ? [EV] : t === 'foods' ? [HUEVO, ARROZ, CAFE, CREA, POLLO]
                 : t === 'meal_items' ? window.__items
                 : t === 'recipes' ? (window.__recipes || [])
                 : [];
@@ -140,6 +149,47 @@ try {
   is('guarda 110 gramos', u && u.row.qty_g, 110);
   is('y recuerda que eran 2 unidades', u && u.row.unit_qty, 2);
   is('las calorías salen de los gramos', u && Math.round(u.row.kcal), 157);
+
+  console.log('\nCOMIDA, BEBIDA Y SUPLEMENTO, CADA UNO EN LO SUYO');
+  // Al armar un desayuno nadie está pensando en la creatina.
+  await page.click('#add');
+  await page.waitForTimeout(400);
+
+  const leer = () => page.evaluate(() => ({
+    filas: [...document.querySelectorAll('#fp-list .fp-row .fp-name')].map((x) => x.textContent.trim()),
+    grupos: [...document.querySelectorAll('#fp-list .fp-group')].map((x) => x.textContent.trim()),
+  }));
+
+  const todo = await leer();
+  is('en «Todo» están los cinco', todo.filas.length, 5);
+  is('agrupados por categoría, y no alfabéticamente',
+    todo.grupos, ['Carnes', 'Lácteos y huevo', 'Cereales y panificados', 'Bebidas', 'Suplementos']);
+
+  await page.click('.fp-tabs [data-kind="drink"]');
+  await page.waitForTimeout(250);
+  const bebidas = await leer();
+  is('en «Bebidas» solo el café', bebidas.filas, ['Café']);
+
+  await page.click('.fp-tabs [data-kind="supp"]');
+  await page.waitForTimeout(250);
+  is('en «Suplementos» solo la creatina', (await leer()).filas, ['Creatina']);
+
+  await page.click('.fp-tabs [data-kind="food"]');
+  await page.waitForTimeout(250);
+  const comida = await leer();
+  is('y en «Comida» lo que se come, sin bebidas ni suplementos',
+    comida.filas.sort(), ['Arroz blanco cocido', 'Huevo entero', 'Pechuga de pollo']);
+
+  console.log('\nBUSCANDO NO SE AGRUPA: SE BUSCA');
+  await page.click('.fp-tabs [data-kind="all"]');
+  await page.fill('#fp-q', 'caf');
+  await page.waitForTimeout(250);
+  const buscado = await leer();
+  is('sale lo que se buscó', buscado.filas, ['Café']);
+  is('sin encabezados de sección de por medio', buscado.grupos.length, 0);
+  await page.fill('#fp-q', '');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
 
   console.log('\nUNA COMIDA SE GUARDA COMO PLATO Y VUELVE ENTERA');
   // Una boloñesa son siete alimentos cargados de a uno, y la semana que viene

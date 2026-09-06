@@ -1115,6 +1115,16 @@ button.wk-slot:hover { filter: brightness(1.12); }
   text-align: left; cursor: pointer;
 }
 .wb-menu button:hover { background: var(--pr-bg-soft); }
+/* Los filtros y las secciones del selector de alimentos. */
+.fp-tabs { margin-bottom: 8px; }
+.fp-group {
+  display: block; padding: 12px 10px 5px;
+  font: 700 10px/1 var(--pr-font-cond); letter-spacing: .16em;
+  text-transform: uppercase; color: var(--pr-fg-faint);
+  position: sticky; top: 0; background: var(--pr-surface); z-index: 1;
+}
+.fp-group:first-child { padding-top: 4px; }
+
 /* Suplementación. Se lee de arriba abajo como una rutina del día, así que las
    tres columnas son: qué, cuánto y cuándo. */
 .sp-list { display: grid; gap: 2px; }
