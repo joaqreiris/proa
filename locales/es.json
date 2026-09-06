@@ -815,5 +815,8 @@
   "wk.keys.help": "Esta lista",
   "wk.delNothing": "No se pudo borrar el bloque. Recarga la página y prueba otra vez.",
   "wk.prevWeek": "Semana anterior",
-  "wk.nextWeek": "Semana siguiente"
+  "wk.nextWeek": "Semana siguiente",
+  "wk.repeatShort": "Repetir",
+  "wk.repeatAll": "Toda la semana",
+  "wk.repeatWeekdays": "Lunes a viernes"
 }

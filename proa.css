@@ -942,6 +942,7 @@ a.pr-card:hover { box-shadow: var(--pr-shadow-3); transform: translateY(-2px); }
    desaparece por abajo. Pasa solo cuando el formulario es largo, así que es
    fácil no verlo hasta que alguien no puede guardar. */
 .pr-modal-head, .pr-modal-foot { flex: none; }
+.pr-modal-foot > .pr-btn, .pr-modal-foot > a.pr-btn { flex: none; }
 /* Casi todos los modales envuelven el cuerpo y el pie en un <form>. Ese form
    queda EN EL MEDIO de la columna flex, así que si no es también una columna
    que puede encogerse, el `flex:1` del cuerpo no le habla a nadie y el pie se
@@ -953,7 +954,11 @@ a.pr-card:hover { box-shadow: var(--pr-shadow-3); transform: translateY(-2px); }
   display: flex; flex-direction: column; gap: 16px;
 }
 .pr-modal-foot {
-  display: flex; justify-content: flex-end; gap: 10px;
+  /* Con wrap y sin encoger. El pie del bloque llega a tener siete botones
+     —borrar, duplicar, repetir, compartir, abrir, cancelar, guardar— y sin esto
+     flex los comprime hasta que los de solo icono desaparecen. El de borrar era
+     el primero de la fila: estaba ahí y no se veía. */
+  display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px;
   padding: 14px 20px 18px;
   border-top: var(--pr-bw) solid var(--pr-border);
 }
@@ -1089,6 +1094,33 @@ button.wk-slot:hover { filter: brightness(1.12); }
 .wk-legend { margin-top: 14px; }
 /* El botón de dar vuelta la semana, en la barra y en la tarjeta del atleta. */
 .wb-flip { display: inline-flex; margin-left: 4px; }
+
+/* El menú corto de un bloque: sale donde está el dedo, con lo que se hace
+   todos los días. Va en el body y posicionado por transform para no depender
+   de dónde cuelgue. */
+.wb-menu {
+  position: fixed; top: 0; left: 0; z-index: 200;
+  min-width: 190px; padding: 5px;
+  background: var(--pr-surface);
+  border: var(--pr-bw) solid var(--pr-border);
+  border-radius: var(--pr-r-3);
+  box-shadow: var(--pr-shadow-pop);
+  display: grid; gap: 1px;
+}
+.wb-menu button {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 9px 11px;
+  background: none; border: 0; border-radius: var(--pr-r-2);
+  font: 600 13.5px/1 var(--pr-font-sans); color: var(--pr-fg);
+  text-align: left; cursor: pointer;
+}
+.wb-menu button:hover { background: var(--pr-bg-soft); }
+.wb-menu button i { color: var(--pr-fg-faint); font-size: 16px; }
+.wb-menu button.is-danger { color: var(--pr-danger); }
+.wb-menu button.is-danger i { color: var(--pr-danger); }
+.wb-menu button.is-danger:hover { background: var(--pr-danger-bg); }
+/* Los atajos de días, en el modal de repetir. */
+.wb-day-quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 
 /* Los atajos. Un kbd tiene que parecer una tecla o se lee como texto suelto. */
 kbd {

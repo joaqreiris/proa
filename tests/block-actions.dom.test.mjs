@@ -28,8 +28,8 @@ const ATLETA = {
 };
 const EVENTO = {
   id: 'e-1', athlete_id: 'a-1', date: '2026-03-03',
-  start_time: '19:00', end_time: '20:30', type: 'team_training',
-  title: '1er equipo', color: null, status: 'planned',
+  start_time: '19:00', end_time: '20:30', type: 'meal',
+  title: 'Colación', color: null, status: 'planned',
 };
 
 const FALSO = `
@@ -114,6 +114,63 @@ try {
 
   await page.goto(`http://localhost:${PORT}/Athlete.html?id=a-1`, { waitUntil: 'networkidle' });
   await page.waitForSelector('#wb-rows .wk-ev[data-event="e-1"]', { timeout: 15000 });
+
+  console.log('\nTODOS LOS BOTONES SE VEN, NO SOLO ESTÁN');
+  // El pie llega a tener siete botones y flex los comprimía hasta que los de
+  // solo icono desaparecían. El de borrar era el primero de la fila: estaba en
+  // el HTML, visible para el código, y no se veía en la pantalla.
+  await page.click('#wb-rows .wk-ev[data-event="e-1"]');
+  await page.waitForTimeout(400);
+  const pie = await page.evaluate(() => {
+    const foot = document.querySelector('#m-ev .pr-modal-foot');
+    const caja = foot.getBoundingClientRect();
+    return ['e-del', 'e-dup', 'e-rep'].map((id) => {
+      const b = document.getElementById(id);
+      const r = b.getBoundingClientRect();
+      return {
+        id,
+        // Ancho de verdad y dentro del pie: no alcanza con que no esté hidden.
+        ancho: Math.round(r.width),
+        dentro: r.left >= caja.left - 1 && r.right <= caja.right + 1,
+      };
+    });
+  });
+  for (const b of pie) {
+    if (b.ancho >= 28 && b.dentro) ok(`${b.id} se ve entero (${b.ancho}px, dentro del pie)`);
+    else no(`${b.id} no se ve`, b);
+  }
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+
+  console.log('\nOPTION+CLIC ABRE EL MENÚ CORTO');
+  await page.click('#wb-rows .wk-ev[data-event="e-1"]', { modifiers: ['Alt'] });
+  await page.waitForTimeout(300);
+  const menu = await page.evaluate(() => {
+    const m = document.querySelector('.wb-menu');
+    return m ? {
+      abierto: true,
+      opciones: [...m.querySelectorAll('[data-k]')].map((b) => b.dataset.k),
+      modalCerrado: document.getElementById('m-ev').hidden,
+    } : { abierto: false };
+  });
+  is('se abre el menú', menu.abierto, true);
+  is('sin abrir el formulario', menu.modalCerrado, true);
+  is('con abrir, editar, duplicar, repetir y borrar', menu.opciones, ['open', 'edit', 'dup', 'rep', 'del']);
+
+  console.log('\nY BORRA DESDE AHÍ, SIN ENTRAR');
+  await page.evaluate(() => { window.__sql = []; });
+  await page.click('.wb-menu [data-k="del"]');
+  await page.waitForTimeout(500);
+  const borrado = await page.evaluate(() => window.__sql.filter((x) => x.op === 'delete'));
+  is('sale el borrado', borrado.length, 1);
+  is('de la tabla de eventos', borrado[0] && borrado[0].t, 'events');
+
+  console.log('\nESCAPE CIERRA EL MENÚ');
+  await page.click('#wb-rows .wk-ev[data-event="e-1"]', { modifiers: ['Alt'] });
+  await page.waitForTimeout(250);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(250);
+  is('no queda colgado', await page.evaluate(() => !document.querySelector('.wb-menu')), true);
 
   console.log('\nABRIR UN BLOQUE');
   await page.click('#wb-rows .wk-ev[data-event="e-1"]');

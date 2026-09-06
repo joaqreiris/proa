@@ -131,7 +131,7 @@
           <div class="pr-modal-foot">
             <button class="pr-btn is-danger is-sm" type="button" id="e-del" hidden><i class="ti ti-trash"></i></button>
             <button class="pr-btn is-ghost is-sm" type="button" id="e-dup" hidden title="" data-i18n-attr="title:wk.duplicate"><i class="ti ti-copy"></i></button>
-            <button class="pr-btn is-ghost is-sm" type="button" id="e-rep" hidden title="" data-i18n-attr="title:wk.repeat"><i class="ti ti-repeat"></i></button>
+            <button class="pr-btn is-secondary is-sm" type="button" id="e-rep" hidden title="" data-i18n-attr="title:wk.repeat"><i class="ti ti-repeat"></i><span data-i18n="wk.repeatShort">Repetir</span></button>
             <button class="pr-btn is-ghost is-sm" type="button" id="e-share" hidden title="" data-i18n-attr="title:wk.toAthletes"><i class="ti ti-users-plus"></i></button>
             <a class="pr-btn is-secondary" id="e-open" href="#" hidden><i class="ti ti-list-details"></i><span data-i18n="wk.openSession">Abrir sesión</span></a>
             <span class="pr-grow"></span>
@@ -238,6 +238,13 @@
             <div class="pr-field">
               <label class="pr-label" data-i18n="wk.repeatDays">Qué días</label>
               <div class="wb-days" id="rep-days"></div>
+              <!-- Marcar siete días de a uno para decir «todos» es trabajo que
+                   la app puede hacer sola. -->
+              <div class="wb-day-quick">
+                <button type="button" class="pr-btn is-ghost is-sm" data-quick="all" data-i18n="wk.repeatAll">Toda la semana</button>
+                <button type="button" class="pr-btn is-ghost is-sm" data-quick="week" data-i18n="wk.repeatWeekdays">Lunes a viernes</button>
+                <button type="button" class="pr-btn is-ghost is-sm" data-quick="none" data-i18n="wk.repeatNone">Ninguno</button>
+              </div>
             </div>
             <div class="pr-field">
               <label class="pr-label" for="rep-weeks" data-i18n="wk.repeatWeeks">Durante cuántas semanas</label>
@@ -551,13 +558,116 @@
     $('m-share').hidden = false;
   }
 
+  // ── El menú corto de un bloque ────────────────────────────────────────────
+  // Abrir el formulario entero para duplicar o borrar es mucho trámite. Este
+  // menú sale donde está el dedo, con lo que se hace todos los días.
+  let menuBloque = null;
+
+  function cerrarMenuBloque() {
+    if (menuBloque) { menuBloque.remove(); menuBloque = null; }
+  }
+
+  function abrirMenuBloque(ev, x, y) {
+    cerrarMenuBloque();
+    if (!ev) return;
+
+    const dest = ['gym', 'field'].includes(ev.type) ? 'Session.html'
+               : ev.type === 'meal' ? 'Meal.html' : null;
+    const opciones = [
+      dest ? { k: 'open', ico: 'list-details', txt: t(ev.type === 'meal' ? 'wk.openMenu' : 'wk.openSession') } : null,
+      { k: 'edit',  ico: 'pencil',  txt: t('wk.edit', 'Editar bloque') },
+      { k: 'dup',   ico: 'copy',    txt: t('wk.duplicate', 'Duplicar') },
+      { k: 'rep',   ico: 'repeat',  txt: t('wk.repeat', 'Repetir este bloque') },
+      { k: 'del',   ico: 'trash',   txt: t('wk.delete', 'Borrar'), peligro: true },
+    ].filter(Boolean);
+
+    const m = document.createElement('div');
+    m.className = 'wb-menu';
+    m.innerHTML = opciones.map(o =>
+      `<button type="button" data-k="${o.k}"${o.peligro ? ' class="is-danger"' : ''}>
+         <i class="ti ti-${o.ico}"></i>${esc(o.txt)}</button>`).join('');
+    document.body.appendChild(m);
+
+    // Que no se salga de la pantalla: si no entra abajo, sube.
+    const r = m.getBoundingClientRect();
+    const px = Math.min(x, window.innerWidth - r.width - 8);
+    const py = y + r.height > window.innerHeight - 8 ? y - r.height : y;
+    m.style.transform = `translate(${Math.max(8, px)}px, ${Math.max(8, py)}px)`;
+    menuBloque = m;
+
+    m.addEventListener('click', async (e2) => {
+      const b = e2.target.closest('[data-k]');
+      if (!b) return;
+      cerrarMenuBloque();
+      if (b.dataset.k === 'open' && dest) { window.location.href = dest + '?event=' + ev.id; return; }
+      if (b.dataset.k === 'edit') { openEvent(ev); return; }
+      if (b.dataset.k === 'rep')  { openRepeat(ev); return; }
+      if (b.dataset.k === 'dup')  {
+        const { error } = await window.sb.rpc('copy_event_to_athletes', {
+          p_event: ev.id, p_athletes: [athlete.id], p_date: null });
+        if (error) { window.prToast(error.message, 'danger'); return; }
+        window.prToast(t('wk.duplicated', 'Bloque duplicado.'), 'success');
+        await loadWeek();
+        return;
+      }
+      if (b.dataset.k === 'del') {
+        if (!confirm(t('wk.confirmDelete', '¿Borrar este bloque?'))) return;
+        const { data, error } = await window.sb.from('events').delete().eq('id', ev.id).select('id');
+        if (error) { window.prToast(error.message, 'danger'); return; }
+        if (!data || !data.length) {
+          window.prToast(t('wk.delNothing', 'No se pudo borrar el bloque. Recarga la página y prueba otra vez.'), 'danger');
+          return;
+        }
+        await loadWeek();
+      }
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    if (menuBloque && !e.target.closest('.wb-menu')) cerrarMenuBloque();
+  }, true);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarMenuBloque(); });
+
   // ── Enganches (se registran una sola vez) ────────────────────────────────
   function wire() {
     $('wb-rows').addEventListener('click', (e) => {
       const add = e.target.closest('[data-add-date]');
       if (add) { openEvent(null, add.dataset.addDate); return; }
       const ev = e.target.closest('[data-event]');
-      if (ev) openEvent(events.find(x => x.id === ev.dataset.event));
+      if (!ev) return;
+      // Con Option/Alt (o Ctrl), el menú corto en vez del formulario entero:
+      // duplicar y borrar no necesitan abrir seis campos.
+      if (e.altKey || e.ctrlKey) {
+        e.preventDefault();
+        abrirMenuBloque(events.find(x => x.id === ev.dataset.event), e.clientX, e.clientY);
+        return;
+      }
+      openEvent(events.find(x => x.id === ev.dataset.event));
+    });
+
+    // Doble clic: entrar a lo que hay adentro. Para un gimnasio o un campo eso
+    // es su sesión; para una comida, su menú. Es a donde se va de verdad
+    // cuando se abre un bloque, y hacerlo pasar por el formulario es un paso de
+    // más repetido cincuenta veces por semana.
+    $('wb-rows').addEventListener('dblclick', (e) => {
+      const el = e.target.closest('[data-event]');
+      if (!el) return;
+      const ev = events.find(x => x.id === el.dataset.event);
+      if (!ev) return;
+      const dest = ['gym', 'field'].includes(ev.type) ? 'Session.html'
+                 : ev.type === 'meal' ? 'Meal.html' : null;
+      if (!dest) return;                    // los que no tienen adentro, se quedan en el modal
+      e.preventDefault();
+      $('m-ev').hidden = true;              // el primer clic ya lo abrió
+      window.location.href = dest + '?event=' + ev.id;
+    });
+
+    // Clic derecho: el mismo menú corto. Es lo que la mano ya sabe hacer.
+    $('wb-rows').addEventListener('contextmenu', (e) => {
+      const el = e.target.closest('[data-event]');
+      if (!el) return;
+      e.preventDefault();
+      abrirMenuBloque(events.find(x => x.id === el.dataset.event), e.clientX, e.clientY);
     });
 
     // Arrastrar para mover; con Option o Command, para copiar. La grilla ya sabe dónde
@@ -805,6 +915,13 @@
     });
     $('rep-weeks').addEventListener('input', paintRepCount);
 
+    // «Toda la semana» y «lunes a viernes» son los dos casos de siempre;
+    // marcarlos de a uno es trabajo que la app puede hacer sola.
+    document.querySelector('.wb-day-quick').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-quick]');
+      if (b) quickDays(b.dataset.quick);
+    });
+
     $('f-rep').addEventListener('submit', async (e) => {
       e.preventDefault();
       const msg = $('rep-msg');
@@ -975,6 +1092,20 @@
       }
     }
     return out;
+  }
+
+  // «Toda la semana» y «lunes a viernes» son los dos casos que se repiten
+  // siempre. El día del propio bloque queda siempre marcado y deshabilitado:
+  // repetir «los martes» incluye el martes en el que ya está.
+  function quickDays(cual) {
+    const dias = [...$('rep-days').querySelectorAll('.wb-day')];
+    dias.forEach((b) => {
+      if (b.classList.contains('is-src')) return;
+      const wd = Number(b.dataset.wd);
+      const on = cual === 'all' ? true : cual === 'week' ? wd <= 4 : false;
+      b.classList.toggle('is-on', on);
+    });
+    paintRepCount();
   }
 
   function paintRepCount() {

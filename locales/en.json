@@ -815,5 +815,8 @@
   "wk.keys.help": "This list",
   "wk.delNothing": "The block couldn't be deleted. Reload the page and try again.",
   "wk.prevWeek": "Previous week",
-  "wk.nextWeek": "Next week"
+  "wk.nextWeek": "Next week",
+  "wk.repeatShort": "Repeat",
+  "wk.repeatAll": "Every day",
+  "wk.repeatWeekdays": "Monday to Friday"
 }
