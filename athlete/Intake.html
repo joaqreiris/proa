@@ -53,6 +53,10 @@
       <span class="ai-ws" id="ws-name">&nbsp;</span>
       <h1 class="ai-title" data-i18n="ai.title">Mi ficha</h1>
     </span>
+    <!-- Salir tiene que estar SIEMPRE. Mientras la ficha no esté completa esta
+         es la única pantalla a la que se puede llegar, así que sin este botón
+         el atleta no tendría cómo cerrar sesión. -->
+    <button class="pr-btn is-ghost is-sm" id="logout" data-i18n="nav.logout">Salir</button>
   </header>
 
   <p class="ai-lead" data-i18n="ai.lead">Cuéntale a tu entrenador cómo estás. Con esto arma tu plan: cuanto más completo, mejor te va a entrenar. Puedes dejarlo por la mitad y seguir después.</p>
@@ -91,7 +95,9 @@
 
   </form>
 
-  <div class="ai-back">
+  <!-- Oculto hasta que la ficha esté completa: antes de eso, la semana rebota
+       para acá y el botón sería una puerta pintada en la pared. -->
+  <div class="ai-back" id="ai-back" hidden>
     <a class="pr-btn is-ghost is-sm" href="Week.html" data-i18n="ai.back">Volver a mi semana</a>
   </div>
 
@@ -238,6 +244,13 @@
     });
 
     const { error } = await window.sb.from('athlete_intake').upsert(row, { onConflict: 'athlete_id' });
+    // El guard de requireAthlete se apoya en este caché: sin esto, terminarla
+    // no alcanzaría para salir de acá hasta cerrar la pestaña.
+    if (!error) {
+      try { sessionStorage.setItem('pr_intake_done', '1'); } catch (e) {}
+      const volver = document.getElementById('ai-back');
+      if (volver) volver.hidden = false;
+    }
     btn.classList.remove('is-busy');
     if (error) { window.prToast(error.message, 'danger'); return; }
     document.getElementById('saved').textContent = t('ai.saved', 'Guardado. Tu entrenador ya lo ve.');
@@ -246,7 +259,10 @@
 
   // ── Arranque ─────────────────────────────────────────────────────────────
   async function boot() {
-    if (!(await window.requireAthlete())) return;
+    if (!(await window.requireAthlete({ saltarAnamnesis: true }))) return;
+    document.getElementById('logout').addEventListener('click', () => window.logout('../Login.html'));
+    // El botón de volver aparece solo si la semana no lo va a rebotar de vuelta.
+    document.getElementById('ai-back').hidden = !(await window.intakeDone());
     if (window.PR_I18N && window.PR_I18N.ready) { try { await window.PR_I18N.ready; } catch (e) {} }
 
     window.prIntake.render('form-host', 'athlete');

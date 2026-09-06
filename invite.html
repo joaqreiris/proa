@@ -102,7 +102,9 @@
       return false;
     }
     window.resetContextCache();
-    window.location.replace('athlete/Week.html');
+    // Recién invitado: lo primero es su ficha. Su semana todavía está vacía y
+    // el entrenador no puede armarla sin estos datos.
+    window.location.replace('athlete/Intake.html');
     return true;
   }
 

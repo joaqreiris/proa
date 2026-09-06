@@ -171,12 +171,47 @@
     return true;
   };
 
-  window.requireAthlete = async function () {
+  window.requireAthlete = async function (opts) {
     if (!(await window.requireAuth('../Login.html'))) return false;
     const p = await window.getProfile();
     if (!p) { await window.clearStaleSession(); window.location.replace('../Login.html'); return false; }
     if (p.role !== 'athlete') { window.location.replace('../Home.html'); return false; }
+
+    // La anamnesis es la puerta de entrada, no una tarea pendiente.
+    //
+    // Sin ella el entrenador no tiene con qué armar el plan: no sabe qué
+    // lesiones tuvo, cuánto duerme ni a qué hora está libre. Una tarjeta que
+    // dice «completa tu ficha» se posterga para siempre, así que mientras no
+    // esté completa cualquier pantalla del atleta lleva ahí.
+    //
+    // El guard vive acá y no en cada pantalla porque en cada pantalla es una
+    // pantalla nueva la que se olvida de ponerlo. La propia anamnesis pasa con
+    // `saltarAnamnesis`, o esto sería un bucle.
+    if (!(opts && opts.saltarAnamnesis) && !(await window.intakeDone())) {
+      window.location.replace('Intake.html');
+      return false;
+    }
     return true;
+  };
+
+  // Si el atleta ya completó su anamnesis. Se cachea en la pestaña: una vez
+  // completa no se descompleta, y así no se paga una consulta por pantalla.
+  window.intakeDone = async function () {
+    try {
+      if (sessionStorage.getItem('pr_intake_done') === '1') return true;
+    } catch (e) { /* modo privado */ }
+
+    const { data: a } = await window.sb.from('athletes').select('id').limit(1).maybeSingle();
+    if (!a) return true;   // sin ficha no hay nada que completar: que siga
+
+    const { data: i, error } = await window.sb.from('athlete_intake')
+      .select('completed_at').eq('athlete_id', a.id).maybeSingle();
+    // Ante un error de red no se encierra a nadie: se deja pasar.
+    if (error) return true;
+
+    const listo = !!(i && i.completed_at);
+    if (listo) { try { sessionStorage.setItem('pr_intake_done', '1'); } catch (e) {} }
+    return listo;
   };
 
   // A dónde va cada quien después de entrar.
