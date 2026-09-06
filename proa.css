@@ -1293,8 +1293,10 @@ kbd {
 .wk-cols .wk-add { width: 100%; }
 
 /* El texto vuelve a la izquierda: en una columna el bloque es ancho, así que
-   el icono no necesita centrarse como cuando queda solo en la vista de filas. */
-.wk-cols .wk-ev { align-items: center; padding: 0 6px; }
+   el icono no necesita centrarse como cuando queda solo en la vista de filas.
+   Y arriba, no al medio: un bloque largo —el liceo de 21 a 23— tiene su nombre
+   justo donde cae el que se le apila encima. Arriba casi nunca hay nada. */
+.wk-cols .wk-ev { align-items: flex-start; padding: 5px 6px 0; }
 .wk-cols .wk-ev > .ti { margin-inline: 0; }
 .wk-cols .wk-ev-t { display: block; margin-left: 4px; }
 
@@ -1353,6 +1355,8 @@ kbd {
   font: 700 10px/1 var(--pr-font-sans);
   color: #fff;
   overflow: hidden; white-space: nowrap;
+  /* El aro del color de fondo despega un bloque del que tiene debajo cuando se
+     apilan: sin eso, dos del mismo color se leen como uno solo más grande. */
   box-shadow: 0 0 0 1.5px var(--pr-surface);
   /* El ancho del bloque ES su duración, así que no se puede elegir: en media
      hora no entra un nombre. Se mide el bloque para decidir qué mostrar. */

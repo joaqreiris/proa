@@ -372,6 +372,10 @@
       const laneCount = lanes(timed);
       // Si hay bloques sin hora, se les reserva la franja de abajo.
       const topH = free.length ? 66 : 100;
+      // Cuánto se corre cada bloque apilado. Con tope, para que con cuatro
+      // superpuestos el último no quede en una astilla; y sin gastar más del
+      // 70% del espacio, para que del primero siempre quede algo a la vista.
+      const paso = laneCount > 1 ? Math.min(16, (topH * 0.7) / (laneCount - 1)) : 0;
 
       const tag   = editable ? 'button' : 'span';
       const attrs = (e) => editable ? ` type="button" data-event="${e.id}"` : '';
@@ -385,7 +389,14 @@
         // el CSS según la orientación, y así el mismo HTML sirve para las dos.
         // --a y --len van sobre el tiempo; --lane y --laneh, al través.
         const tinta = inkOn(e.color);
-        const style = `--a:${a}%;--len:${len}%;--lane:${e._lane * h}%;--laneh:${h}%;`
+        // Dos bloques a la misma hora se APILAN, no se parten por la mitad.
+        //
+        // Repartir el ancho en partes iguales deja dos chips de media columna
+        // donde no entra ni el nombre: «LI…» y «SN…». Corriendo cada uno un
+        // poco y dejando que ocupe el resto, el de arriba se lee entero y del de
+        // abajo se ve la franja de la izquierda, que es donde está su nombre.
+        const style = `--a:${a}%;--len:${len}%;--lane:${e._lane * paso}%;--laneh:${topH - e._lane * paso}%;`
+                    + `z-index:${3 + e._lane};`
                     + `background:${eventColor(e)};`
                     + (tinta ? `color:${tinta};` : '')
                     + `animation-delay:${120 + d * 40}ms`;

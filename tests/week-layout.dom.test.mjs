@@ -40,6 +40,9 @@ const SIN_ANIM = '*, *::before, *::after { animation: none !important; transitio
 const DATES = ['2026-03-02','2026-03-03','2026-03-04','2026-03-05','2026-03-06','2026-03-07','2026-03-08'];
 const EVENTS = [
   { id: 'e1', date: '2026-03-02', start_time: '08:00', end_time: '09:30', type: 'gym', title: 'Fuerza' },
+  // Dos que se pisan, como el liceo y el snack de las 22.
+  { id: 'a1', date: '2026-03-06', start_time: '21:00', end_time: '23:00', type: 'other', title: 'Liceo' },
+  { id: 'a2', date: '2026-03-06', start_time: '22:00', end_time: '22:30', type: 'meal', title: 'Snack' },
 ];
 
 const HTML = `<!DOCTYPE html><html><head><style>${css}</style><style>${SIN_ANIM}</style></head>
@@ -102,6 +105,47 @@ if (cols.altoPista > 400) ok(`la pista se hizo alta (${cols.altoPista}px)`);
 else no('la pista quedó sin alto', cols.altoPista);
 if (cols.anchoPista < 200) ok(`y angosta, una por día (${cols.anchoPista}px)`);
 else no('la pista no se angostó', cols.anchoPista);
+
+// ── Dos bloques a la misma hora ─────────────────────────────────────────────
+// Repartir el ancho en partes iguales deja dos chips de media columna donde no
+// entra ni el nombre. Apilados, el de arriba se lee entero y del de abajo queda
+// a la vista la franja de la izquierda, que es donde está su nombre.
+console.log('\nDOS BLOQUES A LA MISMA HORA SE APILAN');
+const pila = await page.evaluate(() => {
+  const de = (id) => {
+    const el = document.querySelector(`[data-event="${id}"]`);
+    const tr = el.closest('.wk-track');
+    const r = el.getBoundingClientRect(), t = tr.getBoundingClientRect();
+    return {
+      id,
+      // Sobre el eje transversal: en columnas es el ancho.
+      desde: Math.round(((r.left - t.left) / t.width) * 100),
+      ancho: Math.round((r.width / t.width) * 100),
+      z: Number(getComputedStyle(el).zIndex) || 0,
+    };
+  };
+  return { abajo: de('a1'), arriba: de('a2') };
+});
+is('el primero arranca pegado al borde', pila.abajo.desde, 0);
+if (pila.abajo.ancho >= 95) ok(`y ocupa el día entero (${pila.abajo.ancho}%)`);
+else no('el de abajo se achicó', pila.abajo);
+if (pila.arriba.desde > 5 && pila.arriba.desde <= 20) ok(`el segundo se corre lo justo (${pila.arriba.desde}%)`);
+else no('el desplazamiento no es el esperado', pila.arriba);
+if (pila.arriba.ancho >= 75) ok(`y sigue siendo ancho (${pila.arriba.ancho}%), no media columna`);
+else no('el de arriba quedó angosto', pila.arriba);
+if (pila.arriba.z > pila.abajo.z) ok(`el segundo queda encima (z ${pila.arriba.z} sobre ${pila.abajo.z})`);
+else no('el orden de apilado está al revés', pila);
+
+// Y lo que importa de verdad: que al de abajo se le pueda hacer clic. Un bloque
+// tapado del todo no se puede abrir ni arrastrar.
+const alcanzable = await page.evaluate(() => {
+  const el = document.querySelector('[data-event="a1"]');
+  const r = el.getBoundingClientRect();
+  // Un punto sobre su franja visible, a la izquierda del que tiene encima.
+  const p = document.elementFromPoint(r.left + 4, r.top + r.height / 2);
+  return !!(p && p.closest('[data-event]') && p.closest('[data-event]').dataset.event === 'a1');
+});
+is('al de abajo se le puede hacer clic en su franja', alcanzable, true);
 
 // ── La escala de horas acompaña ─────────────────────────────────────────────
 console.log('\nLA ESCALA ACOMPAÑA A LA VISTA');
