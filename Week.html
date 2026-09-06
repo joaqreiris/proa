@@ -159,7 +159,7 @@
     const wsId = await window.getWorkspaceId();
 
     const { data, error } = await window.sb.from('events')
-      .select('id,date,start_time,end_time,type,title,location,status,rpe,actual_min,athlete_note,au,athlete_id,athletes!inner(id,first_name,last_name,timezone,workspace_id)')
+      .select('id,date,start_time,end_time,type,color,title,location,status,rpe,actual_min,athlete_note,au,athlete_id,athletes!inner(id,first_name,last_name,timezone,workspace_id)')
       .eq('athletes.workspace_id', wsId)
       .gte('date', W().addDays(dates[0], -1))
       .lte('date', W().addDays(dates[6], 1));
@@ -236,7 +236,7 @@
 
   function rowHtml(r) {
     const e = r.ev;
-    const color = W().EVENT_COLOR[e.type] || 'var(--pr-fg-faint)';
+    const color = W().eventColor(e) || 'var(--pr-fg-faint)';
     const type = t(W().EVENT_KEY[e.type] || 'ev.other');
 
     // Arriba, mi hora — es la que me dice si voy a estar despierto. Abajo, la

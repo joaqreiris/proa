@@ -95,6 +95,10 @@
               <input class="pr-input" id="e-title" maxlength="80" data-i18n-ph="wk.titlePh" placeholder="Si lo dejas vacío se usa el tipo.">
             </div>
             <div class="pr-field">
+              <span class="pr-label" data-i18n="wk.color">Color</span>
+              <div class="wb-colors" id="e-colors" role="radiogroup" data-i18n-attr="aria-label:wk.color"></div>
+            </div>
+            <div class="pr-field">
               <label class="pr-label" for="e-location" data-i18n="wk.location">Lugar</label>
               <input class="pr-input" id="e-location" maxlength="80">
             </div>
@@ -280,7 +284,7 @@
       window.sb.from('availability_slots')
         .select('weekday,start_time,end_time,kind,label').eq('athlete_id', athlete.id),
       window.sb.from('events')
-        .select('id,date,start_time,end_time,type,title,notes,location,status,rpe,actual_min,athlete_note,au,done_at')
+        .select('id,date,start_time,end_time,type,title,notes,location,color,status,rpe,actual_min,athlete_note,au,done_at')
         .eq('athlete_id', athlete.id).gte('date', monday).lte('date', dates[6]).order('start_time')
     ]);
     if (sl.error) { window.prToast(sl.error.message, 'danger'); return; }
@@ -329,6 +333,39 @@
   }
 
   // ── Bloques ──────────────────────────────────────────────────────────────
+  // ── El color del bloque ───────────────────────────────────────────────────
+  // Null es lo normal y quiere decir «el de su tipo». La primera opción es
+  // justamente esa, y va primera para que volver atrás sea tan fácil como
+  // elegir: un color que no se puede desandar es una trampa.
+  let colorElegido = null;
+
+  function paintColors() {
+    const tipo = $('e-type').value;
+    const delTipo = W().EVENT_COLOR[tipo] || W().EVENT_COLOR.other;
+    const marca = (activo) => activo ? ' is-on' : '';
+
+    const auto = `<button type="button" class="wb-color is-auto${marca(!colorElegido)}"
+        data-color="" role="radio" aria-checked="${!colorElegido}"
+        title="${esc(t('wk.color.auto', 'El de su tipo'))}"
+        style="background:${delTipo}"><i class="ti ti-check"></i></button>`;
+
+    const fijos = W().EVENT_PALETTE.map(c => `<button type="button" class="wb-color${marca(colorElegido === c)}"
+        data-color="${c}" role="radio" aria-checked="${colorElegido === c}" title="${c}"
+        style="background:${c};color:${W().inkOn(c)}"><i class="ti ti-check"></i></button>`).join('');
+
+    // El de a mano. El input de color del navegador ya trae su propio selector
+    // con RGB, así que no hace falta inventar uno.
+    const propio = colorElegido && W().EVENT_PALETTE.indexOf(colorElegido) < 0;
+    const libre = `<label class="wb-color wb-color-free${marca(propio)}"
+        title="${esc(t('wk.color.custom', 'Otro color'))}"
+        style="${propio ? `background:${colorElegido};color:${W().inkOn(colorElegido)}` : ''}">
+        <i class="ti ti-${propio ? 'check' : 'color-picker'}"></i>
+        <input type="color" id="e-color-free" value="${colorElegido || delTipo}">
+      </label>`;
+
+    $('e-colors').innerHTML = auto + fijos + libre;
+  }
+
   function openEvent(ev, date) {
     editingId = ev ? ev.id : null;
     const d = ev ? ev.date : (date || window.prToday());
@@ -348,6 +385,8 @@
     $('e-title').value    = (ev && ev.title) || '';
     $('e-location').value = (ev && ev.location) || '';
     $('e-notes').value    = (ev && ev.notes) || '';
+    colorElegido = (ev && ev.color) || null;
+    paintColors();
     $('e-del').hidden     = !ev;
     $('e-dup').hidden     = !ev;
     $('e-share').hidden   = !ev || athletes.length < 2;
@@ -529,6 +568,26 @@
     ['e-date', 'e-start', 'e-end'].forEach(id =>
       $(id).addEventListener('change', paintMine));
 
+    // Cambiar el tipo repinta la muestra del «automático»: es su color el que
+    // se está mostrando ahí.
+    $('e-type').addEventListener('change', paintColors);
+
+    $('e-colors').addEventListener('click', (e) => {
+      const b = e.target.closest('.wb-color:not(.wb-color-free)');
+      if (!b) return;
+      colorElegido = b.dataset.color || null;
+      paintColors();
+    });
+
+    // El input de color escupe un evento por cada movimiento del ratón dentro
+    // del selector; se escucha 'input' igual porque se quiere ver el cambio en
+    // el momento, y pintar de nuevo es barato.
+    $('e-colors').addEventListener('input', (e) => {
+      if (e.target.id !== 'e-color-free') return;
+      colorElegido = e.target.value;
+      paintColors();
+    });
+
     $('f-ev').addEventListener('submit', async (e) => {
       e.preventDefault();
       const msg = $('ev-msg');
@@ -549,7 +608,8 @@
         type:       $('e-type').value,
         title:      $('e-title').value.trim() || null,
         location:   $('e-location').value.trim() || null,
-        notes:      $('e-notes').value.trim() || null
+        notes:      $('e-notes').value.trim() || null,
+        color:      colorElegido
       };
 
       const q = editingId

@@ -766,6 +766,11 @@ create table if not exists public.events (
   location    text,
   status      text not null default 'planned'
               check (status in ('planned','done','skipped')),
+  -- Color propio del bloque. Null —lo normal— significa «el de su tipo»: si se
+  -- guardara el color copiado, el día que se ajuste la paleta los bloques
+  -- viejos se quedarían con el color viejo. Los colores de los TIPOS siguen
+  -- siendo fijos para todos; esto pinta un bloque suelto, no un significado.
+  color       text check (color is null or color ~ '^#[0-9a-fA-F]{6}$'),
   created_by  uuid references auth.users(id) on delete set null,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now(),

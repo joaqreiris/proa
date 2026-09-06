@@ -192,7 +192,7 @@
         : `<span class="aw-ask">${esc(t('log.ask', '¿Cómo te fue?'))}</span>`;
 
       return `<button type="button" class="aw-block${e.status === 'done' ? ' is-done' : e.status === 'skipped' ? ' is-skipped' : ''}" data-ev="${e.id}">
-        <i class="bar" style="background:${W().EVENT_COLOR[e.type] || W().EVENT_COLOR.other}"></i>
+        <i class="bar" style="background:${W().eventColor(e)}"></i>
         <div class="aw-block-body">
           <div class="aw-block-top">
             <span class="aw-block-name">${esc(name)}</span>
@@ -234,7 +234,7 @@
     paintToday(allEvents);
   }
 
-  const EV_COLS = 'id,date,start_time,end_time,type,title,notes,location,status,rpe,actual_min,athlete_note,au,recovery_items(position,method,duration_min,temp_c,temp_hot_c,cycles,pressure)';
+  const EV_COLS = 'id,date,start_time,end_time,type,color,title,notes,location,status,rpe,actual_min,athlete_note,au,recovery_items(position,method,duration_min,temp_c,temp_hot_c,cycles,pressure)';
 
   // ── El parte del día ─────────────────────────────────────────────────────
   // Las cinco preguntas van todas en la misma dirección: 1 es lo peor y 5 lo

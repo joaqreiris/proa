@@ -720,5 +720,8 @@
   "wk.repeatDo": "Repeat",
   "wk.repeated": "{n} copies created.",
   "wk.layout.toCols": "Show days as columns",
-  "wk.layout.toRows": "Show days as rows"
+  "wk.layout.toRows": "Show days as rows",
+  "wk.color": "Colour",
+  "wk.color.auto": "Its type’s colour",
+  "wk.color.custom": "Another colour"
 }

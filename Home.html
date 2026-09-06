@@ -164,7 +164,7 @@
         // es la mía, que es la que me dice si voy a estar despierto.
         const theirs = e._same || !e._hhmm ? ''
           : `<em>${esc(W().hhmm(e.start_time) + ' ' + window.prTz.city(e._tz))}</em>`;
-        return `<span class="home-block" style="border-left-color:${W().EVENT_COLOR[e.type] || W().EVENT_COLOR.other}">
+        return `<span class="home-block" style="border-left-color:${W().eventColor(e)}">
           <b>${esc(name)}</b><span>${esc(time)}</span>${theirs}</span>`;
       }).join('');
 
@@ -212,7 +212,7 @@
     // El filtro va sobre la tabla unida: la base devuelve solo los eventos de
     // hoy de MIS atletas, en vez de traer todo y filtrar acá.
     const { data: events } = await window.sb.from('events')
-      .select('id,athlete_id,date,start_time,end_time,type,title,athletes!inner(workspace_id)')
+      .select('id,athlete_id,date,start_time,end_time,type,color,title,athletes!inner(workspace_id)')
       .gte('date', W().addDays(today, -1)).lte('date', W().addDays(today, 1))
       .eq('athletes.workspace_id', wsId);
 

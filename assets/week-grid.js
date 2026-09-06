@@ -156,6 +156,53 @@
     recovery: 'massage', meal: 'tools-kitchen-2', travel: 'plane', rest: 'bed-flat',
     other: 'briefcase'
   };
+  // ── Color de un bloque ────────────────────────────────────────────────────
+  // Los nueve colores de los TIPOS no se tocan: se aprenden, y ahí está su
+  // valor. Esto es otra cosa — pintar un bloque suelto para que salte a la
+  // vista. Null (lo normal) significa «el de su tipo».
+  //
+  // Diez a mano, porque elegir de una lista corta es más rápido que acertar un
+  // color, y libre para el que quiera el suyo exacto.
+  const EVENT_PALETTE = [
+    '#111827', '#64748B', '#DC2626', '#EA580C', '#FACC15',
+    '#16A34A', '#0EA5E9', '#4F46E5', '#A855F7', '#EC4899'
+  ];
+
+  function eventColor(e) {
+    return (e && e.color) || EVENT_COLOR[e && e.type] || EVENT_COLOR.other;
+  }
+
+  // Sobre qué color se lee blanco y sobre cuál no. Los nueve de fábrica están
+  // elegidos para el blanco, pero un color a mano puede ser un amarillo, y
+  // texto blanco sobre amarillo no se lee. Es la luminancia de la WCAG.
+  const INK_DARK = '#14181F';
+
+  function luminancia(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    const canal = (c) => {
+      const v = c / 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    };
+    return 0.2126 * canal((n >> 16) & 255)
+         + 0.7152 * canal((n >> 8) & 255)
+         + 0.0722 * canal(n & 255);
+  }
+
+  function contraste(a, b) {
+    const hi = Math.max(a, b), lo = Math.min(a, b);
+    return (hi + 0.05) / (lo + 0.05);
+  }
+
+  function inkOn(hex) {
+    const m = /^#([0-9a-f]{6})$/i.exec(String(hex || ''));
+    if (!m) return null;                     // no es un color propio: sigue el blanco
+    const L = luminancia('#' + m[1]);
+    // Se comparan los dos contrastes en vez de partir por un umbral a ojo: el
+    // punto de cruce depende de cuál sea el oscuro, y una constante escrita a
+    // mano queda mal el día que ese oscuro cambie.
+    return contraste(L, 1) >= contraste(L, luminancia(INK_DARK)) ? '#fff' : INK_DARK;
+  }
+
   // Decorativo a propósito: el nombre del bloque ya va en el texto y en el
   // aria-label, y un lector de pantalla que además diga «pelota» solo agrega
   // ruido a lo que ya dijo.
@@ -329,8 +376,10 @@
         // Posición en variables y no en left/width: el eje del tiempo lo elige
         // el CSS según la orientación, y así el mismo HTML sirve para las dos.
         // --a y --len van sobre el tiempo; --lane y --laneh, al través.
+        const tinta = inkOn(e.color);
         const style = `--a:${a}%;--len:${len}%;--lane:${e._lane * h}%;--laneh:${h}%;`
-                    + `background:${EVENT_COLOR[e.type] || EVENT_COLOR.other};`
+                    + `background:${eventColor(e)};`
+                    + (tinta ? `color:${tinta};` : '')
                     + `animation-delay:${120 + d * 40}ms`;
         return `<${tag} class="wk-ev pr-grow${e.status === 'done' ? ' is-done' : ''}"${attrs(e)} style="${style}"
                  title="${esc(label + ' · ' + hhmm(e.start_time))}" aria-label="${esc(label)}">${icon(e)}<span class="wk-ev-t">${esc(label)}</span></${tag}>`;
@@ -340,8 +389,10 @@
         const w = 100 / free.length;
         // La banda de los que no tienen hora vive al final del eje del tiempo,
         // repartida al través entre los que haya.
+        const tinta = inkOn(e.color);
         const style = `--a:${topH}%;--len:${100 - topH}%;--lane:${i * w}%;--laneh:${w}%;`
-                    + `background:${EVENT_COLOR[e.type] || EVENT_COLOR.other};`
+                    + `background:${eventColor(e)};`
+                    + (tinta ? `color:${tinta};` : '')
                     + `animation-delay:${120 + d * 40}ms`;
         return `<${tag} class="wk-ev is-allday pr-grow${e.status === 'done' ? ' is-done' : ''}"${attrs(e)} style="${style}"
                  title="${esc(label + ' · ' + t('wk.noTime', 'sin horario'))}" aria-label="${esc(label)}">${icon(e)}<span class="wk-ev-t">${esc(label)}</span></${tag}>`;
@@ -462,6 +513,7 @@
     H0, H1, SPAN, KIND_COLOR, KIND_KEY, DAY_KEYS,
     EVENT_TYPES, EVENT_COLOR, EVENT_KEY, EVENT_ICON, eventTypeOptions, eventLegendHtml,
     parseYMD, addDays, mondayOf, weekDates, firstFreeSlot,
-    getLayout, setLayout, loadLayout, applyLayout, layoutToggleHtml, scaleColsHtml
+    getLayout, setLayout, loadLayout, applyLayout, layoutToggleHtml, scaleColsHtml,
+    EVENT_PALETTE, eventColor, inkOn
   };
 })();

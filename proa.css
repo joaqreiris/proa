@@ -1089,6 +1089,42 @@ button.wk-slot:hover { filter: brightness(1.12); }
 .wk-legend { margin-top: 14px; }
 /* El botón de dar vuelta la semana, en la barra y en la tarjeta del atleta. */
 .wb-flip { display: inline-flex; margin-left: 4px; }
+
+/* Los colores de un bloque. El primero es «el de su tipo», que es lo normal, y
+   por eso va primero: volver atrás tiene que ser tan fácil como elegir. */
+.wb-colors { display: flex; flex-wrap: wrap; gap: 6px; }
+.wb-color {
+  width: 28px; height: 28px; flex: none;
+  border: 0; border-radius: var(--pr-r-1);
+  cursor: pointer; position: relative;
+  display: grid; place-items: center;
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.12);
+  transition: transform var(--pr-dur-1) var(--pr-ease-out);
+}
+.wb-color:hover { transform: translateY(-1px); }
+/* El tilde solo aparece en el elegido: sin esto habría diez tildes. */
+.wb-color .ti { opacity: 0; font-size: 15px; }
+.wb-color.is-on .ti { opacity: 1; }
+.wb-color.is-on { box-shadow: inset 0 0 0 1px rgba(0,0,0,.12), 0 0 0 2px var(--pr-surface), 0 0 0 4px var(--pr-fg-strong); }
+/* El de «su tipo» se distingue con una diagonal: es un color prestado, no uno
+   elegido, y tiene que leerse distinto de los diez fijos. */
+.wb-color.is-auto::after {
+  content: ""; position: absolute; inset: 0;
+  border-radius: inherit;
+  background: repeating-linear-gradient(45deg,
+    rgba(255,255,255,.35) 0, rgba(255,255,255,.35) 2px,
+    transparent 2px, transparent 6px);
+}
+.wb-color.is-auto .ti { position: relative; z-index: 1; }
+/* El de a mano abre el selector del sistema, que ya trae RGB. */
+.wb-color-free {
+  background: var(--pr-bg-sunk);
+  color: var(--pr-fg-muted);
+  overflow: hidden;
+}
+.wb-color-free .ti { opacity: 1; }
+.wb-color-free input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .aw-week-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .aw-week-head h3 { margin: 0; }
 .aw-week-head > span { margin-left: auto; }
