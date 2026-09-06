@@ -53,10 +53,13 @@ P=$(curl -s -X POST "$URL/rest/v1/rpc/invite_preview" -H "apikey: $ANON" -H "Aut
 [ "$(echo "$P" | jget status)" = "ok" ]              && ok "la invitación se lee sin estar logueado" || no "vista previa" "$P"
 [ "$(echo "$P" | jget athlete_name)" = "Tomás" ]     && ok "muestra el nombre del atleta"            || no "nombre" "$P"
 [ "$(echo "$P" | jget accent)" = "blue" ]            && ok "trae el color del entrenador"            || no "color" "$P"
+# Quien invita es el entrenador, no el espacio de trabajo: el espacio puede
+# llamarse como el club donde juega el atleta, y el club no invitó nada.
+[ -n "$(echo "$P" | jget coach)" ]                   && ok "dice quién lo invitó"                    || no "sin entrenador" "$P"
 # Que devuelva EXACTAMENTE los cuatro campos que la pantalla muestra: ni un
 # identificador, ni un correo, ni nada del resto del plantel.
 KEYS=$(echo "$P" | python3 -c "import sys,json;print(','.join(sorted(json.load(sys.stdin))))")
-[ "$KEYS" = "accent,athlete_name,status,workspace" ] && ok "NO filtra ningún dato de más"          || no "filtra datos de más: $KEYS" "$P"
+[ "$KEYS" = "accent,athlete_name,coach,status" ]     && ok "NO filtra ningún dato de más"          || no "filtra datos de más: $KEYS" "$P"
 
 echo "4) Un enlace inventado no dice nada"
 BAD=$(curl -s -X POST "$URL/rest/v1/rpc/invite_preview" -H "apikey: $ANON" -H "Authorization: Bearer $ANON" \

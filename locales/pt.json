@@ -164,7 +164,7 @@
   "inv.what3": "Você pergunta ao seu treinador sobre um exercício específico.",
   "inv.badge": "Convite",
   "inv.hello": "Olá, {name}",
-  "inv.from": "<b>{ws}</b> convidou você para o Proa. Crie sua conta e já verá a sua semana.",
+  "inv.from": "<b>{coach}</b> convidou você para o Proa. Crie sua conta e já vai ver sua semana.",
   "inv.accept": "Entrar na minha semana",
   "inv.hasAccount": "Já tem conta no Proa?",
   "inv.signOutFirst": "Saia desta conta e abra o link de novo",

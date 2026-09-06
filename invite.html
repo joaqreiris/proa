@@ -112,8 +112,8 @@
     panel.innerHTML = `
       <span class="inv-badge"><i class="ti ti-mail-opened"></i>${esc(t('inv.badge', 'Invitación'))}</span>
       <h1 class="inv-hello">${esc(t('inv.hello', 'Hola, ' + info.athlete_name, { name: info.athlete_name }))}</h1>
-      <p class="inv-from" data-i18n-html="inv.from" data-i18n-vars='${JSON.stringify({ ws: info.workspace }).replace(/'/g, '&#39;')}'>
-        <b>${esc(info.workspace)}</b> te invitó a Proa. Crea tu cuenta y ya vas a ver tu semana.
+      <p class="inv-from" data-i18n-html="inv.from" data-i18n-vars='${JSON.stringify({ coach: info.coach }).replace(/'/g, '&#39;')}'>
+        <b>${esc(info.coach)}</b> te invitó a Proa. Crea tu cuenta y ya vas a ver tu semana.
       </p>
 
       <form id="f-claim" novalidate>
