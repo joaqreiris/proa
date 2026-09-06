@@ -99,5 +99,56 @@ is('sin altura no calcula el reposo', N.computeRMR('mifflin', { weightKg: 78, ag
 is('un objetivo que no existe cae en mantener',
   N.planForGoal(tdee, 78, 'no_existe').kcal, manten.kcal);
 
+// ── La tendencia del peso ───────────────────────────────────────────────────
+// Acá está la parte que convierte el cálculo en un control: el gasto se ESTIMA,
+// y lo único que dice si la estimación era buena es qué pasó con el peso.
+console.log('\nLA TENDENCIA SE LEE CON RUIDO, QUE ES COMO VIENE');
+// Cuatro semanas bajando de verdad ~0,4 kg/semana, con el vaivén del agua.
+const bajando = [
+  { date: '2026-08-10', weight_kg: 78.0 }, { date: '2026-08-13', weight_kg: 78.6 },
+  { date: '2026-08-17', weight_kg: 77.6 }, { date: '2026-08-21', weight_kg: 77.9 },
+  { date: '2026-08-24', weight_kg: 77.1 }, { date: '2026-08-28', weight_kg: 77.3 },
+  { date: '2026-09-01', weight_kg: 76.6 }, { date: '2026-09-05', weight_kg: 76.8 },
+];
+const tr = N.weightTrend(bajando);
+cerca('la recta ve que baja, pese al vaivén', tr.kgPerWeek, -0.45, 0.1);
+is('usa los ocho puntos', tr.puntos, 8);
+
+// El primero y el último, solos, dirían otra cosa: entre el 13/8 (78.6) y el
+// 5/9 (76.8) hay días con subidas. Por eso no se restan dos puntos.
+const dosPuntos = N.weightTrend([bajando[1], bajando[7]]);
+if (Math.abs(dosPuntos.kgPerWeek - tr.kgPerWeek) > 0.05)
+  ok(`dos puntos sueltos dan otra cosa (${dosPuntos.kgPerWeek} contra ${tr.kgPerWeek}): por eso se ajusta una recta`);
+else no('los dos métodos dieron igual, el ejemplo no prueba nada', { dosPuntos, tr });
+
+console.log('\nEL VEREDICTO DEPENDE DE A DÓNDE VA');
+is('bajando 0,45 con objetivo de perder grasa: va bien',
+  N.trendVerdict(tr, 'fat_loss', 78).estado, 'on_track');
+is('el mismo dato con objetivo de ganar músculo: no está ganando',
+  N.trendVerdict(tr, 'muscle_gain', 78).estado, 'below');
+is('y queriendo mantener, está bajando de más',
+  N.trendVerdict(tr, 'maintain', 78).estado, 'below');
+
+// Bajar cinco veces más rápido de lo buscado no es «ir bien».
+const desplome = [
+  { date: '2026-08-10', weight_kg: 78 }, { date: '2026-08-17', weight_kg: 76 },
+  { date: '2026-08-24', weight_kg: 74 }, { date: '2026-08-31', weight_kg: 72 },
+];
+is('bajar 2 kg por semana buscando grasa es demasiado',
+  N.trendVerdict(N.weightTrend(desplome), 'fat_loss', 78).estado, 'below');
+
+console.log('\nCON POCOS DATOS NO SE CONCLUYE NADA');
+is('dos pesajes en cuatro días no alcanzan',
+  N.trendVerdict(N.weightTrend(bajando.slice(-2)), 'fat_loss', 78).estado, 'too_soon');
+is('un solo pesaje no da tendencia', N.weightTrend([bajando[0]]), null);
+is('sin pesajes tampoco', N.weightTrend([]), null);
+is('todo el mismo día no da pendiente',
+  N.weightTrend([{ date: '2026-09-01', weight_kg: 78 }, { date: '2026-09-01', weight_kg: 79 }]), null);
+
+console.log('\nSOLO SE MIRA LO RECIENTE');
+// Un peso de hace tres meses no dice nada del plan de ahora.
+const conViejo = [{ date: '2026-05-01', weight_kg: 90 }].concat(bajando);
+cerca('lo de hace meses no arrastra la tendencia', N.weightTrend(conViejo).kgPerWeek, tr.kgPerWeek, 0.05);
+
 console.log(`\nRESULTADO: ${pass} bien, ${fail} mal`);
 process.exit(fail ? 1 : 0);

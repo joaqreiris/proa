@@ -202,6 +202,79 @@
       };
     },
 
+    // ── ¿Está funcionando? ───────────────────────────────────────────────────
+    // El gasto se ESTIMA con una fórmula, y las fórmulas se equivocan: dos
+    // personas del mismo peso y altura pueden gastar cuatrocientas calorías
+    // distintas. Lo único que dice si el número estaba bien es el peso.
+    //
+    // Se ajusta una recta por mínimos cuadrados en vez de restar el primero
+    // del último: el peso sube y baja dos kilos por agua y glucógeno, así que
+    // dos días sueltos pueden decir cualquier cosa. La recta usa todos los
+    // puntos y el ruido se compensa.
+    weightTrend(rows, days = 28) {
+      const list = (rows || [])
+        .filter(r => r && r.date && r.weight_kg != null)
+        .map(r => ({ t: Date.parse(r.date + 'T00:00:00'), w: Number(r.weight_kg) }))
+        .filter(r => Number.isFinite(r.t) && Number.isFinite(r.w))
+        .sort((a, b) => a.t - b.t);
+      if (list.length < 2) return null;
+
+      const corte = list[list.length - 1].t - days * 86400000;
+      const usados = list.filter(r => r.t >= corte);
+      if (usados.length < 2) return null;
+
+      // Días desde el primero, para que los números no sean gigantes.
+      const t0 = usados[0].t;
+      const xs = usados.map(r => (r.t - t0) / 86400000);
+      const ys = usados.map(r => r.w);
+      const n = xs.length;
+      const mx = xs.reduce((a, b) => a + b, 0) / n;
+      const my = ys.reduce((a, b) => a + b, 0) / n;
+      let num = 0, den = 0;
+      for (let i = 0; i < n; i++) { num += (xs[i] - mx) * (ys[i] - my); den += (xs[i] - mx) ** 2; }
+      if (den === 0) return null;              // todo el mismo día
+
+      const porDia = num / den;
+      return {
+        kgPerWeek: round(porDia * 7, 2),
+        puntos: n,
+        dias: Math.round(xs[n - 1]),
+        desde: usados[0].w,
+        hasta: usados[n - 1].w,
+      };
+    },
+
+    // Lo que se esperaría ver, según a dónde va. En porcentaje del peso por
+    // semana, que es como se escribe en la literatura: medio por ciento para
+    // bajar, la mitad de eso para construir sin engordar.
+    EXPECTED_RATE: {
+      fat_loss:    { pct: -0.005, tol: 0.004 },
+      maintain:    { pct: 0,      tol: 0.004 },
+      muscle_gain: { pct: 0.0025, tol: 0.003 },
+    },
+
+    // El veredicto. Devuelve qué pasó, qué se esperaba y en qué dirección
+    // habría que corregir — sin decir un número de calorías nuevo, porque eso
+    // lo decide el entrenador mirando también cómo entrena y cómo duerme.
+    trendVerdict(trend, goal, weightKg) {
+      if (!trend || weightKg == null) return null;
+      const esperado = this.EXPECTED_RATE[goal] || this.EXPECTED_RATE.maintain;
+      const objetivoKg = round(esperado.pct * weightKg, 2);
+      const tolKg = round(esperado.tol * weightKg, 2);
+      const dif = round(trend.kgPerWeek - objetivoKg, 2);
+
+      // Con menos de dos semanas no se concluye nada: el peso de una semana es
+      // ruido con forma de dato.
+      const suficiente = trend.dias >= 14 && trend.puntos >= 3;
+      let estado = 'on_track';
+      if (!suficiente) estado = 'too_soon';
+      else if (Math.abs(dif) <= tolKg) estado = 'on_track';
+      else if (dif > 0) estado = 'above';     // sube más (o baja menos) de lo buscado
+      else estado = 'below';
+
+      return { estado, real: trend.kgPerWeek, objetivo: objetivoKg, dif, dias: trend.dias, puntos: trend.puntos };
+    },
+
     // Metadata para la UI: label, cita, explicación, inputs requeridos.
     RMR_MODELS: {
       ten_haaf: {

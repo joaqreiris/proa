@@ -52,6 +52,21 @@
   .nt-out-row span { font: 700 9.5px/1 var(--pr-font-cond); letter-spacing: .12em; text-transform: uppercase; color: var(--pr-fg-faint); }
   .nt-out-row b { font: 700 19px/1 var(--pr-font-cond); color: var(--pr-fg); font-variant-numeric: tabular-nums; }
   .nt-out-row .is-goal b { color: var(--pr-accent-ink); }
+  /* El peso: el número grande, la tendencia y el veredicto. */
+  .bw-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .bw-now { font: 700 30px/1 var(--pr-font-cond); color: var(--pr-fg-strong); font-variant-numeric: tabular-nums; }
+  .bw-rate { font: 600 13px/1 var(--pr-font-sans); color: var(--pr-fg-muted); font-variant-numeric: tabular-nums; }
+  .bw-chart { display: flex; align-items: flex-end; gap: 3px; height: 54px; margin: 14px 0 4px; }
+  .bw-chart i { flex: 1; min-width: 2px; background: var(--pr-accent); border-radius: 2px 2px 0 0; opacity: .55; }
+  .bw-chart i:last-child { opacity: 1; }
+  .bw-dates { display: flex; justify-content: space-between; font: var(--pr-meta); color: var(--pr-fg-faint); }
+  /* El veredicto tiene color porque es lo que se mira primero. */
+  .bw-verdict { display: flex; gap: 9px; align-items: flex-start; margin-top: 14px; padding: 11px 13px;
+    border-radius: var(--pr-r-2); font: var(--pr-body-sm); }
+  .bw-verdict i { flex: none; margin-top: 1px; }
+  .bw-verdict.is-ok   { background: var(--pr-success-bg); color: var(--pr-success); }
+  .bw-verdict.is-warn { background: var(--pr-warning-bg); color: var(--pr-warning); }
+  .bw-verdict.is-soon { background: var(--pr-bg-sunk); color: var(--pr-fg-muted); }
   .ap-wl i { display: block; border-radius: var(--pr-r-2) var(--pr-r-2) 2px 2px; background: var(--pr-accent); min-height: 3px; }
   .ap-wl i.is-empty { background: var(--pr-bg-sunk); height: 3px; }
   .ap-wl i.is-low { background: var(--pr-danger); }
@@ -156,6 +171,17 @@
         <div id="nut-body"></div>
       </section>
 
+      <!-- El peso en el tiempo. Sin esto el objetivo es una cuenta: el gasto se
+           estima con una fórmula y las fórmulas se equivocan. Lo único que dice
+           si el número estaba bien es qué pasó con el peso. -->
+      <section class="pr-card pr-card-pad ap-block" id="bw-card">
+        <div class="ap-card-head">
+          <h2 data-i18n="bw.title">Peso</h2>
+          <button class="pr-btn is-sm is-secondary" id="bw-add"><i class="ti ti-plus"></i><span data-i18n="bw.add">Anotar peso</span></button>
+        </div>
+        <div id="bw-body"></div>
+      </section>
+
       <section class="pr-card pr-card-pad ap-block">
         <div class="ap-card-head"><h2 data-i18n="in.week">Su semana ocupada</h2></div>
         <div class="wk">
@@ -192,6 +218,37 @@
 <script src="assets/sidebar.js" defer></script>
 <!-- Calculadora del objetivo. Las cuentas están en assets/nutrition-calc.js y
      los coeficientes están verificados contra los papers originales. -->
+<div class="pr-modal-backdrop" id="m-bw" hidden>
+  <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-bw-title">
+    <div class="pr-modal-head">
+      <h2 id="m-bw-title" data-i18n="bw.add">Anotar peso</h2>
+      <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar" data-i18n-attr="aria-label:common.close"><i class="ti ti-x"></i></button>
+    </div>
+    <form id="f-bw">
+      <div class="pr-modal-body">
+        <div class="pr-modal-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="bw-date" data-i18n="wk.date">Día</label>
+            <input class="pr-input" type="date" id="bw-date">
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="bw-kg" data-i18n="in.weight">Peso</label>
+            <input class="pr-input" id="bw-kg" inputmode="decimal" placeholder="kg">
+          </div>
+        </div>
+        <p class="pr-hint" data-i18n="bw.hint">Conviene siempre a la misma hora y en las mismas condiciones: recién levantado, antes de desayunar. El peso se mueve un kilo o dos por el agua, y comparar mañanas con tardes no dice nada.</p>
+        <p class="auth-msg" id="bw-msg" role="alert" hidden style="margin:0;color:var(--pr-danger);font:600 13px/1.45 var(--pr-font-sans)"></p>
+      </div>
+      <div class="pr-modal-foot">
+        <button class="pr-btn is-ghost is-sm is-danger" type="button" id="bw-del" hidden data-i18n="bw.remove">Borrar el de ese día</button>
+        <span class="pr-grow"></span>
+        <button class="pr-btn is-ghost" type="button" data-close data-i18n="common.cancel">Cancelar</button>
+        <button class="pr-btn is-primary" type="submit"><i class="ti ti-check"></i><span data-i18n="common.save">Guardar</span></button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div class="pr-modal-backdrop" id="m-nut" hidden>
   <div class="pr-modal is-wide" role="dialog" aria-modal="true" aria-labelledby="m-nut-title">
     <div class="pr-modal-head">
@@ -480,6 +537,7 @@
     }
 
     await pintarObjetivo(a, intake);
+    await pintarPeso(a);
 
     document.getElementById('main').hidden = false;
     if (window.PR_I18N) window.PR_I18N.applyTo(document);
@@ -601,6 +659,112 @@
     recalcular();
     document.getElementById('m-nut').hidden = false;
   }
+
+  // ── El peso en el tiempo ──────────────────────────────────────────────────
+  let pesos = [];
+
+  async function pintarPeso(a) {
+    const { data } = await window.sb.from('body_weights')
+      .select('date,weight_kg').eq('athlete_id', a.id).order('date', { ascending: false }).limit(60);
+    pesos = (data || []).slice().reverse();
+
+    const host = document.getElementById('bw-body');
+    if (!pesos.length) {
+      host.innerHTML = `<p class="pr-hint" style="margin:0">${esc(t('bw.none',
+        'Sin pesos anotados. Con dos semanas de registros se puede ver si el plan está funcionando.'))}</p>`;
+      return;
+    }
+
+    const ultimo = pesos[pesos.length - 1];
+    const tend = N().weightTrend(pesos);
+    const veredicto = tend && nutTarget
+      ? N().trendVerdict(tend, nutTarget.goal, Number(ultimo.weight_kg)) : null;
+
+    // Un gráfico de barras a escala del rango real, no desde cero: entre 76 y
+    // 79 kilos, una barra desde cero no muestra nada.
+    const vals = pesos.map(p => Number(p.weight_kg));
+    const min = Math.min(...vals), max = Math.max(...vals);
+    const rango = (max - min) || 1;
+    const barras = pesos.map(p => {
+      const alto = 12 + ((Number(p.weight_kg) - min) / rango) * 88;
+      return `<i style="height:${alto}%" title="${esc(p.date + ' · ' + p.weight_kg + ' kg')}"></i>`;
+    }).join('');
+
+    const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
+    const dia = (d) => window.prWeek.parseYMD(d).toLocaleDateString(lang, { day: 'numeric', month: 'short' });
+
+    const signo = tend && tend.kgPerWeek > 0 ? '+' : '';
+    host.innerHTML = `
+      <div class="bw-head">
+        <span class="bw-now">${Number(ultimo.weight_kg)} kg</span>
+        ${tend ? `<span class="bw-rate">${signo}${tend.kgPerWeek} ${esc(t('bw.perWeek', 'kg por semana'))}</span>` : ''}
+      </div>
+      <div class="bw-chart">${barras}</div>
+      <div class="bw-dates"><span>${esc(dia(pesos[0].date))}</span><span>${esc(dia(ultimo.date))}</span></div>
+      ${veredicto ? pintarVeredicto(veredicto, nutTarget.goal) : ''}`;
+    if (window.PR_I18N) window.PR_I18N.applyTo(host);
+  }
+
+  // El veredicto dice qué pasó y hacia dónde corregir, sin proponer un número
+  // de calorías: eso lo decide el entrenador mirando también cómo entrena y
+  // cómo duerme.
+  function pintarVeredicto(v, goal) {
+    if (v.estado === 'too_soon') {
+      return `<div class="bw-verdict is-soon"><i class="ti ti-hourglass"></i><span>${esc(t('bw.v.tooSoon',
+        'Todavía es pronto. Con dos semanas y tres pesajes se puede empezar a leer una tendencia.'))}</span></div>`;
+    }
+    if (v.estado === 'on_track') {
+      return `<div class="bw-verdict is-ok"><i class="ti ti-check"></i><span>${esc(t('bw.v.onTrack',
+        'Va como se esperaba: {real} kg por semana, y se buscaba {objetivo}.',
+        { real: v.real, objetivo: v.objetivo }))}</span></div>`;
+    }
+    const clave = 'bw.v.' + goal + '.' + v.estado;
+    return `<div class="bw-verdict is-warn"><i class="ti ti-alert-triangle"></i><span>${esc(
+      t(clave, '', { real: v.real, objetivo: v.objetivo }) ||
+      t('bw.v.off', 'Va a {real} kg por semana y se buscaba {objetivo}.', { real: v.real, objetivo: v.objetivo })
+    )}</span></div>`;
+  }
+
+  document.getElementById('bw-add').addEventListener('click', () => {
+    document.getElementById('bw-date').value = window.prToday();
+    document.getElementById('bw-kg').value = '';
+    document.getElementById('bw-msg').hidden = true;
+    document.getElementById('bw-del').hidden = !pesos.some(p => p.date === window.prToday());
+    document.getElementById('m-bw').hidden = false;
+    document.getElementById('bw-kg').focus();
+  });
+
+  // Si ya hay peso de ese día, se muestra para corregirlo en vez de duplicar.
+  document.getElementById('bw-date').addEventListener('change', (e) => {
+    const ya = pesos.find(p => p.date === e.target.value);
+    document.getElementById('bw-kg').value = ya ? ya.weight_kg : '';
+    document.getElementById('bw-del').hidden = !ya;
+  });
+
+  document.getElementById('f-bw').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('bw-msg');
+    const fecha = document.getElementById('bw-date').value;
+    const kg = Number(document.getElementById('bw-kg').value);
+    if (!fecha) { msg.textContent = t('bw.errDate', 'Falta el día.'); msg.hidden = false; return; }
+    if (!Number.isFinite(kg) || kg <= 20 || kg >= 400) {
+      msg.textContent = t('bw.errKg', 'Ese peso no parece un peso.'); msg.hidden = false; return;
+    }
+    const { error } = await window.sb.from('body_weights')
+      .upsert({ athlete_id: nutAthlete.id, date: fecha, weight_kg: kg }, { onConflict: 'athlete_id,date' });
+    if (error) { msg.textContent = error.message; msg.hidden = false; return; }
+    document.getElementById('m-bw').hidden = true;
+    await pintarPeso(nutAthlete);
+  });
+
+  document.getElementById('bw-del').addEventListener('click', async () => {
+    const fecha = document.getElementById('bw-date').value;
+    const { error } = await window.sb.from('body_weights')
+      .delete().eq('athlete_id', nutAthlete.id).eq('date', fecha).select('date');
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    document.getElementById('m-bw').hidden = true;
+    await pintarPeso(nutAthlete);
+  });
 
   document.getElementById('nut-edit').addEventListener('click', abrirObjetivo);
   ['nt-weight','nt-height','nt-age','nt-act','nt-formula','nt-prot','nt-fat','nt-kcal']
