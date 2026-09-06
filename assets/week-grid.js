@@ -276,6 +276,10 @@
   // ── Calendario: disponibilidad de fondo + eventos encima ──────────────────
   function renderWeek(host, opts) {
     applyLayout(host);
+    // Si un arrastre quedó a medias, sus restos son hijos del documento y no de
+    // este HTML, así que repintar no los borra. Un fantasma colgado se ve como
+    // un bloque de más que no existe en la base.
+    if (window.prWeekDrag && window.prWeekDrag.sweep) window.prWeekDrag.sweep();
     // La primera semana que se pinta va con lo que diga el navegador, y recién
     // ahí se pregunta a la base. Al revés se vería el salto: la vista aparece
     // de una forma y cambia sola medio segundo después.

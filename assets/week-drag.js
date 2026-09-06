@@ -46,6 +46,10 @@
     document.addEventListener('pointermove', onMove, { passive: false });
     document.addEventListener('pointerup', onUp);
     document.addEventListener('pointercancel', cancel);
+    // Soltar fuera del navegador no manda pointerup: el gesto quedaría abierto
+    // para siempre. Perder el foco o irse de la pestaña lo dan por cancelado.
+    window.addEventListener('blur', cancel);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) cancel(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cancel(); });
     // Se traga el clic que viene después de arrastrar: si no, al soltar se
     // abriría el bloque encima del movimiento recién hecho.
@@ -69,6 +73,24 @@
       desde:   v ? o.top     : o.left,
       largo:   v ? o.height  : o.width,
     };
+  }
+
+  // Barrer lo que haya quedado de un gesto anterior.
+  //
+  // El fantasma es un clon del bloque con la clase .wk-ev, así que uno colgado
+  // se ve como un bloque más: el tablero dice «6 bloques» y en pantalla hay 7.
+  // Parece un duplicado y no lo es, y encima no está en la base, con lo cual no
+  // hay forma de borrarlo desde la app.
+  //
+  // No alcanza con limpiar al soltar: si el pointerup no llega —se suelta fuera
+  // de la ventana, la pestaña pasa a segundo plano, el sistema se roba el
+  // gesto— nadie limpia. Esto se llama al empezar cada arrastre y cada vez que
+  // se pinta la semana, así que cualquier resto dura hasta el siguiente
+  // repintado y no más.
+  function sweep() {
+    document.querySelectorAll('.wk-drag, .wk-drop, .wk-drop-tag').forEach(el => el.remove());
+    document.querySelectorAll('.wk-ev.is-moving').forEach(el => el.classList.remove('is-moving'));
+    document.documentElement.classList.remove('wk-dragging');
   }
 
   function onDown(e, host) {
@@ -97,6 +119,11 @@
     drag.dx = e.clientX - r.left;
     drag.dy = e.clientY - r.top;
     drag.w = r.width; drag.h = r.height;
+
+    // Con el puntero capturado, el pointerup llega aunque el dedo termine fuera
+    // del bloque o fuera de la ventana. Sin esto, soltar afuera deja el gesto a
+    // medio terminar y el fantasma puesto.
+    try { el.setPointerCapture(e.pointerId); } catch (err) { /* no siempre se puede */ }
   }
 
   function onMove(e) {
@@ -130,6 +157,7 @@
 
   function begin() {
     drag.moved = true;
+    sweep();
     const el = drag.el;
     const r = el.getBoundingClientRect();
 
@@ -252,5 +280,5 @@
     drag = null;
   }
 
-  window.prWeekDrag = { enable };
+  window.prWeekDrag = { enable, sweep };
 })();

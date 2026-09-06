@@ -137,6 +137,56 @@ for (const modo of ['rows', 'cols']) {
   is('no queda nada colgado en pantalla', otraHora.sucio, 0);
 }
 
+// ── El gesto que nunca termina ──────────────────────────────────────────────
+// Si el pointerup no llega —se suelta fuera de la ventana, la pestaña pasa al
+// fondo, el sistema se roba el gesto— nadie limpia. Y el fantasma es un clon
+// con la clase .wk-ev, así que queda en pantalla como un bloque más: el
+// tablero cuenta 6 y se ven 7. Parece un duplicado, no está en la base, y no
+// hay manera de borrarlo desde la app.
+console.log('\nUN ARRASTRE QUE NO TERMINA NO PUEDE DEJAR RESTOS');
+await montar('cols');
+
+const enElAire = await page.evaluate(() => {
+  const el = document.querySelector('[data-event="ev"]');
+  const r = el.getBoundingClientRect();
+  const ev = (tipo, x, y) => el.dispatchEvent(new PointerEvent(tipo, {
+    bubbles: true, cancelable: true, pointerId: 7, clientX: x, clientY: y, button: 0,
+  }));
+  ev('pointerdown', r.left + 10, r.top + 8);
+  // Se mueve lo suficiente para pasar el umbral y que nazca el fantasma…
+  document.dispatchEvent(new PointerEvent('pointermove', {
+    bubbles: true, cancelable: true, pointerId: 7, clientX: r.left + 90, clientY: r.top + 60,
+  }));
+  // …y acá se corta: no hay pointerup.
+  return {
+    fantasmas: document.querySelectorAll('.wk-drag').length,
+    bloquesDibujados: document.querySelectorAll('.wk-ev').length,
+  };
+});
+is('durante el arrastre hay un fantasma', enElAire.fantasmas, 1);
+is('y por eso se ve un bloque de más', enElAire.bloquesDibujados, 2);
+
+// Repintar la semana es lo que hace la app todo el tiempo.
+await page.evaluate(({ dates, events }) => {
+  window.prWeek.render({ host: 'host', dates, events, slots: [], editable: true });
+}, { dates: DATES, events: EVENTS });
+
+const despues = await page.evaluate(() => ({
+  fantasmas: document.querySelectorAll('.wk-drag').length,
+  carteles: document.querySelectorAll('.wk-drop-tag').length,
+  huecos: document.querySelectorAll('.wk-drop').length,
+  moviendo: document.querySelectorAll('.is-moving').length,
+  dragging: document.documentElement.classList.contains('wk-dragging'),
+  // Lo que de verdad importa: que lo dibujado sea lo que hay.
+  bloquesDibujados: document.querySelectorAll('.wk-ev').length,
+}));
+is('al repintar no queda fantasma', despues.fantasmas, 0);
+is('ni cartel', despues.carteles, 0);
+is('ni hueco', despues.huecos, 0);
+is('ni bloques atenuados', despues.moviendo, 0);
+is('ni el cursor de arrastre', despues.dragging, false);
+is('y lo dibujado coincide con lo que hay', despues.bloquesDibujados, EVENTS.length);
+
 await browser.close();
 console.log(`\nRESULTADO: ${pass} bien, ${fail} mal`);
 process.exit(fail ? 1 : 0);
