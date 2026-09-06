@@ -46,7 +46,7 @@
             <h2 id="m-log-title" data-i18n="log.title">¿Cómo te fue?</h2>
             <span class="pr-mono" id="log-sub"></span>
           </div>
-          <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
+          <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar" data-i18n-attr="aria-label:common.close"><i class="ti ti-x"></i></button>
         </div>
         <div class="pr-modal-body">
 

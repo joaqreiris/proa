@@ -32,9 +32,9 @@
   const BOARD = `
     <div class="wb-bar">
       <div class="wb-nav">
-        <button class="pr-icon-btn" id="wb-prev" aria-label="Semana anterior"><i class="ti ti-chevron-left"></i></button>
+        <button class="pr-icon-btn" id="wb-prev" aria-label="Semana anterior" data-i18n-attr="aria-label:wk.prevWeek"><i class="ti ti-chevron-left"></i></button>
         <span class="wb-range" id="wb-range"></span>
-        <button class="pr-icon-btn" id="wb-next" aria-label="Semana siguiente"><i class="ti ti-chevron-right"></i></button>
+        <button class="pr-icon-btn" id="wb-next" aria-label="Semana siguiente" data-i18n-attr="aria-label:wk.nextWeek"><i class="ti ti-chevron-right"></i></button>
         <button class="pr-btn is-sm is-ghost" id="wb-today" data-i18n="wk.today">Hoy</button>
         <span class="wb-flip" id="wb-flip"></span>
       </div>
@@ -67,7 +67,7 @@
       <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-keys-title">
         <div class="pr-modal-head">
           <h2 id="m-keys-title" data-i18n="wk.keys.title">Atajos</h2>
-          <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
+          <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar" data-i18n-attr="aria-label:common.close"><i class="ti ti-x"></i></button>
         </div>
         <div class="pr-modal-body">
           <dl class="wb-keys" id="wb-keys-list"></dl>
@@ -80,7 +80,7 @@
       <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-ev-title">
         <div class="pr-modal-head">
           <h2 id="m-ev-title" data-i18n="wk.new">Nuevo bloque</h2>
-          <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
+          <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar" data-i18n-attr="aria-label:common.close"><i class="ti ti-x"></i></button>
         </div>
         <form id="f-ev">
           <div class="pr-modal-body">
@@ -149,7 +149,7 @@
             <h2 id="m-rec-title" data-i18n="rc.title">Recuperación</h2>
             <span class="pr-mono" id="rec-sub"></span>
           </div>
-          <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
+          <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar" data-i18n-attr="aria-label:common.close"><i class="ti ti-x"></i></button>
         </div>
         <div class="pr-modal-body">
           <div class="rc-list" id="rec-list"></div>
@@ -169,7 +169,7 @@
       <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-cday-title">
         <div class="pr-modal-head">
           <h2 id="m-cday-title" data-i18n="wk.copyDay">Copiar día</h2>
-          <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
+          <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar" data-i18n-attr="aria-label:common.close"><i class="ti ti-x"></i></button>
         </div>
         <form id="f-cday">
           <div class="pr-modal-body">
@@ -202,7 +202,7 @@
       <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-share-title">
         <div class="pr-modal-head">
           <h2 id="m-share-title" data-i18n="wk.toAthletes">Aplicar a otros atletas</h2>
-          <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
+          <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar" data-i18n-attr="aria-label:common.close"><i class="ti ti-x"></i></button>
         </div>
         <form id="f-share">
           <div class="pr-modal-body">
@@ -230,7 +230,7 @@
             <h2 id="m-rep-title" data-i18n="wk.repeat">Repetir este bloque</h2>
             <span class="pr-mono" id="rep-sub"></span>
           </div>
-          <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
+          <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar" data-i18n-attr="aria-label:common.close"><i class="ti ti-x"></i></button>
         </div>
         <form id="f-rep">
           <div class="pr-modal-body">
@@ -259,7 +259,7 @@
       <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-copy-title">
         <div class="pr-modal-head">
           <h2 id="m-copy-title" data-i18n="wk.copy">Copiar semana</h2>
-          <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
+          <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar" data-i18n-attr="aria-label:common.close"><i class="ti ti-x"></i></button>
         </div>
         <form id="f-copy">
           <div class="pr-modal-body">
