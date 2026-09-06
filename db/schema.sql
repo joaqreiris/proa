@@ -2209,10 +2209,10 @@ begin
   if r.id is null then raise exception 'event_not_found'; end if;
 
   insert into public.events
-    (athlete_id, date, start_time, end_time, type, title, notes, location, status, created_by)
+    (athlete_id, date, start_time, end_time, type, title, notes, location, color, status, created_by)
   values
     (p_athlete, p_date, r.start_time, r.end_time, r.type, r.title,
-     r.notes, r.location, 'planned', auth.uid())
+     r.notes, r.location, r.color, 'planned', auth.uid())
   returning id into v_new;
 
   for b in select * from public.session_blocks where event_id = r.id order by position loop

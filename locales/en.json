@@ -733,5 +733,6 @@
   "wk.keys.save": "Save whatever is open",
   "wk.keys.close": "Close without saving",
   "wk.keys.copy": "Copy the block instead of moving it",
-  "wk.keys.help": "This list"
+  "wk.keys.help": "This list",
+  "wk.delNothing": "The block couldn't be deleted. Reload the page and try again."
 }

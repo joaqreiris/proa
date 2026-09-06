@@ -733,5 +733,6 @@
   "wk.keys.save": "Salvar o que estiver aberto",
   "wk.keys.close": "Fechar sem salvar",
   "wk.keys.copy": "Copiar o bloco em vez de mover",
-  "wk.keys.help": "Esta lista"
+  "wk.keys.help": "Esta lista",
+  "wk.delNothing": "Não foi possível excluir o bloco. Recarregue a página e tente de novo."
 }

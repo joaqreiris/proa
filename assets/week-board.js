@@ -642,8 +642,18 @@
 
     $('e-del').addEventListener('click', async () => {
       if (!editingId || !confirm(t('wk.confirmDelete', '¿Borrar este bloque?'))) return;
-      const { error } = await window.sb.from('events').delete().eq('id', editingId);
+
+      // El .select() no es decorativo: sin él, un borrado que las reglas de
+      // acceso dejan pasar de largo vuelve SIN error y con cero filas, y la
+      // pantalla cierra el modal como si hubiera funcionado. El bloque sigue
+      // ahí y nadie sabe por qué. Con el select se ve qué se borró de verdad.
+      const { data, error } = await window.sb.from('events')
+        .delete().eq('id', editingId).select('id');
       if (error) { window.prToast(error.message, 'danger'); return; }
+      if (!data || !data.length) {
+        window.prToast(t('wk.delNothing', 'No se pudo borrar el bloque. Recarga la página y prueba otra vez.'), 'danger');
+        return;
+      }
       $('m-ev').hidden = true;
       await loadWeek();
     });

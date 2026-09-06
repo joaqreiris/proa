@@ -733,5 +733,6 @@
   "wk.keys.save": "Guardar lo que tengas abierto",
   "wk.keys.close": "Cerrar sin guardar",
   "wk.keys.copy": "Copiar el bloque en vez de moverlo",
-  "wk.keys.help": "Esta lista"
+  "wk.keys.help": "Esta lista",
+  "wk.delNothing": "No se pudo borrar el bloque. Recarga la página y prueba otra vez."
 }
