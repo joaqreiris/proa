@@ -21,7 +21,7 @@
 
   /* Fila de alimento: la cantidad se escribe y los macros se recalculan solos. */
   .ml-cols, .ml-row {
-    display: grid; grid-template-columns: 1fr 84px 66px 56px 56px 56px 34px;
+    display: grid; grid-template-columns: 1fr 138px 66px 56px 56px 56px 34px;
     gap: 8px; align-items: center;
   }
   .ml-cols { padding: 4px 8px 6px; font: 700 10px/1 var(--pr-font-cond); letter-spacing: .16em; text-transform: uppercase; color: var(--pr-fg-faint); }
@@ -42,10 +42,37 @@
   }
   .ml-qty:hover { border-color: var(--pr-border); }
   .ml-qty:focus { border-color: var(--pr-accent); background: var(--pr-surface); box-shadow: 0 0 0 3px var(--pr-focus-ring); }
+  /* Cantidad y medida juntas: «2» y «unidades» son una sola cosa. */
+  .ml-amount { display: grid; grid-template-columns: 56px 1fr; gap: 3px; align-items: center; }
+  /* Escrito a mano no hay medida que elegir, y «1 porción» necesita el ancho. */
+  .ml-amount.is-free { grid-template-columns: 1fr; }
+  .ml-amount.is-free .ml-qty { text-align: center; }
+  .ml-unit {
+    height: 34px; padding: 0 4px; min-width: 0;
+    border: var(--pr-bw) solid transparent; border-radius: var(--pr-r-2);
+    background: transparent; color: var(--pr-fg-muted);
+    font: 600 11.5px/1 var(--pr-font-sans); cursor: pointer;
+  }
+  .ml-unit:hover { border-color: var(--pr-border); }
+  .ml-unit:disabled { cursor: default; opacity: 1; }
+  /* Los macros de un alimento escrito a mano se escriben: no hay tabla de
+     donde sacarlos. Se ven como campos, no como números fijos. */
+  .ml-macro-in {
+    width: 100%; height: 30px; padding: 0 2px;
+    border: var(--pr-bw) dashed var(--pr-border); border-radius: var(--pr-r-1);
+    background: transparent; color: var(--pr-fg);
+    font: 600 13px/1 var(--pr-font-cond); text-align: center;
+    font-variant-numeric: tabular-nums; outline: none;
+  }
+  .ml-macro-in:focus { border-style: solid; border-color: var(--pr-accent); background: var(--pr-surface); }
+  /* Un alimento sin calorías no suma al total, y eso tiene que verse: si no,
+     el total del día miente y nadie sabe por qué. */
+  .ml-row.is-empty .ml-name { color: var(--pr-fg-muted); }
+  .ml-warn { display: block; font: var(--pr-meta); color: var(--pr-warning); font-weight: 600; margin-top: 2px; }
 
   @media (max-width: 720px) {
     .ml-cols { display: none; }
-    .ml-row { grid-template-columns: 1fr 84px 34px; }
+    .ml-row { grid-template-columns: 1fr 138px 34px; }
     .ml-row .ml-macro { display: none; }
   }
 
@@ -176,20 +203,59 @@
         <h3>${esc(t('ml.empty.title'))}</h3>
         <p>${esc(t('ml.empty.body'))}</p></section>`;
     } else {
-      host.innerHTML = items.map(it => `
-        <div class="ml-row" data-item="${it.id}">
+      host.innerHTML = items.map(it => {
+        const food = foods.find(f => f.id === it.food_id);
+        const porUnidad = it.unit_qty != null;
+        // El alimento del catálogo se carga en gramos o en su unidad; el
+        // escrito a mano no tiene tabla de la que sacar nada, así que sus
+        // macros se escriben.
+        const aMano = !it.food_id;
+        const cantidad = aMano ? (it.qty_text || '')
+                       : porUnidad ? r1(it.unit_qty)
+                       : (it.qty_g == null ? '' : r1(it.qty_g));
+
+        const medida = aMano
+          ? ''
+          : food && food.unit_g
+            ? `<select class="ml-unit" data-u>
+                 <option value="g"${porUnidad ? '' : ' selected'}>${esc(t('ml.u.g', 'gramos'))}</option>
+                 <option value="u"${porUnidad ? ' selected' : ''}>${esc(t('ml.u.' + (food.unit_name || 'unit'), 'unidades'))}</option>
+               </select>`
+            : `<select class="ml-unit" disabled><option>${esc(t('ml.u.g', 'gramos'))}</option></select>`;
+
+        // Cuando se carga por unidades, debajo del nombre va el peso: el
+        // entrenador piensa en huevos, pero el plan se cumple en gramos.
+        const pie = [
+          aMano ? null : (porUnidad && it.qty_g != null ? r1(it.qty_g) + ' g' : null),
+          aMano ? null : it.qty_text,
+          it.notes,
+        ].filter(Boolean).join(' · ');
+
+        const macro = (campo, valor, kcal) => aMano
+          ? `<input class="ml-macro-in" data-m="${campo}" value="${kcal ? Math.round(valor) : r1(valor)}" inputmode="decimal">`
+          : `<span class="ml-macro${kcal ? ' is-k' : ''}">${kcal ? Math.round(valor) : r1(valor)}</span>`;
+
+        const noCuenta = aMano && !Number(it.kcal);
+
+        return `
+        <div class="ml-row${noCuenta ? ' is-empty' : ''}" data-item="${it.id}">
           <div class="ml-name" data-grip tabindex="0" role="button"
                aria-label="${esc(t('ml.drag', 'Arrastra para reordenar'))}" title="${esc(t('ml.drag', 'Arrastra para reordenar'))}">${esc(it.name)}
-            ${it.qty_text || it.notes ? `<small>${esc([it.qty_text, it.notes].filter(Boolean).join(' · '))}</small>` : ''}
+            ${pie ? `<small>${esc(pie)}</small>` : ''}
+            ${noCuenta ? `<small class="ml-warn">${esc(t('ml.notCounted', 'Sin calorías: no suma al total.'))}</small>` : ''}
           </div>
-          <input class="ml-qty" data-f="qty_g" value="${it.qty_g == null ? '' : r1(it.qty_g)}"
-                 inputmode="decimal" placeholder="g" ${it.food_id ? '' : 'disabled'}>
-          <span class="ml-macro is-k">${Math.round(it.kcal)}</span>
-          <span class="ml-macro">${r1(it.protein_g)}</span>
-          <span class="ml-macro">${r1(it.carbs_g)}</span>
-          <span class="ml-macro">${r1(it.fats_g)}</span>
+          <div class="ml-amount${aMano ? ' is-free' : ''}">
+            <input class="ml-qty" data-f="qty" value="${esc(String(cantidad))}"
+                   inputmode="${aMano ? 'text' : 'decimal'}" placeholder="${aMano ? esc(t('ml.qtyPh', '1 taza')) : ''}">
+            ${medida}
+          </div>
+          ${macro('kcal', it.kcal, true)}
+          ${macro('protein_g', it.protein_g)}
+          ${macro('carbs_g', it.carbs_g)}
+          ${macro('fats_g', it.fats_g)}
           <button class="pr-icon-btn is-flush" data-del="${it.id}" aria-label="${esc(t('se.delItem'))}"><i class="ti ti-x"></i></button>
-        </div>`).join('');
+        </div>`;
+      }).join('');
 
       const mt = window.prNutri.sumMacros(items);
       host.insertAdjacentHTML('beforeend', `
@@ -237,17 +303,65 @@
   // Los macros se guardan EN LA FILA, no se calculan al leer: si mañana se
   // corrige el alimento en el catálogo, el menú de la semana pasada no cambia.
   document.getElementById('rows').addEventListener('change', async (e) => {
-    if (!e.target.dataset.f) return;
+    const campoCantidad = e.target.dataset.f;
+    const campoMacro = e.target.dataset.m;
+    if (!campoCantidad && !campoMacro) return;
+
     const row = e.target.closest('[data-item]');
     const it = items.find(x => x.id === row.dataset.item);
-    const qty = Number(e.target.value);
-    if (!Number.isFinite(qty) || qty < 0) { window.prToast(t('se.numberOnly', 'Ahí va un número.'), 'danger'); return; }
-
+    if (!it) return;
     const food = foods.find(f => f.id === it.food_id);
-    if (!food) return;
-    const m = window.prNutri.macrosForQuantity(food, qty);
+
+    // ── Alimento escrito a mano ───────────────────────────────────────────
+    // No hay tabla de la que sacar los macros, así que se escriben. Antes se
+    // guardaban en cero y el total del día salía corto sin avisar.
+    if (!food) {
+      const cambio = {};
+      if (campoCantidad) {
+        cambio.qty_text = e.target.value.trim() || null;
+      } else {
+        const v = Number(e.target.value);
+        if (!Number.isFinite(v) || v < 0) { window.prToast(t('se.numberOnly', 'Ahí va un número.'), 'danger'); return; }
+        cambio[campoMacro] = v;
+      }
+      const { error } = await window.sb.from('meal_items').update(cambio).eq('id', it.id);
+      if (error) { window.prToast(error.message, 'danger'); return; }
+      await load();
+      return;
+    }
+
+    // ── Alimento del catálogo ─────────────────────────────────────────────
+    const v = Number(e.target.value);
+    if (!Number.isFinite(v) || v < 0) { window.prToast(t('se.numberOnly', 'Ahí va un número.'), 'danger'); return; }
+
+    // La medida elegida dice cómo leer ese número. Los macros salen SIEMPRE de
+    // los gramos: la unidad es la forma de decirlo, no otra cuenta.
+    const sel = row.querySelector('[data-u]');
+    const porUnidad = !!(sel && sel.value === 'u' && food.unit_g);
+    const gramos = porUnidad ? v * Number(food.unit_g) : v;
+
+    const m = window.prNutri.macrosForQuantity(food, gramos);
     const { error } = await window.sb.from('meal_items')
-      .update({ qty_g: qty, kcal: m.kcal, protein_g: m.protein_g, carbs_g: m.carbs_g, fats_g: m.fats_g, fiber_g: m.fiber_g })
+      .update({ qty_g: gramos, unit_qty: porUnidad ? v : null,
+                kcal: m.kcal, protein_g: m.protein_g, carbs_g: m.carbs_g, fats_g: m.fats_g, fiber_g: m.fiber_g })
+      .eq('id', it.id);
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    await load();
+  });
+
+  // Cambiar de gramos a unidades no cambia lo que come: convierte el número.
+  // 110 g de huevo pasan a ser 2 huevos, no 110 huevos.
+  document.getElementById('rows').addEventListener('change', async (e) => {
+    if (!e.target.matches('[data-u]')) return;
+    const row = e.target.closest('[data-item]');
+    const it = items.find(x => x.id === row.dataset.item);
+    const food = it && foods.find(f => f.id === it.food_id);
+    if (!food || !food.unit_g) return;
+
+    const gramos = Number(it.qty_g) || 0;
+    const porUnidad = e.target.value === 'u';
+    const { error } = await window.sb.from('meal_items')
+      .update({ unit_qty: porUnidad ? Math.round((gramos / Number(food.unit_g)) * 100) / 100 : null })
       .eq('id', it.id);
     if (error) { window.prToast(error.message, 'danger'); return; }
     await load();
@@ -304,16 +418,26 @@
     const b = e.target.closest('[data-food]');
     if (!b) return;
     const f = foods.find(x => x.id === b.dataset.food);
-    // Se arranca con 100 g, que es la unidad en la que están los valores.
-    const m = window.prNutri.macrosForQuantity(f, 100);
-    await addItem({ food_id: f.id, name: foodName(f), qty_g: 100, ...m });
+    // Si el alimento tiene unidad natural se arranca en UNA: nadie pone un
+    // huevo y después corrige 55 gramos. Los que no la tienen —el arroz, la
+    // carne— arrancan en 100 g, que es como vienen los valores.
+    const porUnidad = !!f.unit_g;
+    const gramos = porUnidad ? Number(f.unit_g) : 100;
+    const m = window.prNutri.macrosForQuantity(f, gramos);
+    await addItem({ food_id: f.id, name: foodName(f), qty_g: gramos,
+                    unit_qty: porUnidad ? 1 : null, ...m });
   });
 
   document.getElementById('fp-free').addEventListener('click', async () => {
     const name = prompt(t('ml.freePrompt', '¿Qué come?'));
     if (!name || !name.trim()) return;
     const qty = prompt(t('ml.freeQty', 'Cantidad (opcional): «1 taza», «2 rebanadas»…')) || null;
-    await addItem({ name: name.trim(), qty_text: qty });
+    // Se piden las calorías acá y no después, porque un alimento en cero no
+    // suma al total del día y el número queda mal sin que nadie lo note. Se
+    // puede dejar vacío: la fila avisa que no está contando y se completa
+    // escribiendo encima.
+    const kcal = Number(prompt(t('ml.freeKcal', 'Calorías (se puede dejar vacío)')) || 0) || 0;
+    await addItem({ name: name.trim(), qty_text: qty, kcal });
   });
 
   async function addItem(row) {
@@ -364,7 +488,7 @@
       + (ev.start_time ? `<span>·</span><span>${esc(W().hhmm(ev.start_time))}</span>` : '');
 
     const [{ data: fd }, { data: tg }] = await Promise.all([
-      window.sb.from('foods').select('id,name,name_es,name_pt,kcal,protein_g,carbs_g,fats_g,fiber_g')
+      window.sb.from('foods').select('id,name,name_es,name_pt,kcal,protein_g,carbs_g,fats_g,fiber_g,unit_name,unit_g')
         .or(`workspace_id.is.null,workspace_id.eq.${wsId}`).order('name'),
       window.sb.from('nutrition_targets').select('*').eq('athlete_id', ev.athlete_id).maybeSingle()
     ]);
