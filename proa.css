@@ -1090,6 +1090,32 @@ button.wk-slot:hover { filter: brightness(1.12); }
 /* El botón de dar vuelta la semana, en la barra y en la tarjeta del atleta. */
 .wb-flip { display: inline-flex; margin-left: 4px; }
 
+/* Los atajos. Un kbd tiene que parecer una tecla o se lee como texto suelto. */
+kbd {
+  display: inline-block;
+  padding: 2px 6px; min-width: 22px; text-align: center;
+  font: 700 11px/1.4 var(--pr-font-sans);
+  color: var(--pr-fg-strong);
+  background: var(--pr-surface);
+  border: 1px solid var(--pr-border);
+  border-bottom-width: 2px;
+  border-radius: var(--pr-r-1);
+  white-space: nowrap;
+}
+.wb-keys { margin: 0; display: grid; gap: 10px; }
+.wb-keys > div { display: flex; align-items: baseline; gap: 12px; }
+.wb-keys dt { flex: none; min-width: 132px; margin: 0; }
+.wb-keys dd { margin: 0; font: var(--pr-body-sm); color: var(--pr-fg-muted); }
+/* La pista que los hace descubribles: sin esto, los atajos no existen. */
+.wb-keys-cta {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: none; border: 0; cursor: pointer;
+  font: 700 10.5px/1 var(--pr-font-cond);
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--pr-fg-faint);
+}
+.wb-keys-cta:hover { color: var(--pr-fg); }
+
 /* Los colores de un bloque. El primero es «el de su tipo», que es lo normal, y
    por eso va primero: volver atrás tiene que ser tan fácil como elegir. */
 .wb-colors { display: flex; flex-wrap: wrap; gap: 6px; }

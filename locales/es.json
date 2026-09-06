@@ -723,5 +723,15 @@
   "wk.layout.toRows": "Ver los días en filas",
   "wk.color": "Color",
   "wk.color.auto": "El de su tipo",
-  "wk.color.custom": "Otro color"
+  "wk.color.custom": "Otro color",
+  "wk.keys.title": "Atajos",
+  "wk.keys.cta": "Atajos",
+  "wk.keys.new": "Bloque nuevo",
+  "wk.keys.week": "Semana anterior o siguiente",
+  "wk.keys.today": "Volver a esta semana",
+  "wk.keys.flip": "Dar vuelta la semana",
+  "wk.keys.save": "Guardar lo que tengas abierto",
+  "wk.keys.close": "Cerrar sin guardar",
+  "wk.keys.copy": "Copiar el bloque en vez de moverlo",
+  "wk.keys.help": "Esta lista"
 }

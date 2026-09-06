@@ -55,9 +55,25 @@
       <div class="is-accent"><b id="wb-n-blocks">0</b><span data-i18n="wk.blocks">Bloques</span></div>
       <div><b id="wb-n-hours">0 h</b><span data-i18n="wk.planned">Planificado</span></div>
       <div><b id="wb-n-free">0 h</b><span data-i18n="wk.free">Libre</span></div>
+      <span class="pr-grow"></span>
+      <button type="button" class="wb-keys-cta" id="wb-keys"><kbd>?</kbd><span data-i18n="wk.keys.cta">Atajos</span></button>
     </div>
 
-    <div id="wb-legend"></div>`;
+    <div id="wb-legend"></div>
+
+    <!-- Los atajos, escritos. Un atajo que no se puede descubrir no existe:
+         por eso están acá y el pie de la semana dice que se abren con «?». -->
+    <div class="pr-modal-backdrop" id="m-keys" hidden>
+      <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-keys-title">
+        <div class="pr-modal-head">
+          <h2 id="m-keys-title" data-i18n="wk.keys.title">Atajos</h2>
+          <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="pr-modal-body">
+          <dl class="wb-keys" id="wb-keys-list"></dl>
+        </div>
+      </div>
+    </div>`;
 
   const MODALS = `
     <div class="pr-modal-backdrop" id="m-ev" hidden>
@@ -841,6 +857,73 @@
     });
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') document.querySelectorAll('.pr-modal-backdrop').forEach(m => m.hidden = true);
+    });
+    wireKeys();
+    $('wb-keys').addEventListener('click', () => { paintKeys(); $('m-keys').hidden = false; });
+  }
+
+  // ── Atajos ────────────────────────────────────────────────────────────────
+  // Planificar una semana es repetir el mismo puñado de gestos: crear, mirar la
+  // siguiente, volver, guardar. Con el mouse son cuatro viajes a la barra.
+  //
+  // Dos reglas para que no molesten: no se disparan si se está escribiendo —lo
+  // contrario es perder texto y desconfiar del teclado para siempre— y, con un
+  // modal abierto, solo funcionan los suyos.
+  const ATAJOS = [
+    ['N',        'wk.keys.new'],
+    ['←  →',     'wk.keys.week'],
+    ['T',        'wk.keys.today'],
+    ['V',        'wk.keys.flip'],
+    ['⌘ / Ctrl + Enter', 'wk.keys.save'],
+    ['Esc',      'wk.keys.close'],
+    ['⌥ / ⌘ + arrastrar', 'wk.keys.copy'],
+    ['?',        'wk.keys.help'],
+  ];
+
+  function paintKeys() {
+    $('wb-keys-list').innerHTML = ATAJOS.map(([tecla, clave]) =>
+      `<div><dt><kbd>${esc(tecla)}</kbd></dt><dd>${esc(t(clave))}</dd></div>`).join('');
+  }
+
+  const escribiendo = (el) =>
+    !!(el && el.closest && el.closest('input, textarea, select, [contenteditable="true"]'));
+
+  const modalAbierto = () => document.querySelector('.pr-modal-backdrop:not([hidden])');
+
+  function wireKeys() {
+    document.addEventListener('keydown', (e) => {
+      const modal = modalAbierto();
+
+      // Guardar sin sacar las manos del teclado. Este sí vale escribiendo: es
+      // justo cuando se quiere.
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        const form = modal && modal.querySelector('form');
+        if (form) {
+          e.preventDefault();
+          if (form.requestSubmit) form.requestSubmit();
+          else form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        }
+        return;
+      }
+
+      if (modal) return;                       // con un modal abierto, manda el modal
+      if (e.metaKey || e.ctrlKey || e.altKey) return;   // no pisar los del navegador
+      if (escribiendo(e.target)) return;
+
+      switch (e.key) {
+        case 'n': case 'N':
+          e.preventDefault(); openEvent(null, window.prToday()); break;
+        case 'ArrowLeft':
+          e.preventDefault(); monday = W().addDays(monday, -7); loadWeek(); break;
+        case 'ArrowRight':
+          e.preventDefault(); monday = W().addDays(monday, 7); loadWeek(); break;
+        case 't': case 'T':
+          e.preventDefault(); monday = W().mondayOf(window.prToday()); loadWeek(); break;
+        case 'v': case 'V':
+          e.preventDefault(); W().setLayout(W().getLayout() === 'cols' ? 'rows' : 'cols'); break;
+        case '?':
+          e.preventDefault(); paintKeys(); $('m-keys').hidden = false; break;
+      }
     });
   }
 

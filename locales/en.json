@@ -723,5 +723,15 @@
   "wk.layout.toRows": "Show days as rows",
   "wk.color": "Colour",
   "wk.color.auto": "Its type’s colour",
-  "wk.color.custom": "Another colour"
+  "wk.color.custom": "Another colour",
+  "wk.keys.title": "Shortcuts",
+  "wk.keys.cta": "Shortcuts",
+  "wk.keys.new": "New block",
+  "wk.keys.week": "Previous or next week",
+  "wk.keys.today": "Back to this week",
+  "wk.keys.flip": "Flip the week",
+  "wk.keys.save": "Save whatever is open",
+  "wk.keys.close": "Close without saving",
+  "wk.keys.copy": "Copy the block instead of moving it",
+  "wk.keys.help": "This list"
 }
