@@ -25,6 +25,10 @@
   .ath-state { display: inline-flex; align-items: center; gap: 6px; }
   .ath-row-actions { display: flex; gap: 6px; justify-content: flex-end; }
   .ath-hint { font: var(--pr-body-sm); color: var(--pr-fg-muted); margin: 0; }
+  /* Lo que se lleva el borrado, en seco. La lista es corta a propósito: si
+     hay que leer un párrafo, no se lee. */
+  .ath-del-list { margin: 10px 0 14px; padding-left: 18px; display: grid; gap: 3px;
+    font: var(--pr-body-sm); color: var(--pr-fg); }
   .ath-full {
     display: flex; gap: 11px; align-items: flex-start;
     padding: 13px 15px; margin-bottom: 18px;
@@ -199,6 +203,34 @@
   </div>
 </div>
 
+<!-- Borrar atleta. Pide escribir el nombre a propósito: al lado está el botón
+     de pausar, que es lo que casi siempre se quiere de verdad, y esto no tiene
+     vuelta atrás. -->
+<div class="pr-modal-backdrop" id="m-del" hidden>
+  <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-del-title">
+    <div class="pr-modal-head">
+      <h2 id="m-del-title" data-i18n="ath.del.title">Borrar atleta</h2>
+      <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar"><i class="ti ti-x"></i></button>
+    </div>
+    <form id="f-del">
+      <div class="pr-modal-body">
+        <p class="ath-hint" id="del-lead"></p>
+        <ul class="ath-del-list" id="del-what"></ul>
+        <p class="ath-hint" data-i18n="ath.del.instead">Si solo quieres dejar de trabajar con él, pausarlo libera el cupo y conserva todo.</p>
+        <div class="pr-field">
+          <label class="pr-label" for="del-name" id="del-label"></label>
+          <input class="pr-input" id="del-name" autocomplete="off" spellcheck="false">
+        </div>
+        <p class="auth-msg" id="del-msg" role="alert" hidden style="margin:0;color:var(--pr-danger);font:600 13px/1.45 var(--pr-font-sans)"></p>
+      </div>
+      <div class="pr-modal-foot">
+        <button class="pr-btn is-ghost" type="button" data-close data-i18n="common.cancel">Cancelar</button>
+        <button class="pr-btn is-danger" type="submit" id="del-go" data-i18n="ath.del.go" disabled>Borrar para siempre</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- Enlace de invitación -->
 <div class="pr-modal-backdrop" id="m-invite" hidden>
   <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-inv-title">
@@ -229,13 +261,19 @@
   const esc = window.prEsc;
 
   let wsId = null, wsSport = null, seats = null, filter = 'active', rows = [], inviteFor = null;
+  // El mismo formulario da de alta y edita: son los mismos campos, y tener dos
+  // copias es la forma segura de que se separen con el tiempo. null = alta.
+  let editing = null, deleting = null;
 
   // ── Datos ────────────────────────────────────────────────────────────────
   async function load() {
     // Una sola consulta trae los atletas y, de paso, si ya tienen cuenta y si
     // hay una invitación viva. Con consultas separadas la lista parpadearía.
     const { data, error } = await window.sb.from('athletes')
-      .select('id,first_name,last_name,birth_date,position,club_name,status,created_at,'
+      // Se piden todos los campos del alta, no solo los que se listan: la
+      // misma fila alimenta el editor, y así abrirlo no cuesta otra consulta.
+      .select('id,first_name,last_name,birth_date,sex,sport,position,level,dominant_side,'
+            + 'club_name,email,phone,timezone,status,created_at,'
             + 'athlete_accounts(user_id),'
             + 'athlete_intake(completed_at),'
             + 'athlete_invites(id,accepted_at,expires_at)')
@@ -332,6 +370,8 @@
               ? `<button class="pr-btn is-sm is-ghost" data-act="pause" title="${esc(t('ath.act.pause'))}"><i class="ti ti-player-pause"></i></button>`
               : `<button class="pr-btn is-sm is-ghost" data-act="activate" title="${esc(t('ath.act.activate'))}"><i class="ti ti-player-play"></i></button>`}
             <a class="pr-btn is-sm is-secondary" href="Intake.html?id=${a.id}" title="${esc(t('ath.act.intake'))}"><i class="ti ti-clipboard-text"></i></a>
+            <button class="pr-btn is-sm is-ghost" data-act="edit" title="${esc(t('ath.act.edit'))}"><i class="ti ti-pencil"></i></button>
+            <button class="pr-btn is-sm is-ghost is-danger" data-act="delete" title="${esc(t('ath.act.delete'))}"><i class="ti ti-trash"></i></button>
           </div></td>
         </tr>`;
       }).join('')}</tbody></table></div>`;
@@ -356,19 +396,47 @@
     if (e.key === 'Escape') document.querySelectorAll('.pr-modal-backdrop').forEach(m => m.hidden = true);
   });
 
-  document.getElementById('btn-new').addEventListener('click', () => {
-    document.getElementById('f-new').reset();
-    document.getElementById('new-msg').hidden = true;
-    // Casi siempre el atleta hace el deporte del espacio: se preselecciona.
-    if (wsSport) document.getElementById('n-sport').value = wsSport;
+  // El desplegable de husos se arma una sola vez y se reusa en los dos modos.
+  function fillTz(value) {
     const tzSel = document.getElementById('n-tz');
-    if (!tzSel.options.length) {
-      tzSel.innerHTML = window.prTz.selectHtml(window.prTz.mine());
-      tzSel.value = window.prTz.mine();
+    if (!tzSel.options.length) tzSel.innerHTML = window.prTz.selectHtml(window.prTz.mine());
+    tzSel.value = value || window.prTz.mine();
+  }
+
+  function openForm(a) {
+    editing = a ? a.id : null;
+    const f = document.getElementById('f-new');
+    f.reset();
+    document.getElementById('new-msg').hidden = true;
+
+    const set = (id, v) => { document.getElementById(id).value = v == null ? '' : v; };
+    if (a) {
+      set('n-first', a.first_name); set('n-last', a.last_name);
+      set('n-birth', a.birth_date); set('n-sex', a.sex);
+      set('n-sport', a.sport);      set('n-position', a.position);
+      set('n-level', a.level);      set('n-side', a.dominant_side);
+      set('n-club', a.club_name);   set('n-email', a.email);
+      set('n-phone', a.phone);
+      fillTz(a.timezone);
+    } else {
+      // Casi siempre el atleta hace el deporte del espacio: se preselecciona.
+      if (wsSport) document.getElementById('n-sport').value = wsSport;
+      fillTz(null);
     }
+
+    document.getElementById('m-new-title').textContent =
+      a ? t('ath.edit', 'Editar ficha') : t('ath.new', 'Nuevo atleta');
+    document.getElementById('new-save').textContent =
+      a ? t('common.save', 'Guardar') : t('ath.create', 'Dar de alta');
+    // Lo de «el resto va en la anamnesis» solo tiene sentido dando de alta.
+    const hint = document.querySelector('[data-i18n="ath.restLater"]');
+    if (hint) hint.hidden = !!a;
+
     openModal('m-new');
     document.getElementById('n-first').focus();
-  });
+  }
+
+  document.getElementById('btn-new').addEventListener('click', () => openForm(null));
 
   document.querySelector('.pr-tabs').addEventListener('click', (e) => {
     const tab = e.target.closest('.pr-tab');
@@ -389,8 +457,7 @@
 
     btn.classList.add('is-busy');
     const pick = (id) => document.getElementById(id).value.trim() || null;
-    const { data: created, error } = await window.sb.from('athletes').insert({
-      workspace_id:  wsId,
+    const campos = {
       first_name:    first,
       last_name:     document.getElementById('n-last').value.trim(),
       birth_date:    document.getElementById('n-birth').value || null,
@@ -403,7 +470,13 @@
       email:         pick('n-email'),
       phone:         pick('n-phone'),
       timezone:      pick('n-tz')
-    }).select('id').single();
+    };
+    // El workspace_id se manda solo al crear: al editar no se toca, para que un
+    // atleta no pueda terminar mudado de espacio por un descuido de la pantalla.
+    const { data: created, error } = editing
+      ? await window.sb.from('athletes').update(campos).eq('id', editing).select('id').single()
+      : await window.sb.from('athletes').insert(Object.assign({ workspace_id: wsId }, campos))
+          .select('id').single();
     btn.classList.remove('is-busy');
 
     if (error) {
@@ -416,13 +489,75 @@
       return;
     }
 
+    const eraAlta = !editing;
     closeModal('m-new');
-    window.prToast(t('ath.created', 'Atleta dado de alta.'), 'success');
+    window.prToast(eraAlta ? t('ath.created', 'Atleta dado de alta.')
+                           : t('ath.saved', 'Ficha guardada.'), 'success');
+    editing = null;
     await load();
 
     // Dado de alta, lo que sigue es invitarlo: se ofrece el enlace en el acto
-    // en vez de obligar a buscar la fila y apretar otro botón.
-    if (created && created.id) await showInvite(created.id, false, true);
+    // en vez de obligar a buscar la fila y apretar otro botón. Al editar no:
+    // ahí ya está todo hecho.
+    if (eraAlta && created && created.id) await showInvite(created.id, false, true);
+  });
+
+  // ── Borrar ───────────────────────────────────────────────────────────────
+  // Borrar un atleta se lleva por delante todo lo que cuelga de él: la base lo
+  // hace en cascada. Por eso la pantalla dice QUÉ se pierde y pide el nombre
+  // escrito: es un gesto que no se puede deshacer y no debería salir de un
+  // «sí» apretado sin leer.
+  function openDelete(a) {
+    if (!a) return;
+    deleting = a;
+    const full = `${a.first_name} ${a.last_name || ''}`.trim();
+
+    document.getElementById('del-lead').textContent =
+      t('ath.del.lead', 'Vas a borrar a {name} y todo lo suyo. No se puede deshacer.', { name: full });
+    document.getElementById('del-what').innerHTML = [
+      'ath.del.w.intake', 'ath.del.w.week', 'ath.del.w.history', 'ath.del.w.account'
+    ].map(k => `<li>${esc(t(k))}</li>`).join('');
+    document.getElementById('del-label').textContent =
+      t('ath.del.confirm', 'Escribe {name} para confirmar', { name: full });
+
+    const input = document.getElementById('del-name');
+    const go = document.getElementById('del-go');
+    input.value = '';
+    go.disabled = true;
+    document.getElementById('del-msg').hidden = true;
+    openModal('m-del');
+    input.focus();
+  }
+
+  // El botón se habilita solo cuando lo escrito coincide. Se comparan sin
+  // acentos ni mayúsculas: la idea es que lea el nombre, no que pelee con el
+  // teclado del teléfono.
+  const plano = (x) => String(x || '').trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
+
+  document.getElementById('del-name').addEventListener('input', (e) => {
+    if (!deleting) return;
+    const full = `${deleting.first_name} ${deleting.last_name || ''}`.trim();
+    document.getElementById('del-go').disabled = plano(e.target.value) !== plano(full);
+  });
+
+  document.getElementById('f-del').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!deleting) return;
+    const msg = document.getElementById('del-msg');
+    const go = document.getElementById('del-go');
+    msg.hidden = true;
+    go.classList.add('is-busy');
+
+    const { error } = await window.sb.from('athletes').delete().eq('id', deleting.id);
+    go.classList.remove('is-busy');
+    if (error) { msg.textContent = error.message; msg.hidden = false; return; }
+
+    const full = `${deleting.first_name} ${deleting.last_name || ''}`.trim();
+    deleting = null;
+    closeModal('m-del');
+    window.prToast(t('ath.deleted', '{name} ya no está.', { name: full }), 'success');
+    await load();
   });
 
   document.getElementById('list').addEventListener('click', async (e) => {
@@ -432,6 +567,8 @@
     const act = btn.dataset.act;
 
     if (act === 'invite') { await showInvite(id); return; }
+    if (act === 'edit')   { openForm(rows.find(a => a.id === id)); return; }
+    if (act === 'delete') { openDelete(rows.find(a => a.id === id)); return; }
 
     const status = act === 'pause' ? 'paused' : 'active';
     const { error } = await window.sb.from('athletes').update({ status }).eq('id', id);
@@ -501,6 +638,16 @@
     if (window.prSidebar) window.prSidebar.mount('athletes');
     if (window.PR_I18N) window.PR_I18N.applyTo(document);
     await load();
+
+    // Se llega así desde la ficha del atleta, que es donde uno mira los datos
+    // y se da cuenta de que hay algo mal escrito.
+    const pedido = new URLSearchParams(location.search).get('edit');
+    if (pedido) {
+      const a = rows.find(x => x.id === pedido);
+      if (a) openForm(a);
+      // La dirección se limpia para que recargar no vuelva a abrir el modal.
+      history.replaceState(null, '', location.pathname);
+    }
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

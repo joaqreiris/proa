@@ -81,6 +81,7 @@
           <h1 id="name">&nbsp;</h1>
           <div class="ap-hero-meta" id="meta"></div>
         </div>
+        <a class="pr-btn is-secondary" id="btn-edit" href="#"><i class="ti ti-pencil"></i><span data-i18n="ap.editDetails">Editar ficha</span></a>
         <a class="pr-btn is-primary" id="btn-intake" href="#"><i class="ti ti-clipboard-text"></i><span data-i18n="ap.editIntake">Editar anamnesis</span></a>
       </div>
 
@@ -200,6 +201,10 @@
     document.getElementById('name').textContent = full;
     document.getElementById('av').textContent = window.prInitials(full);
     document.getElementById('btn-intake').href = 'Intake.html?id=' + id;
+    // Los datos personales se editan con el mismo formulario que los dio de
+    // alta, en el listado. Tener dos copias del formulario es la manera segura
+    // de que se separen; el listado sabe abrirlo solo con ?edit=.
+    document.getElementById('btn-edit').href = 'Athletes.html?edit=' + id;
 
     const linked = a.athlete_accounts && a.athlete_accounts.length;
     document.getElementById('meta').innerHTML = [

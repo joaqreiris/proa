@@ -493,6 +493,10 @@ body.pr::before {
 
 .pr-btn.is-danger { background: var(--pr-danger); color: #fff; }
 .pr-btn.is-danger:hover { filter: brightness(1.08); }
+/* Peligroso pero fantasma: en una fila de acciones, un rojo lleno se lee como
+   «apretame». El color avisa de qué es sin llamar a hacerlo. */
+.pr-btn.is-ghost.is-danger { background: transparent; color: var(--pr-danger); }
+.pr-btn.is-ghost.is-danger:hover { background: var(--pr-danger-bg); }
 
 .pr-icon-btn {
   display: inline-flex; align-items: center; justify-content: center;
