@@ -41,7 +41,12 @@ const FALSO = `
   // se escriben los que hacen algo distinto — los que escriben y los que
   // terminan la cadena.
   const tabla = (t) => {
-    const filas = t === 'athletes' ? [ATLETA] : t === 'events' ? [EVENTO] : [];
+    const filas = t === 'athletes' ? [ATLETA] : t === 'events' ? [EVENTO]
+                : t === 'meal_items' ? [
+                    { name: 'Café', qty_g: 240, unit_qty: 1, kcal: 2 },
+                    { name: 'Avena', qty_g: 81, unit_qty: 1, kcal: 307 },
+                    { name: 'Banana', qty_g: 59, unit_qty: 0.5, kcal: 52 },
+                  ] : [];
     const propios = {
       // Declarada desde el vamos: el Proxy devuelve una FUNCIÓN para cualquier
       // propiedad que no conozca, y una función es truthy, así que sin esto la
@@ -171,6 +176,33 @@ try {
   await page.keyboard.press('Escape');
   await page.waitForTimeout(250);
   is('no queda colgado', await page.evaluate(() => !document.querySelector('.wb-menu')), true);
+
+  console.log('\nUN VISTAZO SIN ENTRAR');
+  // Para saber qué le puse a una colación había que abrirla, mirar y volver.
+  await page.hover('#wb-rows .wk-ev[data-event="e-1"]');
+  await page.waitForTimeout(900);          // aparece recién al quedarse quieto
+  const peek = await page.evaluate(() => {
+    const c = document.querySelector('.wb-peek');
+    return c ? {
+      abierto: true,
+      filas: [...c.querySelectorAll('.wb-peek-row')].map((r) => r.textContent.trim()),
+      total: c.querySelector('.is-total') ? c.querySelector('.is-total').textContent.trim() : null,
+      modalCerrado: document.getElementById('m-ev').hidden,
+    } : { abierto: false };
+  });
+  is('aparece el vistazo', peek.abierto, true);
+  is('sin abrir el bloque', peek.modalCerrado, true);
+  if ((peek.filas || []).some((f) => /Café/.test(f))) ok(`muestra lo que tiene adentro: ${JSON.stringify(peek.filas)}`);
+  else no('no muestra los alimentos', peek.filas);
+  is('con el total de calorías al pie', peek.total, '361 kcal');
+  // Media banana se dice «1/2», igual que en el menú.
+  if ((peek.filas || []).some((f) => /1\/2/.test(f))) ok('y las cantidades en fracciones');
+  else no('las cantidades no salieron en fracción', peek.filas);
+
+  console.log('\nY SE VA SOLO');
+  await page.mouse.move(5, 5);
+  await page.waitForTimeout(400);
+  is('al salir del bloque se cierra', await page.evaluate(() => !document.querySelector('.wb-peek')), true);
 
   console.log('\nOPTION+CLIC EN UN HUECO OFRECE PONER ALGO AHÍ');
   // Lo que se quiere al apretar en un día vacío es poner algo A ESA HORA. Abrir

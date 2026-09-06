@@ -315,6 +315,9 @@
 
     slots = sl.data || [];
     events = ev.data || [];
+    // Lo de adentro pudo cambiar: se vuelve a pedir cuando haga falta.
+    vistazos.clear();
+    cerrarVistazo();
     paint();
   }
 
@@ -564,6 +567,88 @@
     $('m-share').hidden = false;
   }
 
+  // ── El vistazo ────────────────────────────────────────────────────────────
+  // Qué tiene un bloque adentro, sin entrar. Para saber qué le puse a una
+  // colación había que abrirla, mirar y volver: tres pasos para una pregunta
+  // de un segundo.
+  //
+  // Se carga cuando se pide, no con la semana: traer los ejercicios y los
+  // alimentos de treinta bloques para mostrar uno sería pagar por adelantado
+  // algo que casi nunca se usa. Y se guarda, porque sobre el mismo bloque se
+  // pasa el mouse varias veces seguidas.
+  const vistazos = new Map();
+  let vistazoEl = null, vistazoTimer = null;
+
+  async function contenidoDe(ev) {
+    if (vistazos.has(ev.id)) return vistazos.get(ev.id);
+
+    let lineas = [];
+    if (ev.type === 'meal') {
+      const { data } = await window.sb.from('meal_items')
+        .select('name,qty_g,unit_qty,qty_text,kcal').eq('event_id', ev.id).order('position');
+      lineas = (data || []).map(i => ({
+        txt: i.name,
+        det: i.qty_text || (i.unit_qty != null ? window.prNutri.formatAmount(i.unit_qty)
+             : i.qty_g != null ? Math.round(i.qty_g) + ' g' : ''),
+      }));
+      const kcal = (data || []).reduce((n, i) => n + (Number(i.kcal) || 0), 0);
+      if (kcal) lineas.push({ txt: Math.round(kcal) + ' kcal', total: true });
+
+    } else if (ev.type === 'recovery') {
+      const { data } = await window.sb.from('recovery_items')
+        .select('method,duration_min,position').eq('event_id', ev.id).order('position');
+      lineas = (data || []).map(i => ({
+        txt: window.prRecovery ? window.prRecovery.label(i.method) : i.method,
+        det: i.duration_min ? i.duration_min + ' min' : '',
+      }));
+
+    } else if (['gym', 'field'].includes(ev.type)) {
+      // Los ejercicios cuelgan de los bloques de la sesión, así que se piden
+      // anidados: una consulta en vez de una por bloque.
+      const { data } = await window.sb.from('session_blocks')
+        .select('title,kind,position,session_items(name,sets,reps,position)')
+        .eq('event_id', ev.id).order('position');
+      for (const b of (data || [])) {
+        const items = (b.session_items || []).slice().sort((x, y) => x.position - y.position);
+        for (const i of items) {
+          lineas.push({ txt: i.name, det: [i.sets, i.reps].filter(Boolean).join(' × ') });
+        }
+      }
+    }
+
+    const res = { lineas, notas: ev.notes || '' };
+    vistazos.set(ev.id, res);
+    return res;
+  }
+
+  function cerrarVistazo() {
+    clearTimeout(vistazoTimer);
+    if (vistazoEl) { vistazoEl.remove(); vistazoEl = null; }
+  }
+
+  async function abrirVistazo(el, ev) {
+    const { lineas, notas } = await contenidoDe(ev);
+    if (!lineas.length && !notas) return;          // vacío: no se muestra una caja vacía
+    if (!document.contains(el)) return;            // se repintó mientras se cargaba
+
+    cerrarVistazo();
+    const caja = document.createElement('div');
+    caja.className = 'wb-peek';
+    caja.innerHTML =
+      lineas.map(l => `<div class="wb-peek-row${l.total ? ' is-total' : ''}">
+          <span>${esc(l.txt)}</span>${l.det ? `<em>${esc(l.det)}</em>` : ''}</div>`).join('')
+      + (notas ? `<p class="wb-peek-note">${esc(notas)}</p>` : '');
+    document.body.appendChild(caja);
+
+    // Al lado del bloque, y si no entra a la derecha, a la izquierda.
+    const r = el.getBoundingClientRect(), c = caja.getBoundingClientRect();
+    let x = r.right + 8;
+    if (x + c.width > window.innerWidth - 8) x = Math.max(8, r.left - c.width - 8);
+    const y = Math.max(8, Math.min(r.top, window.innerHeight - c.height - 8));
+    caja.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+    vistazoEl = caja;
+  }
+
   // La hora del día en la que cayó el dedo, dentro de una pista.
   //
   // Es la misma cuenta que hace el arrastre, y por el mismo motivo tiene que
@@ -739,6 +824,24 @@
       }
       openEvent(events.find(x => x.id === ev.dataset.event));
     });
+
+    // Medio segundo quieto encima y aparece. Sin esa espera, cruzar la semana
+    // con el mouse dispara diez cajas y una consulta por cada una.
+    $('wb-rows').addEventListener('mouseover', (e) => {
+      const el = e.target.closest('[data-event]');
+      if (!el) return;
+      const ev = events.find(x => x.id === el.dataset.event);
+      if (!ev) return;
+      clearTimeout(vistazoTimer);
+      vistazoTimer = setTimeout(() => abrirVistazo(el, ev), 500);
+    });
+    $('wb-rows').addEventListener('mouseout', (e) => {
+      if (e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('[data-event]') === e.target.closest('[data-event]')) return;
+      cerrarVistazo();
+    });
+    // Y no se queda colgado si algo se mueve debajo.
+    $('wb-rows').addEventListener('mousedown', cerrarVistazo);
+    document.addEventListener('scroll', cerrarVistazo, true);
 
     // Doble clic: entrar a lo que hay adentro. Para un gimnasio o un campo eso
     // es su sesión; para una comida, su menú. Es a donde se va de verdad

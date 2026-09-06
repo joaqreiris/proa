@@ -1115,6 +1115,37 @@ button.wk-slot:hover { filter: brightness(1.12); }
   text-align: left; cursor: pointer;
 }
 .wb-menu button:hover { background: var(--pr-bg-soft); }
+/* El vistazo: qué tiene un bloque adentro, sin entrar. */
+.wb-peek {
+  position: fixed; top: 0; left: 0; z-index: 190;
+  max-width: 280px; min-width: 170px; padding: 9px 11px;
+  background: var(--pr-surface);
+  border: var(--pr-bw) solid var(--pr-border);
+  border-radius: var(--pr-r-3);
+  box-shadow: var(--pr-shadow-pop);
+  pointer-events: none;              /* no se interpone con el bloque */
+}
+.wb-peek-row {
+  display: flex; align-items: baseline; gap: 10px; justify-content: space-between;
+  padding: 3px 0;
+  font: 600 12.5px/1.35 var(--pr-font-sans); color: var(--pr-fg);
+}
+.wb-peek-row em {
+  flex: none; font-style: normal;
+  font: 600 11.5px/1 var(--pr-font-cond); color: var(--pr-fg-faint);
+  font-variant-numeric: tabular-nums;
+}
+.wb-peek-row.is-total {
+  margin-top: 4px; padding-top: 6px;
+  border-top: var(--pr-bw) solid var(--pr-border);
+  color: var(--pr-fg-strong);
+}
+.wb-peek-note {
+  margin: 6px 0 0; padding-top: 6px;
+  border-top: var(--pr-bw) solid var(--pr-border);
+  font: var(--pr-meta); color: var(--pr-fg-muted);
+}
+
 /* Qué día y qué hora, para que el menú no salga sin contexto. */
 .wb-menu-head {
   display: block; padding: 7px 11px 8px; margin-bottom: 2px;
