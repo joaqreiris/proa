@@ -70,7 +70,8 @@ async function montar(modo) {
 }
 
 // Un gesto completo. `destino` dice adónde llevarlo; `option`, si se copia.
-async function arrastrar({ destino, option, modo }) {
+async function arrastrar({ destino, option, tecla, modo }) {
+  const teclaCopia = tecla || 'Alt';
   await montar(modo);
   await page.evaluate(() => { window.__drops = []; });
 
@@ -92,7 +93,7 @@ async function arrastrar({ destino, option, modo }) {
 
   await page.mouse.move(pos.desde.x, pos.desde.y);
   await page.mouse.down();
-  if (option) await page.keyboard.down('Alt');
+  if (option) await page.keyboard.down(teclaCopia);
   if (pos.vuelta) {
     // Hay que pasar el umbral de los 6 px para que sea un arrastre y no un clic.
     await page.mouse.move(pos.desde.x + 40, pos.desde.y + 40, { steps: 6 });
@@ -101,7 +102,7 @@ async function arrastrar({ destino, option, modo }) {
     await page.mouse.move(pos.hasta.x, pos.hasta.y, { steps: 12 });
   }
   await page.mouse.up();
-  if (option) await page.keyboard.up('Alt');
+  if (option) await page.keyboard.up(teclaCopia);
   await page.waitForTimeout(200);
 
   return page.evaluate(() => ({
@@ -128,6 +129,15 @@ for (const modo of ['rows', 'cols']) {
 
   const copiaDia = await arrastrar({ destino: 'otro-dia', option: true, modo });
   is('a otro día con Option, copia', copiaDia.drops[0] && copiaDia.drops[0].copy, true);
+
+  // Command hace lo mismo que Option: es la tecla que la mano ya tiene puesta
+  // de copiar y pegar, y no hay razón para hacer elegir una.
+  const copiaCmd = await arrastrar({ destino: 'otro-dia', option: true, tecla: 'Meta', modo });
+  is('a otro día con Command, también copia', copiaCmd.drops[0] && copiaCmd.drops[0].copy, true);
+  is('y al día correcto', copiaCmd.drops[0] && copiaCmd.drops[0].date, '2026-03-05');
+
+  const cmdQuieto = await arrastrar({ destino: 'mismo-lugar', option: true, tecla: 'Meta', modo });
+  is('con Command tampoco duplica en el lugar', cmdQuieto.drops.length, 0);
 
   const otraHora = await arrastrar({ destino: 'otra-hora', option: true, modo });
   is('mismo día a otra hora con Option, copia', otraHora.drops[0] && otraHora.drops[0].copy, true);

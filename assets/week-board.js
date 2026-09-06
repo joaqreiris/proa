@@ -544,7 +544,7 @@
       if (ev) openEvent(events.find(x => x.id === ev.dataset.event));
     });
 
-    // Arrastrar para mover; con Option, para copiar. La grilla ya sabe dónde
+    // Arrastrar para mover; con Option o Command, para copiar. La grilla ya sabe dónde
     // está cada bloque; hacerle abrir un modal para cambiar de día era pedirle
     // al entrenador que le explicara a la app algo que la app ya ve.
     window.prWeekDrag.enable({

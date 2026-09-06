@@ -1,7 +1,7 @@
 // Proa — mover bloques arrastrándolos en la semana.
 //
 // Cambiar un entrenamiento de día era abrirlo, tocar la fecha, tocar la hora y
-// guardar. Ahora se agarra y se lleva. Con Option (Alt) apretado no se mueve:
+// guardar. Ahora se agarra y se lleva. Con Option o Command apretado no se mueve:
 // se copia, con todo lo que tenga adentro.
 //
 // Lo que hace que arrastrar sea usable y no adivinanza:
@@ -63,7 +63,7 @@
   // De qué lado corre el tiempo. Devuelve, para un rectángulo o para un evento
   // de puntero, la coordenada del eje temporal de la vista que está puesta. Con
   // esto el resto del gesto no se entera de la orientación: el imán, el
-  // recorte al día, el umbral de los 6 px y la copia con Option son los mismos.
+  // recorte al día, el umbral de los 6 px y la copia con Option o Command son los mismos.
   function vertical() { return !!(W().getLayout && W().getLayout() === 'cols'); }
 
   function eje(o) {
@@ -92,6 +92,11 @@
     document.querySelectorAll('.wk-ev.is-moving').forEach(el => el.classList.remove('is-moving'));
     document.documentElement.classList.remove('wk-dragging');
   }
+
+  // Copiar en vez de mover. Sirven las dos teclas: Option es la de toda la vida
+  // en un escritorio Mac, y Command es la que la mano ya tiene puesta de
+  // copiar y pegar. No hay razón para hacer elegir una.
+  function esCopia(e) { return !!(e && (e.altKey || e.metaKey)); }
 
   function onDown(e, host) {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
@@ -137,7 +142,7 @@
 
     drag.ghost.style.transform =
       'translate(' + (e.clientX - drag.dx) + 'px,' + (e.clientY - drag.dy) + 'px)';
-    drag.ghost.classList.toggle('is-copy', !!e.altKey);
+    drag.ghost.classList.toggle('is-copy', esCopia(e));
 
     const track = trackUnder(e.clientX, e.clientY) || drag.track;
     const tr = track.getBoundingClientRect();
@@ -152,7 +157,7 @@
     }
 
     drag.target = { date: track.dataset.date, start, track };
-    paintDrop(track, start, e.altKey);
+    paintDrop(track, start, esCopia(e));
   }
 
   function begin() {
@@ -233,10 +238,10 @@
     if (!drag || !drag.moved) { drag = null; return; }
 
     const d = drag;
-    const copy = !!e.altKey;
+    const copy = esCopia(e);
     cleanup();
 
-    // Soltar donde estaba no es un cambio, y eso vale también con Option: una
+    // Soltar donde estaba no es un cambio, y eso vale también copiando: una
     // copia exactamente encima del original no se ve —parecen un solo bloque—
     // y el que la hizo se entera cuando mueve uno y aparece el otro debajo.
     // Duplicar sin moverse ya existe, con su botón, dentro del bloque.

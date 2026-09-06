@@ -708,7 +708,7 @@
   "tz.Other": "Other",
   "wk.moved": "Moved.",
   "wk.copiedHere": "Copied.",
-  "wk.dragHint": "Drag a block to change its day or time. Hold Option to copy it.",
+  "wk.dragHint": "Drag a block to change its day or time. Hold Option or Command to copy it.",
   "wk.repeat": "Repeat this block",
   "wk.repeatHint": "It's copied whole, exercises included, at the same time on the days you pick.",
   "wk.repeatDays": "Which days",
