@@ -182,6 +182,16 @@
         <div id="bw-body"></div>
       </section>
 
+      <!-- Suplementación. No es comida: no se pesa ni suma calorías. Lo que
+           importa es la dosis y el momento. -->
+      <section class="pr-card pr-card-pad ap-block" id="sp-card">
+        <div class="ap-card-head">
+          <h2 data-i18n="sp.title">Suplementación</h2>
+          <button class="pr-btn is-sm is-secondary" id="sp-add"><i class="ti ti-plus"></i><span data-i18n="sp.add">Añadir</span></button>
+        </div>
+        <div id="sp-body"></div>
+      </section>
+
       <section class="pr-card pr-card-pad ap-block">
         <div class="ap-card-head"><h2 data-i18n="in.week">Su semana ocupada</h2></div>
         <div class="wk">
@@ -218,6 +228,63 @@
 <script src="assets/sidebar.js" defer></script>
 <!-- Calculadora del objetivo. Las cuentas están en assets/nutrition-calc.js y
      los coeficientes están verificados contra los papers originales. -->
+<div class="pr-modal-backdrop" id="m-sp" hidden>
+  <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-sp-title">
+    <div class="pr-modal-head">
+      <h2 id="m-sp-title" data-i18n="sp.add">Añadir suplemento</h2>
+      <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar" data-i18n-attr="aria-label:common.close"><i class="ti ti-x"></i></button>
+    </div>
+    <form id="f-sp">
+      <div class="pr-modal-body">
+        <div class="pr-field">
+          <label class="pr-label" for="sp-name" data-i18n="sp.name">Qué toma</label>
+          <input class="pr-input" id="sp-name" maxlength="80" list="sp-common"
+                 data-i18n-ph="sp.namePh" placeholder="Magnesio, omega 3, vitamina D…">
+          <!-- Los de siempre, para no escribirlos cada vez. Es una lista de
+               sugerencias: se puede escribir cualquier otro. -->
+          <datalist id="sp-common">
+            <option value="Magnesio"></option><option value="Omega 3"></option>
+            <option value="Vitamina D"></option><option value="Vitamina C"></option>
+            <option value="Complejo B"></option><option value="Zinc"></option>
+            <option value="Hierro"></option><option value="Calcio"></option>
+            <option value="Multivitamínico"></option><option value="Colágeno"></option>
+            <option value="Cafeína"></option><option value="Beta-alanina"></option>
+            <option value="Probióticos"></option><option value="Melatonina"></option>
+          </datalist>
+        </div>
+        <div class="pr-modal-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="sp-dose" data-i18n="sp.dose">Dosis</label>
+            <input class="pr-input" id="sp-dose" maxlength="40" data-i18n-ph="sp.dosePh" placeholder="400 mg, 2 cápsulas…">
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="sp-timing" data-i18n="sp.timing">Cuándo</label>
+            <select class="pr-select" id="sp-timing">
+              <option value="" data-i18n="sp.t.anytime">Sin momento fijo</option>
+              <option value="wake" data-i18n="sp.t.wake">Al despertar</option>
+              <option value="breakfast" data-i18n="sp.t.breakfast">Con el desayuno</option>
+              <option value="lunch" data-i18n="sp.t.lunch">Con el almuerzo</option>
+              <option value="dinner" data-i18n="sp.t.dinner">Con la cena</option>
+              <option value="pre_training" data-i18n="sp.t.pre">Antes de entrenar</option>
+              <option value="post_training" data-i18n="sp.t.post">Después de entrenar</option>
+              <option value="bed" data-i18n="sp.t.bed">Antes de dormir</option>
+            </select>
+          </div>
+        </div>
+        <div class="pr-field">
+          <label class="pr-label" for="sp-notes" data-i18n="sp.notes">Notas</label>
+          <input class="pr-input" id="sp-notes" maxlength="140" data-i18n-ph="sp.notesPh" placeholder="Con comida, lejos del café…">
+        </div>
+        <p class="auth-msg" id="sp-msg" role="alert" hidden style="margin:0;color:var(--pr-danger);font:600 13px/1.45 var(--pr-font-sans)"></p>
+      </div>
+      <div class="pr-modal-foot">
+        <button class="pr-btn is-ghost" type="button" data-close data-i18n="common.cancel">Cancelar</button>
+        <button class="pr-btn is-primary" type="submit"><i class="ti ti-check"></i><span data-i18n="common.save">Guardar</span></button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div class="pr-modal-backdrop" id="m-bw" hidden>
   <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-bw-title">
     <div class="pr-modal-head">
@@ -538,6 +605,7 @@
 
     await pintarObjetivo(a, intake);
     await pintarPeso(a);
+    await pintarSuples(a);
 
     document.getElementById('main').hidden = false;
     if (window.PR_I18N) window.PR_I18N.applyTo(document);
@@ -724,6 +792,96 @@
       t('bw.v.off', 'Va a {real} kg por semana y se buscaba {objetivo}.', { real: v.real, objetivo: v.objetivo })
     )}</span></div>`;
   }
+
+  // ── Suplementación ────────────────────────────────────────────────────────
+  let suples = [], editandoSup = null;
+
+  // El orden no es alfabético: es el del día. Ver la lista es leer la rutina de
+  // arriba abajo, no buscar un nombre.
+  const ORDEN_MOMENTO = ['wake', 'breakfast', 'pre_training', 'post_training', 'lunch', 'dinner', 'bed', ''];
+  const CLAVE_MOMENTO = {
+    wake: 'sp.t.wake', breakfast: 'sp.t.breakfast', lunch: 'sp.t.lunch', dinner: 'sp.t.dinner',
+    pre_training: 'sp.t.pre', post_training: 'sp.t.post', bed: 'sp.t.bed', anytime: 'sp.t.anytime',
+  };
+
+  async function pintarSuples(a) {
+    const { data } = await window.sb.from('athlete_supplements')
+      .select('*').eq('athlete_id', a.id).order('position');
+    suples = (data || []).slice().sort((x, y) =>
+      ORDEN_MOMENTO.indexOf(x.timing || '') - ORDEN_MOMENTO.indexOf(y.timing || '') || x.position - y.position);
+
+    const host = document.getElementById('sp-body');
+    if (!suples.length) {
+      host.innerHTML = `<p class="pr-hint" style="margin:0">${esc(t('sp.none',
+        'Sin suplementos cargados. El atleta los ve en su semana, con la dosis y el momento.'))}</p>`;
+      return;
+    }
+    host.innerHTML = `<div class="sp-list">` + suples.map(x => `
+      <div class="sp-row" data-sup="${x.id}">
+        <div class="sp-what">
+          <b>${esc(x.name)}</b>
+          ${x.notes ? `<small>${esc(x.notes)}</small>` : ''}
+        </div>
+        <span class="sp-dose">${esc(x.dose || '')}</span>
+        <span class="sp-when">${esc(x.timing ? t(CLAVE_MOMENTO[x.timing]) : t('sp.t.anytime'))}</span>
+        <button type="button" class="pr-icon-btn is-flush" data-sup-edit="${x.id}"
+                title="${esc(t('ath.act.edit'))}"><i class="ti ti-pencil"></i></button>
+        <button type="button" class="pr-icon-btn is-flush" data-sup-del="${x.id}"
+                title="${esc(t('sp.remove', 'Quitar'))}"><i class="ti ti-x"></i></button>
+      </div>`).join('') + `</div>`;
+  }
+
+  function abrirSuple(x) {
+    editandoSup = x ? x.id : null;
+    document.getElementById('m-sp-title').textContent = t(x ? 'sp.edit' : 'sp.add');
+    document.getElementById('sp-name').value = (x && x.name) || '';
+    document.getElementById('sp-dose').value = (x && x.dose) || '';
+    document.getElementById('sp-timing').value = (x && x.timing) || '';
+    document.getElementById('sp-notes').value = (x && x.notes) || '';
+    document.getElementById('sp-msg').hidden = true;
+    document.getElementById('m-sp').hidden = false;
+    document.getElementById('sp-name').focus();
+  }
+
+  document.getElementById('sp-add').addEventListener('click', () => abrirSuple(null));
+
+  document.getElementById('sp-body').addEventListener('click', async (e) => {
+    const ed = e.target.closest('[data-sup-edit]');
+    if (ed) { abrirSuple(suples.find(x => x.id === ed.dataset.supEdit)); return; }
+
+    const del = e.target.closest('[data-sup-del]');
+    if (!del) return;
+    const x = suples.find(s => s.id === del.dataset.supDel);
+    if (!x || !confirm(t('sp.removeAsk', '¿Quitar {n}?', { n: x.name }))) return;
+    const { error } = await window.sb.from('athlete_supplements')
+      .delete().eq('id', x.id).select('id');
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    await pintarSuples(nutAthlete);
+  });
+
+  document.getElementById('f-sp').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('sp-msg');
+    const nombre = document.getElementById('sp-name').value.trim();
+    if (!nombre) { msg.textContent = t('sp.errName', 'Falta qué toma.'); msg.hidden = false; return; }
+
+    const fila = {
+      athlete_id: nutAthlete.id,
+      name: nombre,
+      dose: document.getElementById('sp-dose').value.trim() || null,
+      timing: document.getElementById('sp-timing').value || null,
+      notes: document.getElementById('sp-notes').value.trim() || null,
+    };
+    const { error } = editandoSup
+      ? await window.sb.from('athlete_supplements').update(fila).eq('id', editandoSup)
+      : await window.sb.from('athlete_supplements')
+          .insert(Object.assign({ position: suples.length }, fila));
+    if (error) { msg.textContent = error.message; msg.hidden = false; return; }
+
+    document.getElementById('m-sp').hidden = true;
+    editandoSup = null;
+    await pintarSuples(nutAthlete);
+  });
 
   document.getElementById('bw-add').addEventListener('click', () => {
     document.getElementById('bw-date').value = window.prToday();

@@ -1115,6 +1115,31 @@ button.wk-slot:hover { filter: brightness(1.12); }
   text-align: left; cursor: pointer;
 }
 .wb-menu button:hover { background: var(--pr-bg-soft); }
+/* Suplementación. Se lee de arriba abajo como una rutina del día, así que las
+   tres columnas son: qué, cuánto y cuándo. */
+.sp-list { display: grid; gap: 2px; }
+.sp-row {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center;
+  padding: 9px 4px; border-bottom: var(--pr-bw) solid var(--pr-border);
+}
+.sp-row:last-child { border-bottom: 0; }
+.sp-what b { display: block; font: 600 14px/1.3 var(--pr-font-sans); color: var(--pr-fg-strong); }
+.sp-what small { display: block; margin-top: 2px; font: var(--pr-meta); color: var(--pr-fg-faint); }
+.sp-dose {
+  font: 700 12.5px/1 var(--pr-font-cond); color: var(--pr-fg);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.sp-when {
+  font: 700 10px/1 var(--pr-font-cond); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--pr-fg-faint); white-space: nowrap;
+}
+/* En la ficha hay además dos botones por fila. */
+#sp-body .sp-row { grid-template-columns: 1fr auto auto auto auto; }
+@media (max-width: 560px) {
+  .sp-row { grid-template-columns: 1fr auto; }
+  .sp-when { grid-column: 1 / -1; }
+}
+
 /* Los platos guardados, en el selector del menú. */
 .rc-head { display: flex; gap: 12px; align-items: flex-end; margin-bottom: 10px; }
 .rc-serv { width: 110px; flex: none; }

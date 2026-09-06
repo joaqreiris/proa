@@ -138,6 +138,13 @@
       <div id="wk-legend"></div>
     </section>
 
+    <!-- Lo que toma, con la dosis y el momento. Lo indica el entrenador; acá
+         solo se lee. -->
+    <section class="pr-card pr-rise" id="sup-card" style="--i:4" hidden>
+      <h3 data-i18n="sp.title">Suplementación</h3>
+      <div id="sup-list"></div>
+    </section>
+
     <section class="pr-card has-strip pr-rise" id="soon-card" style="--i:1;--pr-strip:var(--pr-ev-gym)" hidden>
       <h3 data-i18n="aw.soon.title">Tu semana llega en breve</h3>
       <p data-i18n="aw.soon.body">Tu entrenador está armando tu planificación. Cuando la publique, la vas a ver acá: gimnasio, campo, comidas y recuperación, día por día.</p>
@@ -359,6 +366,7 @@
     card.hidden = false;
 
     paintToday(events);
+    await pintarSuples(data.id);
 
     if (events.length) {
       W().render({ host: 'wk-rows', dates, slots: slotQ.data || [], events, editable: false });
@@ -369,6 +377,33 @@
     }
 
     if (window.PR_I18N) window.PR_I18N.applyTo(document);
+  }
+
+  // Lo que toma, en el orden del día y no alfabético: se lee como una rutina.
+  const ORDEN_MOMENTO = ['wake', 'breakfast', 'pre_training', 'post_training', 'lunch', 'dinner', 'bed', ''];
+  const CLAVE_MOMENTO = {
+    wake: 'sp.t.wake', breakfast: 'sp.t.breakfast', lunch: 'sp.t.lunch', dinner: 'sp.t.dinner',
+    pre_training: 'sp.t.pre', post_training: 'sp.t.post', bed: 'sp.t.bed', anytime: 'sp.t.anytime',
+  };
+
+  async function pintarSuples(athleteId) {
+    const { data } = await window.sb.from('athlete_supplements')
+      .select('name,dose,timing,notes,position').eq('athlete_id', athleteId).order('position');
+    const list = (data || []).slice().sort((x, y) =>
+      ORDEN_MOMENTO.indexOf(x.timing || '') - ORDEN_MOMENTO.indexOf(y.timing || '') || x.position - y.position);
+    if (!list.length) return;
+
+    document.getElementById('sup-list').innerHTML = `<div class="sp-list">` + list.map(x => `
+      <div class="sp-row">
+        <div class="sp-what">
+          <b>${esc(x.name)}</b>
+          ${x.notes ? `<small>${esc(x.notes)}</small>` : ''}
+        </div>
+        <span class="sp-dose">${esc(x.dose || '')}</span>
+        <span class="sp-when">${esc(x.timing ? t(CLAVE_MOMENTO[x.timing]) : t('sp.t.anytime'))}</span>
+      </div>`).join('') + `</div>`;
+    document.getElementById('sup-card').hidden = false;
+    if (window.PR_I18N) window.PR_I18N.applyTo(document.getElementById('sup-card'));
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
