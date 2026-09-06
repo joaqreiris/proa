@@ -389,15 +389,21 @@
     $('e-colors').innerHTML = auto + fijos + libre;
   }
 
-  function openEvent(ev, date) {
+  function openEvent(ev, date, horaInicio) {
     editingId = ev ? ev.id : null;
     const d = ev ? ev.date : (date || window.prToday());
 
     let sug = null;
     if (!ev) {
-      const dates = W().weekDates(monday);
-      const wd = dates.indexOf(d);
-      if (wd >= 0) sug = W().firstFreeSlot(slots, events, d, wd, 60);
+      if (horaInicio) {
+        // Se pidió a una hora concreta —clic derecho sobre ese punto del día—,
+        // así que no hay nada que sugerir: ya se dijo dónde va.
+        sug = { start: horaInicio, end: W().fromMin(W().toMin(horaInicio) + 60) };
+      } else {
+        const dates = W().weekDates(monday);
+        const wd = dates.indexOf(d);
+        if (wd >= 0) sug = W().firstFreeSlot(slots, events, d, wd, 60);
+      }
     }
 
     $('m-ev-title').textContent = t(ev ? 'wk.edit' : 'wk.new');
@@ -558,6 +564,86 @@
     $('m-share').hidden = false;
   }
 
+  // La hora del día en la que cayó el dedo, dentro de una pista.
+  //
+  // Es la misma cuenta que hace el arrastre, y por el mismo motivo tiene que
+  // saber de qué lado corre el tiempo: en la vista de columnas baja en vez de
+  // ir a la derecha. Se redondea a cuartos de hora porque nadie planifica a las
+  // 18:07 y porque así el resultado no depende de la precisión del dedo.
+  function horaEn(track, x, y) {
+    const r = track.getBoundingClientRect();
+    const cols = document.getElementById('wb-rows').classList.contains('wk-cols');
+    const largo = cols ? r.height : r.width;
+    const desde = cols ? y - r.top : x - r.left;
+    if (!largo) return null;
+    const min = W().H0 * 60 + (desde / largo) * (W().SPAN * 60);
+    const cuarto = Math.round(min / 15) * 15;
+    // Que entre una hora entera dentro del día.
+    return W().fromMin(Math.max(W().H0 * 60, Math.min(cuarto, W().H1 * 60 - 60)));
+  }
+
+  // Copiar un día a otro. Se puede pedir con un día ya elegido —desde el menú
+  // de un hueco— o sin nada, desde la barra.
+  function openCopyDay(desde) {
+    const dates = W().weekDates(monday);
+    const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
+    const withWork = dates.filter(d => events.some(e => e.date === d));
+    if (!withWork.length) { window.prToast(t('wk.copyDayEmpty', 'Esta semana no tiene ningún día cargado.'), 'danger'); return; }
+
+    $('cd-from').innerHTML = withWork.map(d => {
+      const nEv = events.filter(e => e.date === d).length;
+      const label = W().parseYMD(d).toLocaleDateString(lang, { weekday: 'long', day: 'numeric' });
+      return `<option value="${d}">${esc(label)} · ${nEv}</option>`;
+    }).join('');
+    // Si el día del que se pidió no tiene nada, no se puede copiar DESDE ahí:
+    // se deja el primero que sí tenga y se propone ese día como destino.
+    if (desde && withWork.includes(desde)) $('cd-from').value = desde;
+    $('cd-to').value = desde && !withWork.includes(desde) ? desde : W().addDays($('cd-from').value, 2);
+    $('cday-msg').hidden = true;
+    $('m-cday').hidden = false;
+  }
+
+  // ── El menú de un hueco vacío ─────────────────────────────────────────────
+  // Option+clic sobre un día, pero fuera de un bloque: lo que se quiere es
+  // poner algo AHÍ, a esa hora. Abrir el formulario y corregir la hora a mano
+  // es el paso que este menú se saltea.
+  function abrirMenuHueco(track, x, y) {
+    cerrarMenuBloque();
+    const fecha = track.dataset.date;
+    if (!fecha) return;
+    const hora = horaEn(track, x, y);
+
+    const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
+    const dia = W().parseYMD(fecha).toLocaleDateString(lang, { weekday: 'long', day: 'numeric' });
+
+    const m = document.createElement('div');
+    m.className = 'wb-menu';
+    m.innerHTML = `
+      <span class="wb-menu-head">${esc(dia)}${hora ? ' · ' + esc(hora) : ''}</span>
+      <button type="button" data-k="new"><i class="ti ti-plus"></i>${
+        esc(t('wk.newAt', 'Nuevo bloque a las {h}', { h: hora }))}</button>
+      <button type="button" data-k="free"><i class="ti ti-sparkles"></i>${
+        esc(t('wk.newFree', 'Nuevo bloque en el primer hueco'))}</button>
+      <button type="button" data-k="copyday"><i class="ti ti-calendar-plus"></i>${
+        esc(t('wk.copyDay', 'Copiar día'))}</button>`;
+    document.body.appendChild(m);
+
+    const r = m.getBoundingClientRect();
+    const px = Math.min(x, window.innerWidth - r.width - 8);
+    const py = y + r.height > window.innerHeight - 8 ? y - r.height : y;
+    m.style.transform = `translate(${Math.max(8, px)}px, ${Math.max(8, py)}px)`;
+    menuBloque = m;
+
+    m.addEventListener('click', (e2) => {
+      const b = e2.target.closest('[data-k]');
+      if (!b) return;
+      cerrarMenuBloque();
+      if (b.dataset.k === 'new')  openEvent(null, fecha, hora);
+      if (b.dataset.k === 'free') openEvent(null, fecha);
+      if (b.dataset.k === 'copyday') openCopyDay(fecha);
+    });
+  }
+
   // ── El menú corto de un bloque ────────────────────────────────────────────
   // Abrir el formulario entero para duplicar o borrar es mucho trámite. Este
   // menú sale donde está el dedo, con lo que se hace todos los días.
@@ -634,7 +720,16 @@
       const add = e.target.closest('[data-add-date]');
       if (add) { openEvent(null, add.dataset.addDate); return; }
       const ev = e.target.closest('[data-event]');
-      if (!ev) return;
+      if (!ev) {
+        // Fuera de un bloque, sobre el día: el menú del hueco, para poner algo
+        // justo ahí. Sin Option, un clic en el vacío no hace nada, como antes.
+        const track = e.target.closest('.wk-track[data-date]');
+        if (track && (e.altKey || e.ctrlKey)) {
+          e.preventDefault();
+          abrirMenuHueco(track, e.clientX, e.clientY);
+        }
+        return;
+      }
       // Con Option/Alt (o Ctrl), el menú corto en vez del formulario entero:
       // duplicar y borrar no necesitan abrir seis campos.
       if (e.altKey || e.ctrlKey) {
@@ -665,7 +760,11 @@
     // Clic derecho: el mismo menú corto. Es lo que la mano ya sabe hacer.
     $('wb-rows').addEventListener('contextmenu', (e) => {
       const el = e.target.closest('[data-event]');
-      if (!el) return;
+      if (!el) {
+        const track = e.target.closest('.wk-track[data-date]');
+        if (track) { e.preventDefault(); abrirMenuHueco(track, e.clientX, e.clientY); }
+        return;
+      }
       e.preventDefault();
       abrirMenuBloque(events.find(x => x.id === el.dataset.event), e.clientX, e.clientY);
     });
@@ -846,21 +945,7 @@
     });
 
     // ── Copiar un día ──
-    $('wb-copy-day').addEventListener('click', () => {
-      const dates = W().weekDates(monday);
-      const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
-      const withWork = dates.filter(d => events.some(e => e.date === d));
-      if (!withWork.length) { window.prToast(t('wk.copyDayEmpty', 'Esta semana no tiene ningún día cargado.'), 'danger'); return; }
-
-      $('cd-from').innerHTML = withWork.map(d => {
-        const nEv = events.filter(e => e.date === d).length;
-        const label = W().parseYMD(d).toLocaleDateString(lang, { weekday: 'long', day: 'numeric' });
-        return `<option value="${d}">${esc(label)} · ${nEv}</option>`;
-      }).join('');
-      $('cd-to').value = W().addDays(withWork[0], 2);
-      $('cday-msg').hidden = true;
-      $('m-cday').hidden = false;
-    });
+    $('wb-copy-day').addEventListener('click', () => openCopyDay());
 
     $('f-cday').addEventListener('submit', async (e) => {
       e.preventDefault();

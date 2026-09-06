@@ -818,5 +818,7 @@
   "wk.nextWeek": "Semana siguiente",
   "wk.repeatShort": "Repetir",
   "wk.repeatAll": "Toda la semana",
-  "wk.repeatWeekdays": "Lunes a viernes"
+  "wk.repeatWeekdays": "Lunes a viernes",
+  "wk.newAt": "Nuevo bloque a las {h}",
+  "wk.newFree": "Nuevo bloque en el primer hueco"
 }

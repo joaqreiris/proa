@@ -172,6 +172,66 @@ try {
   await page.waitForTimeout(250);
   is('no queda colgado', await page.evaluate(() => !document.querySelector('.wb-menu')), true);
 
+  console.log('\nOPTION+CLIC EN UN HUECO OFRECE PONER ALGO AHÍ');
+  // Lo que se quiere al apretar en un día vacío es poner algo A ESA HORA. Abrir
+  // el formulario y corregir la hora a mano es el paso que este menú saltea.
+  const pista = await page.evaluate(() => {
+    const tr = document.querySelector('.wk-track[data-date="2026-03-05"]');
+    const r = tr.getBoundingClientRect();
+    const cols = document.getElementById('wb-rows').classList.contains('wk-cols');
+    // Un tercio del día: de 06:00 a 24:00 son 18 h, así que 6 h después = 12:00.
+    return {
+      x: cols ? r.left + r.width / 2 : r.left + r.width / 3,
+      y: cols ? r.top + r.height / 3 : r.top + r.height / 2,
+    };
+  });
+  // page.mouse.click NO acepta `modifiers` —solo page.click—, así que el Alt se
+  // mantiene con el teclado. Sin esto el clic va sin modificador y no pasa nada,
+  // que es justamente lo que tiene que pasar sin Option.
+  await page.keyboard.down('Alt');
+  await page.mouse.click(pista.x, pista.y);
+  await page.keyboard.up('Alt');
+  await page.waitForTimeout(350);
+
+  const hueco = await page.evaluate(() => {
+    const m = document.querySelector('.wb-menu');
+    return m ? {
+      abierto: true,
+      cabecera: m.querySelector('.wb-menu-head') ? m.querySelector('.wb-menu-head').textContent.trim() : null,
+      opciones: [...m.querySelectorAll('[data-k]')].map((b) => b.dataset.k),
+      primera: m.querySelector('[data-k="new"]').textContent.trim(),
+    } : { abierto: false };
+  });
+  is('se abre el menú del hueco', hueco.abierto, true);
+  is('con poner algo, el primer hueco libre y copiar el día', hueco.opciones, ['new', 'free', 'copyday']);
+  if (/12:00/.test(hueco.primera)) ok(`ofrece la hora del punto donde se apretó: «${hueco.primera}»`);
+  else no('la hora no salió del punto del clic', hueco.primera);
+  if (/jueves/i.test(hueco.cabecera || '')) ok(`y dice de qué día es: «${hueco.cabecera}»`);
+  else no('la cabecera no dice el día', hueco.cabecera);
+
+  console.log('\nY ABRE EL BLOQUE YA CON ESA HORA');
+  await page.click('.wb-menu [data-k="new"]');
+  await page.waitForTimeout(400);
+  const nuevo = await page.evaluate(() => ({
+    abierto: !document.getElementById('m-ev').hidden,
+    titulo: document.getElementById('m-ev-title').textContent,
+    fecha: document.getElementById('e-date').value,
+    desde: document.getElementById('e-start').value,
+    hasta: document.getElementById('e-end').value,
+  }));
+  is('se abre en modo nuevo', nuevo.titulo, 'Nuevo bloque');
+  is('en el día donde se apretó', nuevo.fecha, '2026-03-05');
+  is('a la hora donde se apretó', nuevo.desde, '12:00');
+  is('y con una hora de duración', nuevo.hasta, '13:00');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+
+  console.log('\nSIN OPTION, UN CLIC EN EL VACÍO NO HACE NADA');
+  await page.mouse.click(pista.x, pista.y);
+  await page.waitForTimeout(300);
+  is('no se abre ningún menú', await page.evaluate(() => !document.querySelector('.wb-menu')), true);
+  is('ni ningún formulario', await page.evaluate(() => document.getElementById('m-ev').hidden), true);
+
   console.log('\nABRIR UN BLOQUE');
   await page.click('#wb-rows .wk-ev[data-event="e-1"]');
   await page.waitForTimeout(300);

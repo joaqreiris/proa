@@ -31,7 +31,9 @@
   const SNAP = 15;                       // minutos
   const W = () => window.prWeek;
   const pad = (n) => String(n).padStart(2, '0');
-  const hhmm = (min) => pad(Math.floor(min / 60)) + ':' + pad(min % 60);
+  // La de prWeek, para que no haya dos funciones con el mismo nombre haciendo
+  // cosas distintas en dos archivos.
+  const hhmm = (min) => W().fromMin(min);
 
   let drag = null, wired = false;
 

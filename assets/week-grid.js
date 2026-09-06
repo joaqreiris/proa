@@ -234,7 +234,15 @@
   }
 
   const toMin = (v) => { const [h, m] = String(v).split(':').map(Number); return h * 60 + (m || 0); };
+  // OJO: hhmm recorta un texto de hora («12:00:00» → «12:00»); fromMin CONVIERTE
+  // minutos desde medianoche. Son cosas distintas y se parecen: hasta ahora
+  // week-drag tenía su propia hhmm que hacía lo segundo, y llamar a la de acá
+  // con minutos devolvía «720» tan campante.
   const hhmm  = (v) => String(v).slice(0, 5);
+  const fromMin = (min) => {
+    const m = Math.max(0, Math.round(Number(min) || 0));
+    return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+  };
 
   function scaleHtml() {
     return `<div class="wk-scale" aria-hidden="true">`
@@ -509,7 +517,7 @@
   }
 
   window.prWeek = {
-    render, freeHours, dayOptions, legendHtml, scaleHtml, toMin, hhmm,
+    render, freeHours, dayOptions, legendHtml, scaleHtml, toMin, hhmm, fromMin,
     H0, H1, SPAN, KIND_COLOR, KIND_KEY, DAY_KEYS,
     EVENT_TYPES, EVENT_COLOR, EVENT_KEY, EVENT_ICON, eventTypeOptions, eventLegendHtml,
     parseYMD, addDays, mondayOf, weekDates, firstFreeSlot,

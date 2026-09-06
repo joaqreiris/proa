@@ -1115,6 +1115,13 @@ button.wk-slot:hover { filter: brightness(1.12); }
   text-align: left; cursor: pointer;
 }
 .wb-menu button:hover { background: var(--pr-bg-soft); }
+/* Qué día y qué hora, para que el menú no salga sin contexto. */
+.wb-menu-head {
+  display: block; padding: 7px 11px 8px; margin-bottom: 2px;
+  border-bottom: var(--pr-bw) solid var(--pr-border);
+  font: 700 10px/1 var(--pr-font-cond); letter-spacing: .14em;
+  text-transform: uppercase; color: var(--pr-fg-faint);
+}
 .wb-menu button i { color: var(--pr-fg-faint); font-size: 16px; }
 .wb-menu button.is-danger { color: var(--pr-danger); }
 .wb-menu button.is-danger i { color: var(--pr-danger); }
