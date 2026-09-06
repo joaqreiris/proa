@@ -276,7 +276,9 @@
     if (!a) { window.location.replace('Week.html'); return; }
     athleteId = a.id;
     if (a.workspaces) {
-      document.getElementById('ws-name').textContent = a.workspaces.name;
+      // El nombre del entrenador, no el del espacio: ver myCoachName.
+      document.getElementById('ws-name').textContent =
+        await window.myCoachName(a.workspaces.name);
       if (window.prBrand) window.prBrand.applyAccent(a.workspaces.accent);
     }
 

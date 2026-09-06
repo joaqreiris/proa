@@ -316,7 +316,9 @@
     const first = (data && data.first_name) || '';
     document.getElementById('hello').textContent = t('aw.hello', 'Hola, ' + first, { name: first });
     if (data && data.workspaces) {
-      document.getElementById('ws-name').textContent = data.workspaces.name;
+      // El nombre del entrenador, no el del espacio: ver myCoachName.
+      document.getElementById('ws-name').textContent =
+        await window.myCoachName(data.workspaces.name);
       if (window.prBrand) window.prBrand.applyAccent(data.workspaces.accent);
     }
 

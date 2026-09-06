@@ -137,6 +137,23 @@
     return { used, limit: ws.seat_limit, left: Math.max(0, ws.seat_limit - used) };
   };
 
+  // El nombre del entrenador, para las pantallas del atleta.
+  //
+  // Arriba de su ficha y de su semana iba el nombre del ESPACIO de trabajo, que
+  // el entrenador suele llamar como el club donde juega su atleta. Quedaba
+  // pareciendo que la ficha era del club, y en Proa no hay institución: hay una
+  // persona entrenando a otra.
+  //
+  // Va por función porque la política de profiles deja ver solo el perfil
+  // propio, y está bien que así sea: esta devuelve el nombre y nada más.
+  window.myCoachName = async function (fallback) {
+    try {
+      const { data, error } = await window.sb.rpc('my_coach_name');
+      if (!error && data) return data;
+    } catch (e) { /* que no se caiga una pantalla por un rótulo */ }
+    return fallback || '';
+  };
+
   // ── Marca del entrenador ──────────────────────────────────────────────────
   // Cada entrenador elige su color de la paleta de brand.js. En workspaces.accent
   // se guarda el IDENTIFICADOR ('blue'), no un código de color: cada acento son

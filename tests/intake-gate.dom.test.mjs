@@ -55,7 +55,8 @@ const FALSO = `
     return new Proxy(propios, { get(o, k) { return (k in o) ? o[k] : (typeof k === 'symbol' ? undefined : () => q); } });
   };
   let q;
-  window.sb = { from: (t) => (q = tabla(t)), rpc: () => Promise.resolve({ data: null, error: null }),
+  window.sb = { from: (t) => (q = tabla(t)),
+    rpc: (n) => Promise.resolve({ data: n === 'my_coach_name' ? 'Joaquín Reiris' : null, error: null }),
     auth: { getUser: () => Promise.resolve({ data: { user: { id: 'u-1' } } }),
             getSession: () => Promise.resolve({ data: { session: { user: { id: 'u-1' } } } }) } };
   window.requireAuth = () => Promise.resolve(true);
@@ -71,8 +72,11 @@ const FALSO = `
 `;
 
 // El guard de verdad, tal como está en el módulo real.
-const GUARD = (await import('node:fs')).readFileSync(join(root, 'assets', 'supabase-init.js'), 'utf8')
+const initSrc = (await import('node:fs')).readFileSync(join(root, 'assets', 'supabase-init.js'), 'utf8');
+const GUARD = initSrc
   .match(/window\.requireAthlete = async function[\s\S]*?\n  };\n\n[\s\S]*?window\.intakeDone = async function[\s\S]*?\n  };/)[0];
+// El helper del nombre del entrenador, tal cual está en el módulo real.
+const COACH = initSrc.match(/window\.myCoachName = async function[\s\S]*?\n  };/)[0];
 
 const server = spawn('python3', ['-m', 'http.server', String(PORT)], { cwd: root, stdio: 'ignore' });
 await (async () => {
@@ -88,13 +92,16 @@ try {
   const page = await browser.newPage({ viewport: { width: 1100, height: 900 }, locale: 'es-ES' });
   await page.addInitScript(() => { try { localStorage.setItem('pr_lang', 'es'); } catch (e) {} });
   await page.route('**/assets/supabase-init.js', (r) =>
-    r.fulfill({ contentType: 'application/javascript', body: FALSO + '\n' + '(function(){' + GUARD + '})();' }));
+    r.fulfill({ contentType: 'application/javascript', body: FALSO + '\n' + '(function(){' + GUARD + '\n' + COACH + '})();' }));
   await page.route('**/assets/vendor/supabase-js-*.js', (r) =>
     r.fulfill({ contentType: 'application/javascript', body: '' }));
 
+  // No se espera «sin tráfico de red»: estas pantallas redirigen desde el
+  // JavaScript y alguna queda pidiendo cosas, con lo que ese estado no llega
+  // nunca. Se espera a que el documento esté y se le da tiempo al guard.
   const irA = async (pagina) => {
-    await page.goto(`http://localhost:${PORT}/athlete/${pagina}`, { waitUntil: 'networkidle' });
-    await page.waitForTimeout(700);
+    await page.goto(`http://localhost:${PORT}/athlete/${pagina}`, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1200);
     return page.url().split('/').pop().split('?')[0];
   };
 
@@ -106,11 +113,17 @@ try {
   // Es el error obvio de este tipo de guard: la pantalla queda parpadeando.
   is('la anamnesis se abre y se queda', await irA('Intake.html'), 'Intake.html');
 
+  console.log('\nARRIBA VA EL ENTRENADOR, NO EL CLUB');
+  // El espacio de trabajo suele llamarse como el club donde juega el atleta, y
+  // entonces su propia ficha parecía del club. En Proa no hay institución.
+  await irA('Intake.html');
+  is('la ficha muestra el nombre del entrenador',
+    (await page.textContent('#ws-name')).trim(), 'Joaquín Reiris');
+
   console.log('\nDESDE LA FICHA SE PUEDE SALIR');
   // Sin esto el atleta queda encerrado: mientras la ficha no esté completa
   // esta es la única pantalla a la que puede llegar.
-  await page.goto(`http://localhost:${PORT}/athlete/Intake.html`, { waitUntil: 'networkidle' });
-  await page.waitForTimeout(500);
+  await irA('Intake.html');
   is('hay botón de salir', await page.isVisible('#logout'), true);
   is('y el de volver a la semana está oculto, porque rebotaría',
     await page.evaluate(() => document.getElementById('ai-back').hidden), true);
