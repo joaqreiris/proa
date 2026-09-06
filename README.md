@@ -109,6 +109,10 @@ Cada acento declara **cuatro** valores (`--a`, `--a-lift`, `--a-on`, `--a-on-lif
 
 **La semana no sabe para dónde corre el tiempo.** El render escribe la posición en variables (`--a` y `--len` sobre el eje del tiempo, `--lane` y `--laneh` al través) y el CSS decide cuál eje es cuál. Al tocar la grilla o el arrastre hay que pensar en «a lo largo del tiempo» y «al través», no en izquierda y arriba, o una de las dos vistas se rompe en silencio.
 
+**El catálogo de alimentos no ofrece lo que un preparador no indicaría.** Proa es una app de salud, y poder elegir algo de una lista es una forma de recomendarlo: por eso quedaron afuera el alcohol, la azúcar suelta y sus vehículos, y los condimentos que son casi solo grasa o azúcar añadida (decisión del 7 de septiembre de 2026, en `20260907130000_remove_junk_foods.sql`, con la lista de lo que se quedó y por qué). Lo que el atleta coma igual se puede anotar a mano con sus calorías, así que el registro no queda ciego — pero cuesta más, que es la intención.
+
+**Suplementos: los que suman calorías van en el catálogo; los que no, en la ficha.** La proteína, la creatina y el gel se cargan como alimentos porque entran en el total del día. El magnesio, el omega 3 y las vitaminas viven en `athlete_supplements`, con dosis y momento: no se pesan en gramos ni aportan calorías, y meterlos como alimentos de cero calorías habría ensuciado la búsqueda de comida.
+
 **Los módulos de ClavaMetrics se traen adaptados, nunca copiados tal cual.** Ya se trajeron el calendario, el editor de sesión, las comidas y la recuperación, y cada uno se adaptó al modelo de espacio de trabajo en el mismo movimiento. Lo que falte traer va igual: adaptándolo al llegar, no después.
 
 ---
