@@ -153,6 +153,65 @@
       };
     },
 
+    // ── Cantidades como se dicen ─────────────────────────────────────────────
+    // Media taza es «1/2», no «0.5». Nadie mide en decimales cuando cocina, y
+    // obligar a traducir mentalmente antes de escribir es fricción en lo que
+    // más se repite: cargar comida.
+    //
+    // Se aceptan las tres formas de escribirlo —1/2, 1 1/2 y ½— porque las tres
+    // son naturales según de dónde venga uno, y el punto decimal sigue andando.
+    FRACTIONS: [
+      [1 / 8, '1/8'], [1 / 4, '1/4'], [1 / 3, '1/3'], [1 / 2, '1/2'],
+      [2 / 3, '2/3'], [3 / 4, '3/4'],
+    ],
+
+    // Los caracteres de fracción que mandan los teclados y los copiar-pegar.
+    UNICODE_FRACTIONS: {
+      '½': 0.5, '⅓': 1 / 3, '⅔': 2 / 3, '¼': 0.25, '¾': 0.75,
+      '⅛': 0.125, '⅜': 0.375, '⅝': 0.625, '⅞': 0.875,
+    },
+
+    parseAmount(txt) {
+      if (txt == null) return null;
+      let s = String(txt).trim().replace(',', '.');
+      if (!s) return null;
+
+      // Un símbolo de fracción, solo o pegado a un entero: «1½».
+      for (const [sym, val] of Object.entries(this.UNICODE_FRACTIONS)) {
+        if (s.includes(sym)) {
+          const entero = Number(s.replace(sym, '').trim() || 0);
+          if (!Number.isFinite(entero)) return null;
+          return round(entero + val, 4);
+        }
+      }
+
+      // «1 1/2» o «1/2».
+      const m = /^(?:(\d+)\s+)?(\d+)\s*\/\s*(\d+)$/.exec(s);
+      if (m) {
+        const den = Number(m[3]);
+        if (!den) return null;
+        return round((Number(m[1] || 0)) + Number(m[2]) / den, 4);
+      }
+
+      const n = Number(s);
+      return Number.isFinite(n) ? n : null;
+    },
+
+    // Y de vuelta: 0.5 se muestra «1/2», porque es lo que la persona escribió y
+    // lo que va a querer leer mañana. Solo si cae razonablemente cerca de una
+    // fracción de cocina; si no, el decimal.
+    formatAmount(n, tol = 0.02) {
+      const v = Number(n);
+      if (!Number.isFinite(v) || v <= 0) return '';
+      const entero = Math.floor(v + 1e-9);
+      const resto = v - entero;
+      if (resto < tol) return String(entero);
+      for (const [val, txt] of this.FRACTIONS) {
+        if (Math.abs(resto - val) <= tol) return entero ? entero + ' ' + txt : txt;
+      }
+      return String(round(v, 2));
+    },
+
     // ── Del gasto al objetivo ────────────────────────────────────────────────
     // Cuánto se corre el objetivo diario respecto del gasto, según a dónde va
     // el atleta. Los rangos son los de uso corriente en la literatura:

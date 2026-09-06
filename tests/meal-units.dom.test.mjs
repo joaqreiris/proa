@@ -36,10 +36,13 @@ const FALSO = `
   const ARROZ = { id: 'f-2', name: 'White rice', name_es: 'Arroz blanco cocido', name_pt: 'Arroz branco',
                   kcal: 130, protein_g: 2.7, carbs_g: 28, fats_g: 0.3, fiber_g: 0.4,
                   unit_name: 'cup', unit_g: 158 };
-  window.__items = [
+  const guardadoLocal = (() => { try { return JSON.parse(localStorage.getItem('t_items') || 'null'); } catch (e) { return null; } })();
+  window.__items = guardadoLocal || [
     { id: 'i-1', event_id: 'e-1', position: 0, food_id: 'f-1', name: 'Huevo entero',
       qty_g: 55, unit_qty: 1, kcal: 78.7, protein_g: 7.2, carbs_g: 0.4, fats_g: 5.5, fiber_g: 0 },
-    { id: 'i-2', event_id: 'e-1', position: 1, food_id: null, name: 'Torta de la abuela',
+    { id: 'i-3', event_id: 'e-1', position: 1, food_id: 'f-2', name: 'Arroz blanco cocido',
+      qty_g: 158, unit_qty: 1, kcal: 205, protein_g: 4.3, carbs_g: 44.2, fats_g: 0.5, fiber_g: 0.6 },
+    { id: 'i-2', event_id: 'e-1', position: 2, food_id: null, name: 'Torta de la abuela',
       qty_g: null, unit_qty: null, qty_text: '1 porción', kcal: 0, protein_g: 0, carbs_g: 0, fats_g: 0, fiber_g: 0 },
   ];
   const tabla = (t) => {
@@ -118,6 +121,41 @@ try {
   is('guarda 110 gramos', u && u.row.qty_g, 110);
   is('y recuerda que eran 2 unidades', u && u.row.unit_qty, 2);
   is('las calorías salen de los gramos', u && Math.round(u.row.kcal), 157);
+
+  console.log('\nMEDIA TAZA SE ESCRIBE «1/2», NO «0.5»');
+  // Nadie mide en decimales cuando cocina. Obligar a traducir mentalmente antes
+  // de escribir es fricción en lo que más se repite: cargar comida.
+  await page.evaluate(() => { window.__guardado = []; });
+  await page.fill('[data-item="i-3"] .ml-qty', '1/2');
+  await page.evaluate(() => document.querySelector('[data-item="i-3"] .ml-qty').blur());
+  await page.waitForTimeout(400);
+  const media = await page.evaluate(() => window.__guardado.filter((g) => g.t === 'meal_items').pop());
+  is('media taza de arroz son 79 gramos', media && media.row.qty_g, 79);
+  is('y se recuerda que era media', media && media.row.unit_qty, 0.5);
+  is('con sus calorías, que salen de los gramos', media && Math.round(media.row.kcal), 103);
+
+  // Y de vuelta: lo guardado se muestra como fracción, no como 0.5.
+  await page.evaluate(() => {
+    const it = window.__items.find((x) => x.id === 'i-3');
+    it.qty_g = 79; it.unit_qty = 0.5;
+    try { localStorage.setItem('t_items', JSON.stringify(window.__items)); } catch (e) {}
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('[data-item="i-3"]', { timeout: 15000 });
+  is('al volver dice 1/2, no 0.5',
+    await page.inputValue('[data-item="i-3"] .ml-qty'), '1/2');
+
+  console.log('\nY LAS OTRAS FORMAS DE ESCRIBIRLO');
+  for (const [escrito, gramos] of [['1 1/2', 237], ['½', 79], ['2', 316], ['0.25', 40]]) {
+    await page.evaluate(() => { window.__guardado = []; });
+    await page.fill('[data-item="i-3"] .ml-qty', escrito);
+    await page.evaluate(() => document.querySelector('[data-item="i-3"] .ml-qty').blur());
+    await page.waitForTimeout(350);
+    const g = await page.evaluate(() => window.__guardado.filter((x) => x.t === 'meal_items').pop());
+    is(`«${escrito}» son ${gramos} g`, g && Math.round(g.row.qty_g), gramos);
+  }
+
+  await page.evaluate(() => { try { localStorage.removeItem('t_items'); } catch (e) {} });
 
   console.log('\nCAMBIAR DE MEDIDA NO CAMBIA LO QUE COME');
   await page.evaluate(() => { window.__guardado = []; });

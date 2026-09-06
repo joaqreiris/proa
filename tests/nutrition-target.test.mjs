@@ -150,5 +150,27 @@ console.log('\nSOLO SE MIRA LO RECIENTE');
 const conViejo = [{ date: '2026-05-01', weight_kg: 90 }].concat(bajando);
 cerca('lo de hace meses no arrastra la tendencia', N.weightTrend(conViejo).kgPerWeek, tr.kgPerWeek, 0.05);
 
+console.log('\nLAS CANTIDADES, COMO SE DICEN');
+// Media taza es «1/2», no «0.5»: nadie mide en decimales cuando cocina.
+for (const [txt, val] of [['1/2', 0.5], ['1 1/2', 1.5], ['½', 0.5], ['1½', 1.5],
+                          ['3/4', 0.75], ['0.5', 0.5], ['1,5', 1.5], ['2', 2]])
+  is(`«${txt}» se entiende como ${val}`, N.parseAmount(txt), val);
+
+is('«2/3» sale con decimales, no redondo', N.parseAmount('2/3'), 0.6667);
+
+console.log('\nY LO QUE NO ES UNA CANTIDAD, NO LO ES');
+for (const txt of ['x', '', '   ', '1/0', 'taza', null])
+  is(`${JSON.stringify(txt)} no es un número`, N.parseAmount(txt), null);
+
+console.log('\nDE VUELTA, TAMBIÉN EN FRACCIONES');
+for (const [n, txt] of [[0.5, '1/2'], [1.5, '1 1/2'], [0.333, '1/3'], [2, '2'],
+                        [0.25, '1/4'], [1.67, '1 2/3'], [3, '3']])
+  is(`${n} se muestra «${txt}»`, N.formatAmount(n), txt);
+
+// Lo que no cae cerca de una fracción de cocina se queda en decimal: inventar
+// «7/10» sería peor que mostrar 0.7.
+is('0.7 no se fuerza a una fracción rara', N.formatAmount(0.7), '0.7');
+is('el ida y vuelta no pierde nada', N.parseAmount(N.formatAmount(1.5)), 1.5);
+
 console.log(`\nRESULTADO: ${pass} bien, ${fail} mal`);
 process.exit(fail ? 1 : 0);

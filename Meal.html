@@ -213,8 +213,10 @@
         // escrito a mano no tiene tabla de la que sacar nada, así que sus
         // macros se escriben.
         const aMano = !it.food_id;
+        // Media taza se muestra «1/2», que es como se dijo y como se va a leer
+        // mañana. Los gramos van en decimal: nadie pide media unidad de gramo.
         const cantidad = aMano ? (it.qty_text || '')
-                       : porUnidad ? r1(it.unit_qty)
+                       : porUnidad ? window.prNutri.formatAmount(it.unit_qty)
                        : (it.qty_g == null ? '' : r1(it.qty_g));
 
         const medida = aMano
@@ -249,7 +251,8 @@
           </div>
           <div class="ml-amount${aMano ? ' is-free' : ''}">
             <input class="ml-qty" data-f="qty" value="${esc(String(cantidad))}"
-                   inputmode="${aMano ? 'text' : 'decimal'}" placeholder="${aMano ? esc(t('ml.qtyPh', '1 taza')) : ''}">
+                   inputmode="${aMano || porUnidad ? 'text' : 'decimal'}"
+                   placeholder="${aMano ? esc(t('ml.qtyPh', '1 taza')) : porUnidad ? '1 1/2' : ''}">
             ${medida}
           </div>
           ${macro('kcal', it.kcal, true)}
@@ -344,8 +347,10 @@
     }
 
     // ── Alimento del catálogo ─────────────────────────────────────────────
-    const v = Number(e.target.value);
-    if (!Number.isFinite(v) || v < 0) { window.prToast(t('se.numberOnly', 'Ahí va un número.'), 'danger'); return; }
+    // parseAmount y no Number: acepta «1/2», «1 1/2» y «½» además del decimal,
+    // que es como se dice media taza fuera de una planilla.
+    const v = window.prNutri.parseAmount(e.target.value);
+    if (v == null || v < 0) { window.prToast(t('se.numberOnly', 'Ahí va un número.'), 'danger'); return; }
 
     // La medida elegida dice cómo leer ese número. Los macros salen SIEMPRE de
     // los gramos: la unidad es la forma de decirlo, no otra cuenta.
