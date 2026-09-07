@@ -51,6 +51,10 @@ const FALSO = `
       qty_g: 55, unit_qty: 1, kcal: 78.7, protein_g: 7.2, carbs_g: 0.4, fats_g: 5.5, fiber_g: 0 },
     { id: 'i-3', event_id: 'e-1', position: 1, food_id: 'f-2', name: 'Arroz blanco cocido',
       qty_g: 158, unit_qty: 1, kcal: 205, protein_g: 4.3, carbs_g: 44.2, fats_g: 0.5, fiber_g: 0.6 },
+    { id: 'i-4', event_id: 'e-1', position: 3, food_id: 'f-3', name: 'Café',
+      qty_g: 240, unit_qty: 1, kcal: 2, protein_g: 0.2, carbs_g: 0, fats_g: 0, fiber_g: 0 },
+    { id: 'i-5', event_id: 'e-1', position: 4, food_id: 'f-4', name: 'Creatina',
+      qty_g: 5, unit_qty: null, kcal: 0, protein_g: 0, carbs_g: 0, fats_g: 0, fiber_g: 0 },
     { id: 'i-2', event_id: 'e-1', position: 2, food_id: null, name: 'Torta de la abuela',
       qty_g: null, unit_qty: null, qty_text: '1 porción', kcal: 0, protein_g: 0, carbs_g: 0, fats_g: 0, fiber_g: 0 },
   ];
@@ -150,6 +154,54 @@ try {
   is('y recuerda que eran 2 unidades', u && u.row.unit_qty, 2);
   is('las calorías salen de los gramos', u && Math.round(u.row.kcal), 157);
 
+  console.log('\nLA COMIDA CARGADA TAMBIÉN SE LEE POR TIPOS');
+  // Un café y una creatina no son «lo que comió»: son lo que tomó.
+  const enOrden = await page.evaluate(() => {
+    const out = [];
+    for (const el of document.querySelectorAll('#rows > *')) {
+      if (el.classList.contains('ml-group')) out.push({ grupo: el.textContent.trim() });
+      else if (el.dataset.item) out.push({ item: el.querySelector('.ml-name').childNodes[0].textContent.trim() });
+    }
+    return out;
+  });
+  const soloGrupos = enOrden.filter((x) => x.grupo).map((x) => x.grupo);
+  is('aparecen los tres encabezados, en orden', soloGrupos, ['Comida', 'Bebidas', 'Suplementos']);
+
+  // Y lo que importa: que cada uno esté bajo el suyo.
+  const bajo = (g) => {
+    const i = enOrden.findIndex((x) => x.grupo === g);
+    const out = [];
+    for (let n = i + 1; n < enOrden.length && !enOrden[n].grupo; n++) out.push(enOrden[n].item);
+    return out;
+  };
+  is('el café va en bebidas', bajo('Bebidas'), ['Café']);
+  is('la creatina en suplementos', bajo('Suplementos'), ['Creatina']);
+  is('y lo demás es comida, incluido lo escrito a mano',
+    bajo('Comida').sort(), ['Arroz blanco cocido', 'Huevo entero', 'Torta de la abuela']);
+
+  console.log('\nPERO EN UN ALMUERZO DE PURA COMIDA NO SOBRAN ETIQUETAS');
+  // «COMIDA» encima de una lista que es toda comida no dice nada.
+  // Por localStorage, que es lo único que sobrevive a la recarga: el doble se
+  // reinicia con cada carga de página.
+  await page.evaluate(() => {
+    const sinBebidas = window.__items.filter((i) => !['i-4', 'i-5'].includes(i.id));
+    try { localStorage.setItem('t_items', JSON.stringify(sinBebidas)); } catch (e) {}
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#rows [data-item]', { timeout: 15000 });
+  await page.waitForTimeout(400);
+  const sinCafe = await page.evaluate(() => ({
+    grupos: document.querySelectorAll('#rows .ml-group').length,
+    filas: document.querySelectorAll('#rows [data-item]').length,
+  }));
+  is('sin encabezados', sinCafe.grupos, 0);
+  if (sinCafe.filas >= 2) ok(`y las filas siguen ahí (${sinCafe.filas})`);
+  else no('se perdieron filas', sinCafe);
+  await page.evaluate(() => { try { localStorage.removeItem('t_items'); } catch (e) {} });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#rows [data-item]', { timeout: 15000 });
+  await page.waitForTimeout(300);
+
   console.log('\nCOMIDA, BEBIDA Y SUPLEMENTO, CADA UNO EN LO SUYO');
   // Al armar un desayuno nadie está pensando en la creatina.
   await page.click('#add');
@@ -205,7 +257,9 @@ try {
   const receta = guardadoPlato.find((g) => g.t === 'recipes');
   const ingredientes = guardadoPlato.find((g) => g.t === 'recipe_items');
   is('se guarda el plato con su nombre', receta && receta.row.name, 'Boloñesa');
-  is('con los ingredientes que tenían alimento y cantidad', (ingredientes && ingredientes.row.length) || 0, 2);
+  // Los cuatro del catálogo: huevo, arroz, café y creatina. Lo que se guarda es
+  // lo que estaba cargado, tal cual.
+  is('con los ingredientes que tenían alimento y cantidad', (ingredientes && ingredientes.row.length) || 0, 4);
   // El escrito a mano no entra: sin alimento del catálogo no se puede reusar.
   is('y no el escrito a mano',
     (ingredientes && ingredientes.row.some((i) => i.name === 'Torta de la abuela')) || false, false);
@@ -222,7 +276,7 @@ try {
   await page.waitForTimeout(500);
   const metido = await page.evaluate(() => window.__guardado.filter((g) => g.t === 'meal_items'));
   const filas = metido[0] && metido[0].row;
-  is('entran sus ingredientes de una', (filas && filas.length) || 0, 2);
+  is('entran sus ingredientes de una', (filas && filas.length) || 0, 4);
   // El huevo estaba en 55 g: media receta son 27.5.
   const medioHuevo = filas && filas.find((f) => f.name === 'Huevo entero');
   is('con las cantidades a la mitad', medioHuevo && medioHuevo.qty_g, 27.5);

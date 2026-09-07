@@ -241,7 +241,27 @@
         <h3>${esc(t('ml.empty.title'))}</h3>
         <p>${esc(t('ml.empty.body'))}</p></section>`;
     } else {
-      host.innerHTML = items.map(it => {
+      // Comida, bebida y suplemento se leen aparte, igual que en el selector: un
+      // café y una creatina no son «lo que comió», son lo que tomó.
+      //
+      // El orden DENTRO de cada grupo sigue siendo el manual: primero el plato,
+      // después la fruta. Arrastrar reordena dentro del grupo; entre grupos no
+      // tiene sentido y por eso al repintar cada uno vuelve al suyo.
+      const grupoDe = (it) => {
+        const f = foods.find(x => x.id === it.food_id);
+        if (!f) return 'food';                      // escrito a mano: es comida
+        return f.food_group === 'drink' ? 'drink'
+             : f.food_group === 'supp' ? 'supp' : 'food';
+      };
+      const ORDEN = ['food', 'drink', 'supp'];
+      const ordenados = items.slice().sort((a, b) =>
+        ORDEN.indexOf(grupoDe(a)) - ORDEN.indexOf(grupoDe(b)) || a.position - b.position);
+      // El encabezado solo aparece si hay de más de un tipo: en un almuerzo de
+      // pura comida, «COMIDA» es una etiqueta que no dice nada.
+      const conGrupos = new Set(ordenados.map(grupoDe)).size > 1;
+      let grupoActual = null;
+
+      host.innerHTML = ordenados.map(it => {
         const food = foods.find(f => f.id === it.food_id);
         const porUnidad = it.unit_qty != null;
         // El alimento del catálogo se carga en gramos o en su unidad; el
@@ -277,7 +297,13 @@
 
         const noCuenta = aMano && !Number(it.kcal);
 
-        return `
+        // El encabezado del grupo, cuando cambia.
+        const g = grupoDe(it);
+        const cabecera = conGrupos && g !== grupoActual
+          ? `<div class="ml-group">${esc(t('fg.' + g))}</div>` : '';
+        grupoActual = g;
+
+        return cabecera + `
         <div class="ml-row${noCuenta ? ' is-empty' : ''}" data-item="${it.id}">
           <div class="ml-name" data-grip tabindex="0" role="button"
                aria-label="${esc(t('ml.drag', 'Arrastra para reordenar'))}" title="${esc(t('ml.drag', 'Arrastra para reordenar'))}">${esc(it.name)}
