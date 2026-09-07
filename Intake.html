@@ -90,20 +90,9 @@
     </div>
     <form id="f-slot">
       <div class="pr-modal-body">
-        <div class="pr-modal-grid">
-          <div class="pr-field">
-            <label class="pr-label" for="s-day" data-i18n="in.slot.day">Día</label>
-            <select class="pr-select" id="s-day"></select>
-          </div>
-          <div class="pr-field">
-            <label class="pr-label" for="s-kind" data-i18n="in.slot.kind">Tipo</label>
-            <select class="pr-select" id="s-kind">
-              <option value="commitment"    data-i18n="in.k.commitment">Estudio o trabajo</option>
-              <option value="team_training" data-i18n="in.k.team">Con su club</option>
-              <option value="match"         data-i18n="in.k.match">Partido</option>
-              <option value="unavailable"   data-i18n="in.k.unavailable">No disponible</option>
-            </select>
-          </div>
+        <div class="pr-field">
+          <span class="pr-label" data-i18n="in.slot.days">Días</span>
+          <div id="s-days"></div>
         </div>
         <div class="pr-modal-grid">
           <div class="pr-field">
@@ -115,9 +104,20 @@
             <input class="pr-input" id="s-end" type="time" value="13:00" required>
           </div>
         </div>
-        <div class="pr-field">
-          <label class="pr-label" for="s-label" data-i18n="in.slot.label">Etiqueta</label>
-          <input class="pr-input" id="s-label" maxlength="40" data-i18n-ph="in.slot.labelPh" placeholder="Facultad, trabajo, entrenamiento…">
+        <div class="pr-modal-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="s-kind" data-i18n="in.slot.kind">Tipo</label>
+            <select class="pr-select" id="s-kind">
+              <option value="commitment"    data-i18n="in.k.commitment">Estudio o trabajo</option>
+              <option value="team_training" data-i18n="in.k.team">Con su club</option>
+              <option value="match"         data-i18n="in.k.match">Partido</option>
+              <option value="unavailable"   data-i18n="in.k.unavailable">No disponible</option>
+            </select>
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="s-label" data-i18n="in.slot.label">Etiqueta</label>
+            <input class="pr-input" id="s-label" maxlength="40" data-i18n-ph="in.slot.labelPh" placeholder="Facultad, trabajo, entrenamiento…">
+          </div>
         </div>
         <p id="slot-msg" role="alert" hidden style="margin:0;color:var(--pr-danger);font:600 13px/1.45 var(--pr-font-sans)"></p>
       </div>
@@ -158,7 +158,7 @@
   document.getElementById('wk-rows').addEventListener('click', async (e) => {
     const add = e.target.closest('[data-add]');
     if (add) {
-      document.getElementById('s-day').value = add.dataset.add;
+      window.prWeek.dayPickSet('s-days', [Number(add.dataset.add)]);
       document.getElementById('slot-msg').hidden = true;
       document.getElementById('m-slot').hidden = false;
       document.getElementById('s-start').focus();
@@ -176,22 +176,26 @@
     e.preventDefault();
     const msg = document.getElementById('slot-msg');
     msg.hidden = true;
+    const days  = window.prWeek.dayPickValue('s-days');
     const start = document.getElementById('s-start').value;
     const end   = document.getElementById('s-end').value;
+    if (!days.length) { msg.textContent = t('in.slot.errDays', 'Marca al menos un día.'); msg.hidden = false; return; }
     if (!start || !end) { msg.textContent = t('in.slot.errTimes', 'Pon las dos horas.'); msg.hidden = false; return; }
     if (window.prWeek.toMin(end) <= window.prWeek.toMin(start)) {
       msg.textContent = t('in.slot.errOrder', 'La hora de fin tiene que ser posterior a la de inicio.'); msg.hidden = false; return;
     }
-    const { error } = await window.sb.from('availability_slots').insert({
-      athlete_id: athleteId,
-      weekday:    Number(document.getElementById('s-day').value),
-      start_time: start, end_time: end,
-      kind:       document.getElementById('s-kind').value,
-      label:      document.getElementById('s-label').value.trim() || null
-    });
+    // Una fila por día marcado: lo que se escribió una vez vale para los cinco.
+    const kind  = document.getElementById('s-kind').value;
+    const label = document.getElementById('s-label').value.trim() || null;
+    const { error } = await window.sb.from('availability_slots').insert(
+      days.map(d => ({ athlete_id: athleteId, weekday: d, start_time: start, end_time: end, kind, label }))
+    );
     if (error) { msg.textContent = error.message; msg.hidden = false; return; }
     document.getElementById('m-slot').hidden = true;
     document.getElementById('s-label').value = '';
+    if (days.length > 1) {
+      window.prToast(t('in.slot.added', days.length + ' franjas añadidas.', { count: days.length }), 'success');
+    }
     await loadSlots();
   });
 
@@ -234,7 +238,7 @@
     window.prIntake.render('form-host', 'coach');
     document.getElementById('wk-scale').outerHTML = window.prWeek.scaleHtml();
     document.getElementById('wk-legend').outerHTML = window.prWeek.legendHtml();
-    document.getElementById('s-day').innerHTML = window.prWeek.dayOptions();
+    document.getElementById('s-days').innerHTML = window.prWeek.dayPickHtml();
 
     const { data: ath } = await window.sb.from('athletes')
       .select('first_name,last_name,athlete_accounts(user_id)').eq('id', athleteId).maybeSingle();

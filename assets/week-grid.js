@@ -517,8 +517,55 @@
     });
   }
 
-  function dayOptions() {
-    return DAY_KEYS.map((k, i) => `<option value="${i}">${esc(t(k, FALLBACK[i]))}</option>`).join('');
+  // ── Los días de una franja ────────────────────────────────────────────────
+  // Se marcan VARIOS, no uno. Una franja fija casi nunca es de un solo día: la
+  // facultad es de lunes a viernes y el club, martes y jueves. Con un
+  // desplegable de un día había que dar cinco vueltas al mismo modal para
+  // escribir cinco veces lo mismo, y esta grilla la llena el atleta desde el
+  // teléfono — cada vuelta de más es gente que la deja por la mitad.
+  function dayPickHtml(selected) {
+    const on = daySet(selected);
+    return `<div class="pr-daypick" role="group">` + DAY_KEYS.map((k, i) =>
+      `<button type="button" class="pr-daypick-d${on.has(i) ? ' is-on' : ''}" data-day="${i}"`
+      + ` aria-pressed="${on.has(i) ? 'true' : 'false'}"><span data-i18n="${k}">${esc(t(k, FALLBACK[i]))}</span></button>`
+    ).join('') + `</div>`;
+  }
+
+  function daySet(v) {
+    if (v == null) return new Set();
+    return new Set((Array.isArray(v) ? v : [v]).map(Number).filter(n => n >= 0 && n <= 6));
+  }
+
+  const dayPickHost = (host) => (typeof host === 'string') ? document.getElementById(host) : host;
+
+  function dayPickValue(host) {
+    const el = dayPickHost(host);
+    if (!el) return [];
+    return Array.from(el.querySelectorAll('[data-day].is-on'))
+      .map(b => Number(b.dataset.day)).sort((a, b) => a - b);
+  }
+
+  function dayPickSet(host, days) {
+    const el = dayPickHost(host);
+    if (!el) return;
+    const on = daySet(days);
+    el.querySelectorAll('[data-day]').forEach(b => {
+      const marcado = on.has(Number(b.dataset.day));
+      b.classList.toggle('is-on', marcado);
+      b.setAttribute('aria-pressed', marcado ? 'true' : 'false');
+    });
+  }
+
+  // Un solo oyente, igual que el de la orientación: los chips los dibuja quien
+  // los necesite y no tiene que cablear nada.
+  if (typeof document !== 'undefined') {
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest('.pr-daypick [data-day]');
+      if (!b) return;
+      e.preventDefault();
+      const on = b.classList.toggle('is-on');
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
   }
 
   function legendHtml() {
@@ -528,7 +575,7 @@
   }
 
   window.prWeek = {
-    render, freeHours, dayOptions, legendHtml, scaleHtml, toMin, hhmm, fromMin,
+    render, freeHours, dayPickHtml, dayPickValue, dayPickSet, legendHtml, scaleHtml, toMin, hhmm, fromMin,
     H0, H1, SPAN, KIND_COLOR, KIND_KEY, DAY_KEYS,
     EVENT_TYPES, EVENT_COLOR, EVENT_KEY, EVENT_ICON, eventTypeOptions, eventLegendHtml,
     parseYMD, addDays, mondayOf, weekDates, firstFreeSlot,

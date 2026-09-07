@@ -39,6 +39,7 @@
         <span class="wb-flip" id="wb-flip"></span>
       </div>
       <span class="pr-grow"></span>
+      <button class="pr-btn is-sm is-secondary" id="wb-fixed"><i class="ti ti-repeat"></i><span data-i18n="wk.fixed">Semana tipo</span></button>
       <button class="pr-btn is-sm is-secondary" id="wb-copy-day"><i class="ti ti-calendar-plus"></i><span data-i18n="wk.copyDay">Copiar día</span></button>
       <button class="pr-btn is-sm is-secondary" id="wb-copy"><i class="ti ti-copy"></i><span data-i18n="wk.copy">Copiar semana</span></button>
       <button class="pr-btn is-sm is-primary" id="wb-new"><i class="ti ti-plus"></i><span data-i18n="wk.new">Nuevo bloque</span></button>
@@ -262,6 +263,27 @@
       </div>
     </div>
 
+    <div class="pr-modal-backdrop" id="m-fixed" hidden>
+      <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-fixed-title">
+        <div class="pr-modal-head">
+          <h2 id="m-fixed-title" data-i18n="wk.fixedTitle">Guardar como semana tipo</h2>
+          <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar" data-i18n-attr="aria-label:common.close"><i class="ti ti-x"></i></button>
+        </div>
+        <form id="f-fixed">
+          <div class="pr-modal-body">
+            <p class="pr-hint" data-i18n="wk.fixedHint">Lo que se repite todas las semanas pasa a su ficha y queda de fondo en todas: no hay que volver a cargarlo. El gimnasio, el campo y la recuperación no entran — eso lo planificas tú cada semana.</p>
+            <div class="wb-fixed-list" id="fx-list"></div>
+            <p class="pr-hint" id="fx-had" hidden></p>
+            <p id="fixed-msg" role="alert" hidden style="margin:0;color:var(--pr-danger);font:600 13px/1.45 var(--pr-font-sans)"></p>
+          </div>
+          <div class="pr-modal-foot">
+            <button class="pr-btn is-ghost" type="button" data-close data-i18n="common.cancel">Cancelar</button>
+            <button class="pr-btn is-primary" type="submit"><i class="ti ti-repeat"></i><span data-i18n="wk.fixedDo">Guardar como fijo</span></button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <div class="pr-modal-backdrop" id="m-copy" hidden>
       <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-copy-title">
         <div class="pr-modal-head">
@@ -292,7 +314,7 @@
   // ── Estado ───────────────────────────────────────────────────────────────
   let athlete = null, athletes = [], monday = null;
   let slots = [], events = [], editingId = null;
-  let recEvent = null, recItems = [], shareEvent = null;
+  let recEvent = null, recItems = [], shareEvent = null, fixedCand = [];
   let mounted = false;
 
   const $ = (id) => document.getElementById(id);
@@ -686,6 +708,87 @@
     $('cd-to').value = desde && !withWork.includes(desde) ? desde : W().addDays($('cd-from').value, 2);
     $('cday-msg').hidden = true;
     $('m-cday').hidden = false;
+  }
+
+  // ── De la semana a la semana tipo ─────────────────────────────────────────
+  // Lo fijo del atleta vive en availability_slots: es de día de la semana, no
+  // de fecha, y por eso pinta el fondo de TODAS las semanas y es lo que sabe
+  // dónde queda hueco. La anamnesis es su puerta de entrada.
+  //
+  // Pero el trabajo empieza al revés más veces de las que uno cree: el
+  // entrenador arma la primera semana a mano y ahí adentro ya escribió la
+  // facultad y el entrenamiento con el club. Esto los sube a la ficha en vez de
+  // pedírselos de nuevo — lo que hizo esta semana pasa a valer para todas.
+  //
+  // Solo los tipos que de verdad se repiten. El gimnasio, el campo y la
+  // recuperación los pone él cada semana: como franja fija se estarían
+  // tapando a sí mismos. Y el partido es de un sábado concreto — de fondo
+  // ocuparía todos los sábados del año, que es justo lo contrario de lo que
+  // se quiere ver.
+  const FIJOS = { team_training: 'team_training', other: 'commitment' };
+
+  function candidatosFijos() {
+    const dates = W().weekDates(monday);
+    const clave = (c) => `${c.weekday}|${c.kind}|${c.start_time}|${c.end_time}`;
+    const yaEsta = new Set(slots.map(s => clave({
+      weekday: s.weekday, kind: s.kind,
+      start_time: W().hhmm(s.start_time), end_time: W().hhmm(s.end_time)
+    })));
+
+    const vistos = new Set();
+    const nuevos = [];
+    let repetidos = 0;
+
+    events
+      .filter(e => FIJOS[e.type] && e.start_time && e.end_time)
+      .map(e => ({
+        weekday:    dates.indexOf(e.date),
+        kind:       FIJOS[e.type],
+        start_time: W().hhmm(e.start_time),
+        end_time:   W().hhmm(e.end_time),
+        label:      e.title || null
+      }))
+      .filter(c => c.weekday >= 0)
+      .sort((a, b) => a.weekday - b.weekday || W().toMin(a.start_time) - W().toMin(b.start_time))
+      .forEach(c => {
+        const k = clave(c);
+        // Dos martes iguales en la misma semana son una sola franja fija.
+        if (vistos.has(k)) return;
+        vistos.add(k);
+        if (yaEsta.has(k)) { repetidos++; return; }
+        nuevos.push(c);
+      });
+
+    return { nuevos, repetidos };
+  }
+
+  function abrirSemanaTipo() {
+    const { nuevos, repetidos } = candidatosFijos();
+    if (!nuevos.length) {
+      window.prToast(repetidos
+        ? t('wk.fixedAll', 'Todo lo fijo de esta semana ya está en su semana tipo.')
+        : t('wk.fixedNone', 'Esta semana no tiene nada fijo que subir.'), 'danger');
+      return;
+    }
+    fixedCand = nuevos;
+
+    $('fx-list').innerHTML = nuevos.map((c, i) => {
+      const dia    = t(W().DAY_KEYS[c.weekday], '');
+      const nombre = c.label || t(W().KIND_KEY[c.kind], '');
+      return `<label class="wb-fixed-it">
+        <input type="checkbox" checked data-fx="${i}">
+        <i style="background:${W().KIND_COLOR[c.kind]}"></i>
+        <b>${esc(dia)}</b>
+        <span class="wb-fixed-h">${esc(c.start_time)}–${esc(c.end_time)}</span>
+        <span class="pr-grow">${esc(nombre)}</span>
+      </label>`;
+    }).join('');
+
+    const had = $('fx-had');
+    had.textContent = repetidos ? t('wk.fixedHad', repetidos + ' ya estaban.', { count: repetidos }) : '';
+    had.hidden = !repetidos;
+    $('fixed-msg').hidden = true;
+    $('m-fixed').hidden = false;
   }
 
   // ── El menú de un hueco vacío ─────────────────────────────────────────────
@@ -1135,6 +1238,36 @@
       }
       $('m-rep').hidden = true;
       if (n) window.prToast(t('wk.repeated', n + ' copias creadas.', { n }), 'success');
+      await loadWeek();
+    });
+
+    // ── La semana tipo ──
+    $('wb-fixed').addEventListener('click', () => abrirSemanaTipo());
+
+    $('f-fixed').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = $('fixed-msg');
+      msg.hidden = true;
+      const elegidos = Array.from($('fx-list').querySelectorAll('[data-fx]:checked'))
+        .map(i => fixedCand[Number(i.dataset.fx)]).filter(Boolean);
+      if (!elegidos.length) {
+        msg.textContent = t('wk.fixedPick', 'Marca al menos una franja.'); msg.hidden = false; return;
+      }
+
+      const { error } = await window.sb.from('availability_slots').insert(
+        elegidos.map(c => ({
+          athlete_id: athlete.id, weekday: c.weekday,
+          start_time: c.start_time, end_time: c.end_time,
+          kind: c.kind, label: c.label
+        }))
+      );
+      if (error) { msg.textContent = error.message; msg.hidden = false; return; }
+
+      $('m-fixed').hidden = true;
+      window.prToast(t('wk.fixedSaved', elegidos.length + ' franjas fijas guardadas.',
+        { count: elegidos.length }), 'success');
+      // Se recarga la semana entera: las franjas nuevas son el fondo, y el
+      // resumen de horas libres se calcula con ellas.
       await loadWeek();
     });
 
