@@ -96,6 +96,11 @@
   let ev = null, onSaved = null, did = null, rpe = null, ready = false;
   const $ = (id) => document.getElementById(id);
 
+  // Un plato no se hace «duro» ni dura cuarenta minutos. Preguntarle a alguien
+  // el esfuerzo percibido de un almuerzo no es solo raro: ensucia la carga, que
+  // se calcula con minutos por RPE y estaría sumando comidas.
+  const esComida = () => !!ev && ev.type === 'meal';
+
   function build() {
     if (ready) return;
     document.body.insertAdjacentHTML('beforeend', HTML);
@@ -136,8 +141,9 @@
   function paintDid() {
     document.querySelectorAll('#m-log [data-did]').forEach(b =>
       b.classList.toggle('is-on', b.dataset.did === did));
-    // Si no lo hizo, preguntarle cuánto le costó no tiene sentido.
-    $('log-detail').hidden = did !== 'done';
+    // Si no lo hizo, preguntarle cuánto le costó no tiene sentido. Y en una
+    // comida no tiene sentido nunca.
+    $('log-detail').hidden = did !== 'done' || esComida();
     paintAu();
   }
 
@@ -174,8 +180,8 @@
       : {
           p_event: ev.id,
           p_status: did,
-          p_rpe: did === 'done' && rpe ? rpe : null,
-          p_min: did === 'done' && Number.isFinite(min) && min > 0 ? Math.round(min) : null,
+          p_rpe: did === 'done' && !esComida() && rpe ? rpe : null,
+          p_min: did === 'done' && !esComida() && Number.isFinite(min) && min > 0 ? Math.round(min) : null,
           p_note: $('log-note').value.trim() || null
         };
 
@@ -192,6 +198,15 @@
     ev = e; onSaved = cb;
     did = e.status === 'done' || e.status === 'skipped' ? e.status : null;
     rpe = e.rpe || null;
+
+    // «Lo hice» sobre un almuerzo se lee mal: lo que se hizo con la comida es
+    // comerla. Es el mismo parte con otras palabras, no otro formulario.
+    const comida = e.type === 'meal';
+    $('m-log-title').setAttribute('data-i18n', comida ? 'log.titleMeal' : 'log.title');
+    $('m-log').querySelector('[data-did="done"] span')
+      .setAttribute('data-i18n', comida ? 'log.ate' : 'log.did');
+    $('m-log').querySelector('[data-did="skipped"] span')
+      .setAttribute('data-i18n', comida ? 'log.didntEat' : 'log.didnt');
 
     const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
     const name = e.title || t(W().EVENT_KEY[e.type] || 'ev.other', '');

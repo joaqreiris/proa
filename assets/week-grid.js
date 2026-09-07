@@ -343,6 +343,10 @@
     const slots    = opts.slots || [];
     const events   = opts.events || [];
     const editable = !!opts.editable;
+    // El atleta abre sus bloques pero no crea ninguno: su semana la escribe el
+    // entrenador. Sin esto la única forma de que un bloque fuera tocable era
+    // `editable`, que además le habría puesto un «+» en cada día.
+    const openable = editable || !!opts.openable;
     const today    = window.prToday();
     const lang     = (window.PR_I18N && window.PR_I18N.current) || 'es';
 
@@ -377,8 +381,8 @@
       // 70% del espacio, para que del primero siempre quede algo a la vista.
       const paso = laneCount > 1 ? Math.min(16, (topH * 0.7) / (laneCount - 1)) : 0;
 
-      const tag   = editable ? 'button' : 'span';
-      const attrs = (e) => editable ? ` type="button" data-event="${e.id}"` : '';
+      const tag   = openable ? 'button' : 'span';
+      const attrs = (e) => openable ? ` type="button" data-event="${e.id}"` : '';
 
       const evs = timed.map(e => {
         const a   = ((e._a - H0 * 60) / (SPAN * 60)) * 100;

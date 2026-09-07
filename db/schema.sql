@@ -203,6 +203,16 @@ returns setof uuid language sql security definer stable set search_path = public
   select athlete_id from public.athlete_accounts where user_id = auth.uid();
 $$;
 
+-- Los espacios donde el que mira tiene ficha de atleta. SECURITY DEFINER por lo
+-- de siempre: consultar `athletes` desde una policy encadena las policies de
+-- `athletes` adentro, y eso no hace falta pagarlo por fila.
+create or replace function public.my_athlete_workspaces()
+returns setof uuid language sql security definer stable set search_path = public as $$
+  select distinct a.workspace_id
+    from public.athletes a
+   where a.id in (select public.my_athlete_ids());
+$$;
+
 -- =============================================================================
 -- 5. Reglas de acceso (RLS)
 -- =============================================================================
@@ -1698,9 +1708,18 @@ alter table public.foods             enable row level security;
 alter table public.meal_items        enable row level security;
 alter table public.nutrition_targets enable row level security;
 
+-- El catálogo global lo ve cualquiera; el propio de un espacio, su equipo Y
+-- sus atletas: sin la segunda puerta, un alimento creado por el entrenador le
+-- llega al atleta sin la unidad con la que se lo cargaron («2» en vez de «2
+-- huevos»). Los macros no dependen de esto —viven en meal_items—, que es por
+-- lo que la falta pasó desapercibida.
 drop policy if exists foods_select on public.foods;
 create policy foods_select on public.foods
-  for select using (workspace_id is null or public.is_workspace_member(workspace_id));
+  for select using (
+    workspace_id is null
+    or public.is_workspace_member(workspace_id)
+    or workspace_id in (select public.my_athlete_workspaces())
+  );
 
 drop policy if exists foods_write on public.foods;
 create policy foods_write on public.foods

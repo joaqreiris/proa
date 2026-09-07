@@ -212,21 +212,36 @@
     }).join('');
   }
 
-  let allEvents = [], athleteId = null;
+  let allEvents = [], athleteId = null, mySlots = [];
 
-  document.getElementById('today-list').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-ev]');
-    if (!b) return;
-    const ev = allEvents.find(x => x.id === b.dataset.ev);
+  // Un bloque con algo que leer abre su pantalla —y ahí abajo está el parte—;
+  // lo que no tiene nada que leer abre el parte directamente.
+  function abrir(ev) {
     if (!ev) return;
-    // Un bloque de gimnasio o de campo tiene ejercicios que hay que leer, así
-    // que se abre la sesión — y ahí abajo está el parte. Lo que no tiene nada
-    // que leer abre el parte directamente.
     if (ev.type === 'gym' || ev.type === 'field') {
       window.location.href = 'Session.html?event=' + ev.id;
       return;
     }
+    if (ev.type === 'meal') {
+      window.location.href = 'Meal.html?event=' + ev.id;
+      return;
+    }
     window.prLog.open(ev, reload);
+  }
+
+  document.getElementById('today-list').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-ev]');
+    if (!b) return;
+    abrir(allEvents.find(x => x.id === b.dataset.ev));
+  });
+
+  // Y desde la semana entera, no solo desde hoy. El atleta ya tocaba los
+  // bloques del jueves esperando que se abrieran: comprar la comida del jueves
+  // el jueves a la mañana no sirve de nada.
+  document.getElementById('wk-rows').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-event]');
+    if (!b) return;
+    abrir(allEvents.find(x => x.id === b.dataset.event));
   });
 
   // Después de guardar se vuelve a leer: lo que se ve tiene que ser lo que
@@ -239,6 +254,17 @@
       .order('start_time');
     allEvents = data || [];
     paintToday(allEvents);
+    paintWeekGrid(allEvents);
+  }
+
+  // La grilla también dice qué está hecho, así que después de un parte hay que
+  // repintarla: si no, el bloque que se acaba de marcar sigue viéndose pendiente.
+  function paintWeekGrid(events) {
+    if (!events.length) return;
+    const dates = W().weekDates(W().mondayOf(window.prToday()));
+    W().render({ host: 'wk-rows', dates, slots: mySlots, events, openable: true });
+    document.getElementById('wk-flip').innerHTML = W().layoutToggleHtml();
+    document.getElementById('week-card').hidden = false;
   }
 
   const EV_COLS = 'id,date,start_time,end_time,type,color,title,notes,location,status,rpe,actual_min,athlete_note,au,recovery_items(position,method,duration_min,temp_c,temp_hot_c,cycles,pressure)';
@@ -368,10 +394,9 @@
     paintToday(events);
     await pintarSuples(data.id);
 
+    mySlots = slotQ.data || [];
     if (events.length) {
-      W().render({ host: 'wk-rows', dates, slots: slotQ.data || [], events, editable: false });
-      document.getElementById('wk-flip').innerHTML = W().layoutToggleHtml();
-      document.getElementById('week-card').hidden = false;
+      paintWeekGrid(events);
     } else {
       document.getElementById('soon-card').hidden = false;
     }
