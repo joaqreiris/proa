@@ -113,6 +113,12 @@ Cada acento declara **cuatro** valores (`--a`, `--a-lift`, `--a-on`, `--a-on-lif
 
 **Suplementos: los que suman calorías van en el catálogo; los que no, en la ficha.** La proteína, la creatina y el gel se cargan como alimentos porque entran en el total del día. El magnesio, el omega 3 y las vitaminas viven en `athlete_supplements`, con dosis y momento: no se pesan en gramos ni aportan calorías, y meterlos como alimentos de cero calorías habría ensuciado la búsqueda de comida.
 
+**Lo fijo del atleta se carga una vez, y se puede subir desde la semana.** `availability_slots` es de día de la semana y `events` es de fecha: por eso lo primero pinta el fondo de TODAS las semanas y sabe dónde queda hueco, y lo segundo vale para un día concreto. La puerta de entrada es la anamnesis, pero el trabajo empieza al revés más veces de las que uno cree —el entrenador arma la primera semana a mano y ahí adentro ya escribió la facultad y el entrenamiento con el club—, así que la semana tiene un botón que lo sube a la ficha en vez de pedirlo de nuevo.
+
+Suben **`team_training` y `other`**, y nada más. El gimnasio, el campo y la recuperación los planifica el entrenador cada semana: como franja fija se estarían tapando a sí mismos. Y el partido **no sube aunque `kind` lo permita** —se juega un sábado puntual, y de fondo ocuparía todos los sábados del año, que es justo lo contrario de lo que se quiere ver.
+
+**Una franja fija se carga de a varios días.** La facultad es de lunes a viernes y el club, martes y jueves: con un desplegable de un día eso eran cinco vueltas al mismo modal para escribir cinco veces lo mismo. Los chips de `prWeek.dayPickHtml()` se marcan de a varios y se guarda una fila por día. Importa más de lo que parece porque esta grilla la llena el ATLETA desde el teléfono, y cada vuelta de más es gente que deja la anamnesis por la mitad.
+
 **Los módulos de ClavaMetrics se traen adaptados, nunca copiados tal cual.** Ya se trajeron el calendario, el editor de sesión, las comidas y la recuperación, y cada uno se adaptó al modelo de espacio de trabajo en el mismo movimiento. Lo que falte traer va igual: adaptándolo al llegar, no después.
 
 ---
