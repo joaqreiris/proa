@@ -150,6 +150,21 @@ console.log('\nSOLO SE MIRA LO RECIENTE');
 const conViejo = [{ date: '2026-05-01', weight_kg: 90 }].concat(bajando);
 cerca('lo de hace meses no arrastra la tendencia', N.weightTrend(conViejo).kgPerWeek, tr.kgPerWeek, 0.05);
 
+console.log('\nUN SUPLEMENTO QUE SÍ APORTA, BIEN CONTADO');
+// Casi todos van en cero calorías, que es la verdad. Los que son comida
+// disfrazada de polvo llevan sus valores, y ahí la cuenta tiene que cerrar:
+// una cápsula de omega 3 pesa 1 g y es grasa pura.
+const omega = { kcal: 900, protein_g: 0, carbs_g: 0, fats_g: 100, fiber_g: 0 };
+const unaCapsula = N.macrosForQuantity(omega, 1);
+is('una cápsula de omega 3 son 9 kcal', unaCapsula.kcal, 9);
+is('y un gramo de grasa', unaCapsula.fats_g, 1);
+const tresCapsulas = N.macrosForQuantity(omega, 3);
+is('tres cápsulas, 27 kcal', tresCapsulas.kcal, 27);
+
+// Y uno de cero no mueve el total, que es justo lo que tiene que pasar.
+const magnesio = { kcal: 0, protein_g: 0, carbs_g: 0, fats_g: 0, fiber_g: 0 };
+is('el magnesio no suma nada', N.macrosForQuantity(magnesio, 1).kcal, 0);
+
 console.log('\nLAS CANTIDADES, COMO SE DICEN');
 // Media taza es «1/2», no «0.5»: nadie mide en decimales cuando cocina.
 for (const [txt, val] of [['1/2', 0.5], ['1 1/2', 1.5], ['½', 0.5], ['1½', 1.5],

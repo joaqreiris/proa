@@ -630,6 +630,8 @@
   "ml.u.scoop": "scoops",
   "ml.u.handful": "handfuls",
   "ml.u.free": "rough",
+  "ml.u.capsule": "capsules",
+  "ml.u.tablet": "tablets",
   "ml.qtyPh": "1 cup",
   "ml.notCounted": "No calories: not counted in the total.",
   "ml.freeKcal": "Calories (can be left empty)",

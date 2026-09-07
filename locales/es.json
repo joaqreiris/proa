@@ -630,6 +630,8 @@
   "ml.u.scoop": "medidas",
   "ml.u.handful": "puñados",
   "ml.u.free": "a ojo",
+  "ml.u.capsule": "cápsulas",
+  "ml.u.tablet": "comprimidos",
   "ml.qtyPh": "1 taza",
   "ml.notCounted": "Sin calorías: no suma al total.",
   "ml.freeKcal": "Calorías (se puede dejar vacío)",
