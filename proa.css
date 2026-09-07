@@ -1092,6 +1092,49 @@ button.wk-slot:hover { filter: brightness(1.12); }
 }
 .wk-add:hover { border-color: var(--pr-accent); color: var(--pr-accent-ink); border-style: solid; }
 .wk-legend { margin-top: 14px; }
+
+/* Los días de una franja fija. Se marcan varios: en el teléfono son siete
+   blancos grandes en dos toques, no un desplegable por cada día. */
+.pr-daypick { display: flex; flex-wrap: wrap; gap: 6px; }
+.pr-daypick-d {
+  flex: 1 1 0; min-width: 44px; height: 38px; padding: 0 6px;
+  border: var(--pr-bw) solid var(--pr-border);
+  background: var(--pr-surface);
+  border-radius: var(--pr-r-2);
+  color: var(--pr-fg-muted);
+  font: 700 11px/1 var(--pr-font-cond);
+  letter-spacing: .1em; text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--pr-dur-1) var(--pr-ease),
+              border-color var(--pr-dur-1) var(--pr-ease),
+              color var(--pr-dur-1) var(--pr-ease);
+}
+.pr-daypick-d:hover { border-color: var(--pr-border-strong); color: var(--pr-fg-strong); }
+.pr-daypick-d.is-on {
+  background: var(--pr-accent); border-color: transparent; color: var(--pr-fg-on-accent);
+}
+.pr-daypick-d:focus-visible { outline: var(--pr-bw-2) solid var(--pr-accent); outline-offset: 2px; }
+
+/* La lista de la semana tipo: lo fijo que se sube de la semana a la ficha. */
+.wb-fixed-list { display: flex; flex-direction: column; gap: 2px; max-height: 46vh; overflow-y: auto; }
+.wb-fixed-it {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--pr-r-2);
+  cursor: pointer;
+  font: var(--pr-body-sm);
+  color: var(--pr-fg);
+}
+.wb-fixed-it:hover { background: var(--pr-bg-soft); }
+.wb-fixed-it i { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+.wb-fixed-it b {
+  font: 700 10.5px/1 var(--pr-font-cond);
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--pr-fg-strong);
+  min-width: 30px;
+}
+.wb-fixed-h { font-variant-numeric: tabular-nums; color: var(--pr-fg-muted); white-space: nowrap; }
+
 /* El botón de dar vuelta la semana, en la barra y en la tarjeta del atleta. */
 .wb-flip { display: inline-flex; margin-left: 4px; }
 
@@ -1792,6 +1835,93 @@ button.wk-ev:hover { filter: brightness(1.15); }
 /* ============================================================
    IMPRESIÓN — siempre clara y legible, sea cual sea el tema.
    ============================================================ */
+/* ============================================================
+   La temporada — las etapas del plan y la carga real debajo.
+   Las dos barras comparten la misma escala horizontal: una semana
+   ocupa lo mismo arriba que abajo, si no el gráfico mentiría.
+   ============================================================ */
+.pe-zoom { display: inline-flex; gap: 2px; background: var(--pr-bg-sunk); padding: 3px; border-radius: var(--pr-r-4); }
+.pe-zoom .pr-tab { padding: 6px 12px; font-size: 12.5px; }
+.pe-zoom .pr-tab[disabled] { opacity: .4; cursor: default; }
+
+.pe-track {
+  position: relative; height: 54px;
+  background: var(--pr-bg-sunk);
+  border-radius: var(--pr-r-3);
+  overflow: hidden;
+}
+.pe-blk {
+  position: absolute; top: 0; bottom: 0;
+  border: 0; border-right: 2px solid var(--pr-surface);
+  padding: 0 10px; cursor: pointer; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 2px;
+  color: #fff; text-align: left;
+  transition: filter var(--pr-dur-1) var(--pr-ease);
+}
+.pe-blk:hover { filter: brightness(1.08); }
+.pe-blk.is-on { box-shadow: inset 0 0 0 2px var(--pr-fg-strong); }
+.pe-blk span {
+  font: 600 12.5px/1.2 var(--pr-font-sans);
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pe-blk small { font: 500 11px/1 var(--pr-font-sans); opacity: .8; }
+.pe-empty {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  font: 500 13px/1 var(--pr-font-sans); color: var(--pr-fg-muted);
+}
+
+.pe-load {
+  display: flex; align-items: flex-end; gap: 2px;
+  height: 76px; margin-top: 4px;
+}
+.pe-load i { flex: 1; border-radius: 2px 2px 0 0; min-height: 3px; }
+
+.pe-axis {
+  display: flex; justify-content: space-between; gap: 10px;
+  margin-top: 6px; padding-top: 8px;
+  border-top: 1px solid var(--pr-border);
+  font: 500 11.5px/1 var(--pr-font-sans); color: var(--pr-fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pe-detail {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 18px; align-items: start;
+  margin-top: 18px; padding-top: 16px;
+  border-top: 1px solid var(--pr-border);
+}
+.pe-detail dt { font: 600 11px/1 var(--pr-font-sans); letter-spacing: .04em; text-transform: uppercase; color: var(--pr-fg-muted); }
+.pe-detail dd { margin: 6px 0 0; font: 600 19px/1.1 var(--pr-font-sans); color: var(--pr-fg-strong); font-variant-numeric: tabular-nums; }
+.pe-detail small { display: block; margin-top: 4px; font: 500 12px/1.35 var(--pr-font-sans); color: var(--pr-fg-muted); }
+.pe-detail .pe-goal { font-weight: 500; color: var(--pr-fg-muted); }
+.pe-detail-act { display: flex; gap: 6px; justify-content: flex-end; align-self: center; }
+
+.pe-weeks { display: flex; flex-direction: column; }
+.pe-wk {
+  display: grid;
+  /* Columnas fijas: con «auto» cada fila mide lo suyo y los números quedan
+     escalonados, que es justo lo que impide compararlos de un vistazo. */
+  grid-template-columns: minmax(120px, 1fr) 96px 96px minmax(80px, 2fr);
+  align-items: center; gap: 14px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--pr-border);
+}
+.pe-wk:last-child { border-bottom: 0; }
+.pe-wk-n { font: 600 13px/1.2 var(--pr-font-sans); color: var(--pr-fg-strong); }
+.pe-wk-n em { display: block; font: 500 11.5px/1.2 var(--pr-font-sans); font-style: normal; color: var(--pr-fg-muted); }
+.pe-wk-s { font: 500 12.5px/1 var(--pr-font-sans); color: var(--pr-fg-muted); font-variant-numeric: tabular-nums; text-align: right; }
+.pe-wk-l { font: 600 14px/1 var(--pr-font-sans); color: var(--pr-fg-strong); font-variant-numeric: tabular-nums; text-align: right; }
+.pe-wk-l span { font-weight: 500; font-size: 11.5px; color: var(--pr-fg-muted); }
+.pe-wk-l em { font: 500 12px/1 var(--pr-font-sans); font-style: normal; color: var(--pr-fg-faint); }
+.pe-wk-bar { height: 8px; border-radius: 4px; background: var(--pr-bg-sunk); overflow: hidden; }
+.pe-wk-bar i { display: block; height: 100%; border-radius: 4px; }
+
+@media (max-width: 620px) {
+  .pe-wk { grid-template-columns: 1fr auto auto; row-gap: 6px; }
+  .pe-wk-bar { grid-column: 1 / -1; }
+}
+
 @media print {
   @page { size: A4; margin: 12mm; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; box-shadow: none !important; }

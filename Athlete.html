@@ -15,6 +15,7 @@
 <script src="assets/recovery-methods.js" defer></script>
 <script src="assets/sortable.js"></script>
 <script src="assets/nutrition-calc.js"></script>
+<script src="assets/periodization.js"></script>
 <script src="assets/week-drag.js"></script>
 <script src="assets/week-board.js" defer></script>
 <style>
@@ -118,6 +119,7 @@
 
       <div class="pr-tabs ap-tabs" role="tablist">
         <button class="pr-tab is-on" data-tab="week" role="tab" data-i18n="ap.tabWeek">Su semana</button>
+        <button class="pr-tab" data-tab="plan" role="tab" data-i18n="ap.tabPlan">Su plan</button>
         <button class="pr-tab" data-tab="profile" role="tab" data-i18n="ap.tabProfile">Su ficha</button>
       </div>
 
@@ -125,6 +127,22 @@
            El tablero se lo trae assets/week-board.js, modales incluidos. -->
       <div class="ap-pane" id="pane-week">
         <section class="pr-card pr-card-pad" id="wb-host"></section>
+      </div>
+
+      <!-- La temporada: etapas de trabajo y la carga real debajo. Una semana
+           sola se planifica bien; lo que faltaba era saber de qué parte del año
+           es y por qué la que viene tiene que ser distinta. -->
+      <div class="ap-pane" id="pane-plan" hidden>
+        <section class="pr-card pr-card-pad">
+          <div class="ap-card-head">
+            <h2 data-i18n="per.title">La temporada</h2>
+            <span class="pr-grow"></span>
+            <span class="pe-zoom" id="pe-zoom"></span>
+            <button class="pr-btn is-sm is-secondary" id="pe-newplan" hidden><i class="ti ti-plus"></i><span data-i18n="per.newPlan">Nuevo plan</span></button>
+            <button class="pr-btn is-sm is-primary" id="pe-newblock" hidden><i class="ti ti-plus"></i><span data-i18n="per.newBlock">Nueva etapa</span></button>
+          </div>
+          <div id="pe-body"></div>
+        </section>
       </div>
 
       <div class="ap-pane" id="pane-profile" hidden>
@@ -222,6 +240,104 @@
       </div><!-- /pane-profile -->
 
     </main>
+  </div>
+</div>
+
+<div class="pr-modal-backdrop" id="m-plan" hidden>
+  <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-plan-title">
+    <div class="pr-modal-head">
+      <h2 id="m-plan-title" data-i18n="per.newPlan">Nuevo plan</h2>
+      <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar" data-i18n-attr="aria-label:common.close"><i class="ti ti-x"></i></button>
+    </div>
+    <form id="f-plan">
+      <div class="pr-modal-body">
+        <div class="pr-field">
+          <label class="pr-label" for="pl-name" data-i18n="per.f.name">Nombre</label>
+          <input class="pr-input" id="pl-name" required maxlength="80" data-i18n-attr="placeholder:per.f.planPh" placeholder="Temporada 2026">
+        </div>
+        <div class="pr-field">
+          <label class="pr-label" for="pl-model" data-i18n="per.f.model">Modelo</label>
+          <select class="pr-input" id="pl-model"></select>
+          <p class="pr-hint" id="pl-model-h" style="margin:6px 0 0"></p>
+        </div>
+        <div class="pr-modal-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="pl-from" data-i18n="per.f.from">Empieza</label>
+            <input class="pr-input" type="date" id="pl-from" required>
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="pl-to" data-i18n="per.f.to">Termina</label>
+            <input class="pr-input" type="date" id="pl-to" required>
+          </div>
+        </div>
+        <div class="pr-field">
+          <label class="pr-label" for="pl-goal" data-i18n="per.f.goal">Objetivo</label>
+          <input class="pr-input" id="pl-goal" maxlength="160" data-i18n-attr="placeholder:per.f.goalPh" placeholder="Llegar entero al torneo de octubre">
+        </div>
+        <p class="auth-msg" id="pl-msg" role="alert" hidden style="margin:0;color:var(--pr-danger);font:600 13px/1.45 var(--pr-font-sans)"></p>
+      </div>
+      <div class="pr-modal-foot">
+        <button class="pr-btn is-ghost is-sm is-danger" type="button" id="pl-del" hidden data-i18n="per.delPlan">Borrar el plan</button>
+        <span class="pr-grow"></span>
+        <button class="pr-btn is-ghost" type="button" data-close data-i18n="common.cancel">Cancelar</button>
+        <button class="pr-btn is-primary" type="submit"><i class="ti ti-check"></i><span data-i18n="common.save">Guardar</span></button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="pr-modal-backdrop" id="m-blk" hidden>
+  <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-blk-title">
+    <div class="pr-modal-head">
+      <h2 id="m-blk-title" data-i18n="per.newBlock">Nueva etapa</h2>
+      <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar" data-i18n-attr="aria-label:common.close"><i class="ti ti-x"></i></button>
+    </div>
+    <form id="f-blk">
+      <div class="pr-modal-body">
+        <div class="pr-field">
+          <label class="pr-label" for="bk-name" data-i18n="per.f.name">Nombre</label>
+          <input class="pr-input" id="bk-name" required maxlength="80" data-i18n-attr="placeholder:per.f.namePh" placeholder="Acumulación 1">
+        </div>
+        <div class="pr-modal-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="bk-kind" data-i18n="per.f.kind">Qué le hace a la carga</label>
+            <select class="pr-input" id="bk-kind"></select>
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="bk-phase" data-i18n="per.f.phase">Momento de la temporada</label>
+            <select class="pr-input" id="bk-phase"></select>
+          </div>
+        </div>
+        <p class="pr-hint" id="bk-kind-h" style="margin:-4px 0 0"></p>
+        <div class="pr-modal-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="bk-from" data-i18n="per.f.from">Empieza</label>
+            <input class="pr-input" type="date" id="bk-from" required>
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="bk-to" data-i18n="per.f.to">Termina</label>
+            <input class="pr-input" type="date" id="bk-to" required>
+          </div>
+        </div>
+        <div class="pr-modal-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="bk-focus" data-i18n="per.f.focus">Foco</label>
+            <input class="pr-input" id="bk-focus" maxlength="160" data-i18n-attr="placeholder:per.f.focusPh" placeholder="Fuerza general y volumen aeróbico">
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="bk-load" data-i18n="per.f.target">Carga prevista</label>
+            <input class="pr-input" id="bk-load" inputmode="numeric" data-i18n-attr="placeholder:per.au" placeholder="UA">
+          </div>
+        </div>
+        <p class="pr-hint" data-i18n="per.f.targetHint">La carga se mide en unidades arbitrarias: minutos por el esfuerzo percibido. Es opcional; sirve para comparar lo previsto con lo que el atleta reportó.</p>
+        <p class="auth-msg" id="bk-msg" role="alert" hidden style="margin:0;color:var(--pr-danger);font:600 13px/1.45 var(--pr-font-sans)"></p>
+      </div>
+      <div class="pr-modal-foot">
+        <span class="pr-grow"></span>
+        <button class="pr-btn is-ghost" type="button" data-close data-i18n="common.cancel">Cancelar</button>
+        <button class="pr-btn is-primary" type="submit"><i class="ti ti-check"></i><span data-i18n="common.save">Guardar</span></button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -596,7 +712,9 @@
       if (!b) return;
       document.querySelectorAll('.ap-tabs .pr-tab').forEach(x => x.classList.toggle('is-on', x === b));
       document.getElementById('pane-week').hidden    = b.dataset.tab !== 'week';
+      document.getElementById('pane-plan').hidden    = b.dataset.tab !== 'plan';
       document.getElementById('pane-profile').hidden = b.dataset.tab !== 'profile';
+      if (b.dataset.tab === 'plan') pintarPlan();
       try { history.replaceState(null, '', '?id=' + id + '#' + b.dataset.tab); } catch (err) {}
     });
     if (location.hash === '#profile') {
@@ -793,6 +911,189 @@
     )}</span></div>`;
   }
 
+  // ── La temporada ──────────────────────────────────────────────────────────
+  // Dos escalas acá: el año entero y una etapa. La semana y el día ya existen
+  // —son el tablero de al lado—, así que acercarse del todo es ir para allá.
+  const P = () => window.prPeriod;
+  let plan = null, bloques = [], semanas = [], escala = 'year', etapaFoco = null, cargaEventos = [];
+
+  async function cargarPlan(a) {
+    const { data: planes } = await window.sb.from('training_plans')
+      .select('*').eq('athlete_id', a.id).order('start_date', { ascending: false }).limit(1);
+    plan = (planes && planes[0]) || null;
+    bloques = [];
+    if (plan) {
+      const { data } = await window.sb.from('training_blocks')
+        .select('*').eq('plan_id', plan.id).order('start_date');
+      bloques = data || [];
+      // Solo las sesiones de gimnasio y campo: la carga de un entrenamiento es
+      // lo que se periodiza. Una comida no tiene carga.
+      const { data: evs } = await window.sb.from('events')
+        .select('date,type,au,rpe,actual_min,title')
+        .eq('athlete_id', a.id).in('type', ['gym', 'field'])
+        .gte('date', plan.start_date).lte('date', plan.end_date);
+      cargaEventos = evs || [];
+      semanas = P().weeksOf(plan, bloques, cargaEventos);
+    }
+  }
+
+  async function pintarPlan() {
+    if (!nutAthlete) return;
+    if (!plan) await cargarPlan(nutAthlete);
+
+    // Con plan hecho, el mismo botón pasa a editarlo: si se ocultara, el plan
+    // quedaría sin forma de corregirle una fecha ni de borrarlo.
+    const bPlan = document.getElementById('pe-newplan');
+    const rotulo = bPlan.querySelector('span');
+    rotulo.dataset.i18n = plan ? 'per.editPlan' : 'per.newPlan';
+    rotulo.textContent = t(rotulo.dataset.i18n);
+    bPlan.querySelector('i').className = plan ? 'ti ti-pencil' : 'ti ti-plus';
+    bPlan.hidden = false;
+    document.getElementById('pe-newblock').hidden = !plan;
+    const host = document.getElementById('pe-body');
+    const zoom = document.getElementById('pe-zoom');
+
+    if (!plan) {
+      zoom.innerHTML = '';
+      host.innerHTML = `<p class="pr-hint" style="margin:0">${esc(t('per.none',
+        'Sin plan. Un plan es el marco de una temporada o una pretemporada; adentro van las etapas, y las semanas de gimnasio caen en la etapa que les toca por fecha.'))}</p>`;
+      return;
+    }
+
+    zoom.innerHTML = ['year', 'block'].map(z =>
+      `<button type="button" class="pr-tab${escala === z ? ' is-on' : ''}" data-z="${z}"
+        ${z === 'block' && !etapaFoco ? 'disabled' : ''}>${esc(t('per.z.' + z))}</button>`).join('');
+
+    host.innerHTML = escala === 'year' ? vistaAno() : vistaEtapa();
+    engancharPlan();
+  }
+
+  function vistaAno() {
+    const total = semanas.length || 1;
+    const ancho = 100 / total;
+
+    // Cada etapa ocupa las semanas que cubre. Se dibuja sobre la misma escala
+    // que la carga de abajo: si no coincidieran, el gráfico mentiría.
+    const barras = bloques.map(b => {
+      const desde = semanas.findIndex(w => w.block && w.block.id === b.id);
+      const cuantas = semanas.filter(w => w.block && w.block.id === b.id).length;
+      if (desde < 0 || !cuantas) return '';
+      const color = P().blockColor(plan, b);
+      const kind = P().kindLabel(plan, b.kind);
+      return `<button type="button" class="pe-blk${etapaFoco === b.id ? ' is-on' : ''}" data-blk="${b.id}"
+                style="left:${desde * ancho}%;width:${cuantas * ancho}%;background:${color}"
+                title="${esc(b.name + (kind ? ' · ' + kind : ''))}">
+                <span>${esc(b.name)}</span><small>${cuantas} ${esc(t('per.wk', 'sem'))}</small>
+              </button>`;
+    }).join('');
+
+    const cargas = semanas.map(w => w.load).filter(v => v != null);
+    const max = cargas.length ? Math.max(...cargas) : 0;
+    const barrasCarga = semanas.map(w => {
+      const color = w.block ? P().blockColor(plan, w.block) : 'var(--pr-border-strong)';
+      // Sin dato no es cero: se dibuja una marca mínima y apagada, porque cero
+      // significa que no entrenó y eso es otra cosa.
+      const alto = w.load == null ? 3 : Math.max(3, Math.round((w.load / (max || 1)) * 100));
+      return `<i style="height:${alto}%;background:${color};${w.load == null ? 'opacity:.22' : ''}"
+                title="${esc(t('per.wkN', 'Semana {n}', { n: w.n }) + ' · ' +
+                  (w.load == null ? t('per.noData', 'sin partes cargados') : w.load + ' ' + t('per.au', 'UA')))}"></i>`;
+    }).join('');
+
+    const b = bloques.find(x => x.id === etapaFoco) || bloques[0];
+    return `
+      <p class="pr-hint" style="margin:0 0 12px">${esc(t('per.yearHint',
+        'Cada barra es una etapa. Debajo, la carga real de cada semana: minutos por RPE de lo que el atleta reportó.'))}</p>
+      <div class="pe-track">${barras || `<span class="pe-empty">${esc(t('per.noBlocks', 'Sin etapas todavía'))}</span>`}</div>
+      <div class="pe-load">${barrasCarga}</div>
+      <div class="pe-axis">
+        <span>${esc(t('per.wkN', 'Semana {n}', { n: 1 }))}</span>
+        <span>${max ? max + ' ' + esc(t('per.au', 'UA')) + ' ' + esc(t('per.peak', 'de pico')) : esc(t('per.noLoad', 'sin carga reportada'))}</span>
+        <span>${esc(t('per.wkN', 'Semana {n}', { n: semanas.length }))}</span>
+      </div>
+      ${b ? detalleEtapa(b) : ''}
+      ${leyendaPlan()}`;
+  }
+
+  function vistaEtapa() {
+    const b = bloques.find(x => x.id === etapaFoco);
+    if (!b) { escala = 'year'; return vistaAno(); }
+    const suyas = semanas.filter(w => w.block && w.block.id === b.id);
+    const color = P().blockColor(plan, b);
+
+    const filas = suyas.map(w => `
+      <div class="pe-wk">
+        <span class="pe-wk-n">${esc(t('per.wkN', 'Semana {n}', { n: w.n }))}
+          <em>${esc(window.prWeek.parseYMD(w.start).toLocaleDateString(
+            (window.PR_I18N && window.PR_I18N.current) || 'es', { day: 'numeric', month: 'short' }))}</em></span>
+        <span class="pe-wk-s">${w.sessions} ${esc(t(w.sessions === 1 ? 'per.session' : 'per.sessions'))}</span>
+        <span class="pe-wk-l">${w.load == null
+          ? `<em>${esc(t('per.noData', 'sin partes cargados'))}</em>`
+          : w.load + ` <span>${esc(t('per.au', 'UA'))}</span>`}</span>
+        <span class="pe-wk-bar"><i style="width:${w.load == null ? 0 : Math.min(100, Math.round((w.load / (Math.max(...suyas.map(x => x.load || 0)) || 1)) * 100))}%;background:${color}"></i></span>
+      </div>`).join('');
+
+    return `<p class="pr-hint" style="margin:0 0 12px">${esc(t('per.blockHint',
+        'Las semanas de esta etapa. Para ver o cambiar una sesión, la semana está en la pestaña de al lado.'))}</p>
+      <div class="pe-weeks">${filas}</div>${detalleEtapa(b)}`;
+  }
+
+  function detalleEtapa(b) {
+    const carga = P().blockLoad(b, semanas);
+    const kind = P().kindLabel(plan, b.kind);
+    const info = P().kindInfo(plan, b.kind);
+    const fase = P().phaseLabel(b.phase);
+    const color = P().blockColor(plan, b);
+    const fmt = (d) => window.prWeek.parseYMD(d).toLocaleDateString(
+      (window.PR_I18N && window.PR_I18N.current) || 'es', { day: 'numeric', month: 'short' });
+
+    return `<div class="pe-detail">
+      <div><dt>${esc(t('per.d.stage', 'Etapa'))}</dt>
+        <dd style="color:${color}">${esc(b.name)}</dd>
+        ${kind || fase ? `<small>${esc([kind, fase].filter(Boolean).join(' · '))}</small>` : ''}</div>
+      <div><dt>${esc(t('per.d.when', 'Cuándo'))}</dt>
+        <dd>${carga.semanas} ${esc(t('per.wk', 'sem'))}</dd>
+        <small>${esc(fmt(b.start_date))} – ${esc(fmt(b.end_date))}</small></div>
+      <div><dt>${esc(t('per.d.load', 'Carga'))}</dt>
+        <dd>${carga.real == null ? '—' : carga.real}${carga.objetivo ? ` <span class="pe-goal">/ ${carga.objetivo}</span>` : ''}</dd>
+        <small>${carga.desvio == null
+          ? esc(t(carga.objetivo ? 'per.d.noReport' : 'per.d.noTarget'))
+          : (carga.desvio > 0 ? '+' : '') + carga.desvio + '% ' + esc(t('per.d.vsPlan', 'de lo planificado'))}</small></div>
+      <div><dt>${esc(t('per.d.focus', 'Foco'))}</dt>
+        <dd style="font:500 13.5px/1.35 var(--pr-font-sans)">${esc(b.focus || t('ap.noData', 'Sin cargar'))}</dd>
+        ${info ? `<small>${esc(t(info.hint, ''))}</small>` : ''}</div>
+      <div class="pe-detail-act">
+        <button type="button" class="pr-btn is-ghost is-sm" data-edit-blk="${b.id}"><i class="ti ti-pencil"></i></button>
+        <button type="button" class="pr-btn is-ghost is-sm is-danger" data-del-blk="${b.id}"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>`;
+  }
+
+  function leyendaPlan() {
+    const kinds = P().kindsOf(plan);
+    if (!kinds.length) return '';
+    return `<div class="pr-legend" style="margin-top:14px">` + kinds.map(k =>
+      `<span class="pr-legend-item"><i style="background:${k.color}"></i>${esc(t(k.label, k.k))}</span>`).join('') + `</div>`;
+  }
+
+  function engancharPlan() {
+    const host = document.getElementById('pe-body');
+    document.querySelectorAll('#pe-zoom [data-z]').forEach(b =>
+      b.addEventListener('click', () => { escala = b.dataset.z; pintarPlan(); }));
+    host.querySelectorAll('[data-blk]').forEach(el =>
+      el.addEventListener('click', () => { etapaFoco = el.dataset.blk; escala = 'block'; pintarPlan(); }));
+    host.querySelectorAll('[data-edit-blk]').forEach(el =>
+      el.addEventListener('click', () => abrirEtapa(bloques.find(b => b.id === el.dataset.editBlk))));
+    host.querySelectorAll('[data-del-blk]').forEach(el =>
+      el.addEventListener('click', async () => {
+        const b = bloques.find(x => x.id === el.dataset.delBlk);
+        if (!b || !confirm(t('per.delAsk', '', { name: b.name }))) return;
+        const { error } = await window.sb.from('training_blocks').delete().eq('id', b.id).select('id');
+        if (error) { window.prToast(error.message, 'danger'); return; }
+        etapaFoco = null; escala = 'year'; plan = null;
+        await pintarPlan();
+      }));
+  }
+
   // ── Suplementación ────────────────────────────────────────────────────────
   let suples = [], editandoSup = null;
 
@@ -963,6 +1264,160 @@
     if (error) { window.prToast(error.message, 'danger'); return; }
     document.getElementById('m-nut').hidden = true;
     await pintarObjetivo(nutAthlete, nutIntake);
+  });
+
+  // Cerrar cualquier modal de la página. Estaba faltando: la cruz y el
+  // «Cancelar» de los modales de suplementos, peso y objetivo no hacían nada.
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-close]') || e.target.classList.contains('pr-modal-backdrop')) {
+      const m = e.target.closest('.pr-modal-backdrop');
+      if (m) m.hidden = true;
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const abierto = [...document.querySelectorAll('.pr-modal-backdrop:not([hidden])')].pop();
+    if (abierto) abierto.hidden = true;
+  });
+
+  // ── El plan y sus etapas ──────────────────────────────────────────────────
+  const opciones = (arr, sel) => arr.map(o =>
+    `<option value="${o.v}"${o.v === sel ? ' selected' : ''}>${esc(o.l)}</option>`).join('');
+
+  function abrirPlan() {
+    const sel = document.getElementById('pl-model');
+    sel.innerHTML = opciones(Object.values(P().MODELS).map(m => ({ v: m.key, l: t(m.label, m.key) })),
+      plan ? plan.model : 'atr');
+    document.getElementById('pl-name').value = plan ? plan.name : '';
+    document.getElementById('pl-goal').value = (plan && plan.goal) || '';
+    document.getElementById('pl-from').value = plan ? plan.start_date : window.prToday();
+    document.getElementById('pl-to').value = plan ? plan.end_date : window.prWeek.addDays(window.prToday(), 182);
+    document.getElementById('pl-del').hidden = !plan;
+    document.getElementById('pl-msg').hidden = true;
+    document.getElementById('m-plan-title').textContent = t(plan ? 'per.editPlan' : 'per.newPlan');
+    pintarAyudaModelo();
+    document.getElementById('m-plan').hidden = false;
+    document.getElementById('pl-name').focus();
+  }
+
+  function pintarAyudaModelo() {
+    const k = document.getElementById('pl-model').value;
+    document.getElementById('pl-model-h').textContent = t('per.m.' + k + '.h', '');
+  }
+
+  let etapaEdit = null;
+  function abrirEtapa(b) {
+    if (!plan) return;
+    etapaEdit = b || null;
+    const kinds = P().kindsOf(plan);
+    const selKind = document.getElementById('bk-kind');
+    // En modo libre no hay tipos: la etapa se nombra y listo.
+    selKind.closest('.pr-field').hidden = !kinds.length;
+    selKind.innerHTML = opciones([{ v: '', l: t('per.f.noKind', 'Sin tipo') }]
+      .concat(kinds.map(k => ({ v: k.k, l: t(k.label, k.k) }))), (b && b.kind) || '');
+    document.getElementById('bk-phase').innerHTML = opciones(
+      [{ v: '', l: t('per.f.noPhase', 'Sin definir') }]
+        .concat(P().PHASES.map(f => ({ v: f.k, l: t(f.label, f.k) }))), (b && b.phase) || '');
+
+    // Una etapa nueva arranca donde terminó la anterior: es lo que se quiere
+    // nueve de cada diez veces, y si no, se corrige la fecha.
+    const ultima = bloques[bloques.length - 1];
+    const desde = b ? b.start_date
+      : (ultima ? window.prWeek.addDays(ultima.end_date, 1) : plan.start_date);
+    document.getElementById('bk-name').value = b ? b.name : '';
+    document.getElementById('bk-from').value = desde;
+    document.getElementById('bk-to').value = b ? b.end_date : window.prWeek.addDays(desde, 27);
+    document.getElementById('bk-focus').value = (b && b.focus) || '';
+    document.getElementById('bk-load').value = (b && b.target_load) || '';
+    document.getElementById('bk-msg').hidden = true;
+    document.getElementById('m-blk-title').textContent = t(b ? 'per.editBlock' : 'per.newBlock');
+    pintarAyudaTipo();
+    document.getElementById('m-blk').hidden = false;
+    document.getElementById('bk-name').focus();
+  }
+
+  function pintarAyudaTipo() {
+    const info = P().kindInfo(plan, document.getElementById('bk-kind').value);
+    document.getElementById('bk-kind-h').textContent = info ? t(info.hint, '') : '';
+  }
+
+  document.getElementById('pe-newplan').addEventListener('click', () => abrirPlan());
+  document.getElementById('pe-newblock').addEventListener('click', () => abrirEtapa(null));
+  document.getElementById('pl-model').addEventListener('change', pintarAyudaModelo);
+  document.getElementById('bk-kind').addEventListener('change', pintarAyudaTipo);
+
+  document.getElementById('f-plan').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('pl-msg');
+    const fila = {
+      athlete_id: nutAthlete.id,
+      name: document.getElementById('pl-name').value.trim(),
+      model: document.getElementById('pl-model').value,
+      start_date: document.getElementById('pl-from').value,
+      end_date: document.getElementById('pl-to').value,
+      goal: document.getElementById('pl-goal').value.trim() || null,
+    };
+    if (fila.end_date < fila.start_date) {
+      msg.textContent = t('per.err.order', 'La fecha de fin va después de la de inicio.');
+      msg.hidden = false; return;
+    }
+    const q = plan
+      ? window.sb.from('training_plans').update(fila).eq('id', plan.id).select('id')
+      : window.sb.from('training_plans').insert(fila).select('id');
+    const { data, error } = await q;
+    if (error) { msg.textContent = error.message; msg.hidden = false; return; }
+    if (!data || !data.length) {
+      msg.textContent = t('per.err.perm', 'No se pudo guardar. Recarga la página y prueba otra vez.');
+      msg.hidden = false; return;
+    }
+    document.getElementById('m-plan').hidden = true;
+    plan = null; await pintarPlan();
+  });
+
+  document.getElementById('pl-del').addEventListener('click', async () => {
+    if (!plan || !confirm(t('per.delPlanAsk',
+      '¿Borrar el plan y todas sus etapas? Las sesiones no se tocan.'))) return;
+    const { error } = await window.sb.from('training_plans').delete().eq('id', plan.id).select('id');
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    document.getElementById('m-plan').hidden = true;
+    plan = null; etapaFoco = null; escala = 'year';
+    await pintarPlan();
+  });
+
+  document.getElementById('f-blk').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('bk-msg');
+    const carga = document.getElementById('bk-load').value.trim();
+    const fila = {
+      plan_id: plan.id,
+      name: document.getElementById('bk-name').value.trim(),
+      kind: document.getElementById('bk-kind').value || null,
+      phase: document.getElementById('bk-phase').value || null,
+      start_date: document.getElementById('bk-from').value,
+      end_date: document.getElementById('bk-to').value,
+      focus: document.getElementById('bk-focus').value.trim() || null,
+      target_load: carga ? Number(carga) : null,
+    };
+    if (fila.end_date < fila.start_date) {
+      msg.textContent = t('per.err.order', 'La fecha de fin va después de la de inicio.');
+      msg.hidden = false; return;
+    }
+    // Fuera del plan la etapa no se dibujaría en ningún lado: mejor decirlo.
+    if (fila.start_date < plan.start_date || fila.end_date > plan.end_date) {
+      msg.textContent = t('per.err.range', 'La etapa tiene que caer dentro del plan.');
+      msg.hidden = false; return;
+    }
+    const q = etapaEdit
+      ? window.sb.from('training_blocks').update(fila).eq('id', etapaEdit.id).select('id')
+      : window.sb.from('training_blocks').insert(fila).select('id');
+    const { data, error } = await q;
+    if (error) { msg.textContent = error.message; msg.hidden = false; return; }
+    if (!data || !data.length) {
+      msg.textContent = t('per.err.perm', 'No se pudo guardar. Recarga la página y prueba otra vez.');
+      msg.hidden = false; return;
+    }
+    document.getElementById('m-blk').hidden = true;
+    plan = null; await pintarPlan();
   });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
