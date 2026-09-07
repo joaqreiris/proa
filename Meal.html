@@ -278,10 +278,10 @@
           ? ''
           : food && food.unit_g
             ? `<select class="ml-unit" data-u>
-                 <option value="g"${porUnidad ? '' : ' selected'}>${esc(t('ml.u.g', 'gramos'))}</option>
-                 <option value="u"${porUnidad ? ' selected' : ''}>${esc(t('ml.u.' + (food.unit_name || 'unit'), 'unidades'))}</option>
+                 <option value="g"${porUnidad ? '' : ' selected'}>${esc(t('ml.u.g', 'gramos', { count: 2 }))}</option>
+                 <option value="u"${porUnidad ? ' selected' : ''}>${esc(t('ml.u.' + (food.unit_name || 'unit'), 'unidades', { count: 2 }))}</option>
                </select>`
-            : `<select class="ml-unit" disabled><option>${esc(t('ml.u.g', 'gramos'))}</option></select>`;
+            : `<select class="ml-unit" disabled><option>${esc(t('ml.u.g', 'gramos', { count: 2 }))}</option></select>`;
 
         // Cuando se carga por unidades, debajo del nombre va el peso: el
         // entrenador piensa en huevos, pero el plan se cumple en gramos.

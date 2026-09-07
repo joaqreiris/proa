@@ -45,6 +45,11 @@ const ALMUERZO = {
     { id: 'i-3', position: 2, food_id: 'f-3', name: 'Agua', qty_g: 500, unit_qty: null, qty_text: null,
       kcal: 0, protein_g: 0, carbs_g: 0, fats_g: 0, fiber_g: 0, notes: null,
       foods: { food_group: 'drink', unit_name: null } },
+    // Media taza es «1/2 taza», no «1/2 tazas»: la regla de plurales del
+    // idioma contesta «other» para 0,5 y ahí no sirve.
+    { id: 'i-4', position: 3, food_id: 'f-4', name: 'Avena', qty_g: 40, unit_qty: 0.5, qty_text: null,
+      kcal: 150, protein_g: 5, carbs_g: 27, fats_g: 3, fiber_g: 4, notes: null,
+      foods: { food_group: 'grain', unit_name: 'cup' } },
   ],
 };
 const GYM = {
@@ -148,12 +153,13 @@ try {
       cantidad: (r.querySelector('.am-it-qty') || {}).textContent || '',
       kcal: r.querySelector('.am-it-k').textContent,
     })));
-  is('los tres alimentos', filas.length, 3);
+  is('los cuatro alimentos', filas.length, 4);
   is('el del catálogo por unidades se lee con su unidad',
      [filas[0].nombre, filas[0].cantidad, filas[0].kcal], ['Huevo', '2 unidades', '155 kcal']);
+  is('y media taza va en singular', [filas[2].nombre, filas[2].cantidad], ['Avena', '1/2 taza']);
   is('el que va en gramos, en gramos',
      [filas[1].nombre, filas[1].cantidad, filas[1].kcal], ['Arroz', '150 g', '195 kcal']);
-  is('y el agua no escribe un cero', filas[2].kcal, '—');
+  is('y el agua no escribe un cero', filas[3].kcal, '—');
   is('el peso queda debajo de la unidad, que es como se cocina',
      await page.textContent('#items .am-it:nth-child(2) .am-it-note'), '110 g');
   is('la bebida se lee aparte de la comida',
@@ -161,11 +167,11 @@ try {
      ['Comida', 'Bebidas']);
 
   console.log('\nCON SUS TOTALES');
-  is('el total de la comida', await page.textContent('#meal-kcal'), '350');
+  is('el total de la comida', await page.textContent('#meal-kcal'), '500');
   // Separados los lee el flex, no un espacio en el texto: por eso se miran uno a uno.
   is('y sus macros', await page.evaluate(() =>
     [...document.querySelectorAll('#meal-macros span')].map((s) => s.textContent.replace(/\s+/g, ' ').trim())),
-    ['17 Prot', '43.1 Carb', '11.5 Gras']);
+    ['22 Prot', '70.1 Carb', '14.5 Gras']);
 
   const dia = await page.evaluate(() =>
     [...document.querySelectorAll('#day > div')].map((d) => ({
@@ -175,7 +181,7 @@ try {
       barra: !!d.querySelector('.am-bar'),
     })));
   is('el día va contra el objetivo', [dia[0].valor, dia[0].objetivo, dia[0].falta],
-     ['350', '/ 2600', 'Falta 2250']);
+     ['500', '/ 2600', 'Falta 2100']);
   is('con barra, porque hay objetivo', dia.every((d) => d.barra), true);
 
   console.log('\nEL PARTE DE UNA COMIDA NO PREGUNTA ESFUERZO');
@@ -210,7 +216,7 @@ try {
       barra: !!d.querySelector('.am-bar'),
       falta: !!d.querySelector('.am-left'),
     })));
-  is('el total del día sigue estando', sin[0].valor, '350');
+  is('el total del día sigue estando', sin[0].valor, '500');
   is('sin barra vacía que no mide nada', sin.some((d) => d.barra), false);
   is('ni un «falta» inventado', sin.some((d) => d.falta), false);
 

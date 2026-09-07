@@ -175,7 +175,8 @@
   function cantidad(it) {
     if (it.unit_qty != null) {
       const u = it.foods && it.foods.unit_name;
-      return window.prNutri.formatAmount(it.unit_qty) + ' ' + t('ml.u.' + (u || 'unit'), '');
+      const n = Number(it.unit_qty) <= 1 ? 1 : 2;
+      return window.prNutri.formatAmount(it.unit_qty) + ' ' + t('ml.u.' + (u || 'unit'), '', { count: n });
     }
     if (it.qty_g != null) return r1(it.qty_g) + ' g';
     return it.qty_text || '';
