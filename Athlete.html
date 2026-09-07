@@ -966,11 +966,71 @@
 
     host.innerHTML = escala === 'year' ? vistaAno() : vistaEtapa();
     engancharPlan();
+    if (escala === 'year') ajustarEtapas();
+  }
+
+  // ── La línea de tiempo ────────────────────────────────────────────────────
+  // Todo lo que se dibuja acá cuelga de la misma escala: una semana ocupa lo
+  // mismo en los meses, en las etapas y en la carga. Es lo único que hace que
+  // el pico de carga se pueda leer sobre la etapa que lo produjo.
+  //
+  // Una temporada larga no se comprime hasta que no se lea: por debajo de
+  // cierto ancho por semana la línea se desplaza en horizontal. Meter 68
+  // semanas en el ancho de la pantalla es tener 68 semanas ilegibles.
+  const SEM_MIN = 18; // píxeles por semana antes de empezar a desplazar
+
+  const idioma = () => (window.PR_I18N && window.PR_I18N.current) || 'es';
+  const fecha = (ymd, opts) => window.prWeek.parseYMD(ymd).toLocaleDateString(idioma(), opts);
+  const fechaCorta = (ymd) => fecha(ymd, { day: 'numeric', month: 'short' });
+  const fechaLarga = (ymd) => fecha(ymd, { day: 'numeric', month: 'short', year: 'numeric' });
+
+  // Los meses, medidos en semanas: cada semana cuenta para el mes de su lunes.
+  // Repartir una semana partida entre dos meses movería las etiquetas medio
+  // paso respecto de las barras, que es peor que la aproximación.
+  function mesesDe(ws) {
+    const out = [];
+    ws.forEach((w, i) => {
+      const d = window.prWeek.parseYMD(w.start);
+      const clave = d.getFullYear() + '-' + d.getMonth();
+      const ult = out[out.length - 1];
+      if (ult && ult.clave === clave) { ult.cuantas++; return; }
+      out.push({ clave, desde: i, cuantas: 1, d, anio: d.getFullYear() });
+    });
+    return out;
+  }
+
+  // Dónde cae hoy, con el día dentro de la semana. Fuera del plan no se dibuja
+  // nada: una marca pegada al borde haría creer que la temporada está por
+  // empezar cuando en realidad terminó hace medio año.
+  function posHoy() {
+    const hoy = window.prToday();
+    const i = semanas.findIndex(w => hoy >= w.start && hoy <= w.end);
+    if (i < 0) return null;
+    const dias = Math.round((window.prWeek.parseYMD(hoy) - window.prWeek.parseYMD(semanas[i].start)) / 86400000);
+    return ((i + dias / 7) / semanas.length) * 100;
   }
 
   function vistaAno() {
     const total = semanas.length || 1;
     const ancho = 100 / total;
+    const meses = mesesDe(semanas);
+    const hoy = posHoy();
+
+    // El año se escribe en el primer mes y cada vez que cambia: repetirlo doce
+    // veces es ruido, y no escribirlo nunca deja un plan de dos temporadas sin
+    // decir cuál es cuál.
+    const ejeMeses = meses.map((m, i) => {
+      const nombre = m.d.toLocaleDateString(idioma(), { month: 'short' }).replace('.', '');
+      const anio = (i === 0 || m.anio !== meses[i - 1].anio) ? m.anio : '';
+      return `<span style="left:${m.desde * ancho}%;width:${m.cuantas * ancho}%">
+                ${m.cuantas >= 2 ? esc(nombre) + (anio ? ` <em>${anio}</em>` : '') : ''}
+              </span>`;
+    }).join('');
+
+    // Las divisiones de mes cruzan la etapa y la carga: son la referencia que
+    // permite decir «esto es octubre» sin contar semanas con el dedo.
+    const rejilla = meses.slice(1).map(m =>
+      `<i style="left:${m.desde * ancho}%"></i>`).join('');
 
     // Cada etapa ocupa las semanas que cubre. Se dibuja sobre la misma escala
     // que la carga de abajo: si no coincidieran, el gráfico mentiría.
@@ -982,7 +1042,8 @@
       const kind = P().kindLabel(plan, b.kind);
       return `<button type="button" class="pe-blk${etapaFoco === b.id ? ' is-on' : ''}" data-blk="${b.id}"
                 style="left:${desde * ancho}%;width:${cuantas * ancho}%;background:${color}"
-                title="${esc(b.name + (kind ? ' · ' + kind : ''))}">
+                title="${esc(b.name + (kind ? ' · ' + kind : '') + ' · ' +
+                  fechaCorta(b.start_date) + ' – ' + fechaCorta(b.end_date))}">
                 <span>${esc(b.name)}</span><small>${cuantas} ${esc(t('per.wk', 'sem'))}</small>
               </button>`;
     }).join('');
@@ -995,24 +1056,81 @@
       // significa que no entrenó y eso es otra cosa.
       const alto = w.load == null ? 3 : Math.max(3, Math.round((w.load / (max || 1)) * 100));
       return `<i style="height:${alto}%;background:${color};${w.load == null ? 'opacity:.22' : ''}"
-                title="${esc(t('per.wkN', 'Semana {n}', { n: w.n }) + ' · ' +
+                title="${esc(t('per.wkN', 'Semana {n}', { n: w.n }) + ' · ' + fechaCorta(w.start) + ' · ' +
                   (w.load == null ? t('per.noData', 'sin partes cargados') : w.load + ' ' + t('per.au', 'UA')))}"></i>`;
     }).join('');
 
     const b = bloques.find(x => x.id === etapaFoco) || bloques[0];
     return `
-      <p class="pr-hint" style="margin:0 0 12px">${esc(t('per.yearHint',
+      <p class="pr-hint" style="margin:0 0 14px">${esc(t('per.yearHint',
         'Cada barra es una etapa. Debajo, la carga real de cada semana: minutos por RPE de lo que el atleta reportó.'))}</p>
-      <div class="pe-track">${barras || `<span class="pe-empty">${esc(t('per.noBlocks', 'Sin etapas todavía'))}</span>`}</div>
-      <div class="pe-load">${barrasCarga}</div>
-      <div class="pe-axis">
-        <span>${esc(t('per.wkN', 'Semana {n}', { n: 1 }))}</span>
-        <span>${max ? max + ' ' + esc(t('per.au', 'UA')) + ' ' + esc(t('per.peak', 'de pico')) : esc(t('per.noLoad', 'sin carga reportada'))}</span>
-        <span>${esc(t('per.wkN', 'Semana {n}', { n: semanas.length }))}</span>
+      <div class="pe-time">
+        <div class="pe-canvas" style="--sem:${total};--semmin:${SEM_MIN}px">
+          <div class="pe-plot${hoy == null ? '' : ' has-now'}">
+            <div class="pe-grid">${rejilla}</div>
+            <div class="pe-months">${ejeMeses}</div>
+            <div class="pe-track">${barras || `<span class="pe-empty">${esc(t('per.noBlocks', 'Sin etapas todavía'))}</span>`}</div>
+            <div class="pe-load">${
+              cargas.length ? barrasCarga
+                : `<span class="pe-empty">${esc(t('per.noLoad', 'sin carga reportada'))}</span>`}</div>
+            ${hoy == null ? '' :
+              `<div class="pe-now${hoy < 4 ? ' is-start' : hoy > 96 ? ' is-end' : ''}"
+                    style="left:${hoy}%"><span>${esc(t('per.today', 'hoy'))}</span></div>`}
+          </div>
+          <div class="pe-axis">
+            <span>${esc(fechaLarga(plan.start_date))}</span>
+            <span>${max ? max + ' ' + esc(t('per.au', 'UA')) + ' ' + esc(t('per.peak', 'de pico'))
+                        : esc(t('per.weeksN', '{n} semanas', { n: semanas.length }))}</span>
+            <span>${esc(fechaLarga(plan.end_date))}</span>
+          </div>
+        </div>
       </div>
       ${b ? detalleEtapa(b) : ''}
-      ${leyendaPlan()}`;
+      ${bloques.length ? listaEtapas() : leyendaPlan()}`;
   }
+
+  // Las etapas también escritas, con sus fechas. En una temporada larga la
+  // barra de cuatro semanas no tiene ancho para el nombre, y el nombre es
+  // justamente lo que se busca cuando se mira un plan.
+  function listaEtapas() {
+    return `<ul class="pe-stages">` + bloques.map(b => {
+      const kind = P().kindLabel(plan, b.kind);
+      const fase = P().phaseLabel(b.phase);
+      const pie = [kind, fase].filter(Boolean).join(' · ');
+      return `<li><button type="button" class="pe-stage${etapaFoco === b.id ? ' is-on' : ''}" data-blk="${b.id}">
+        <i style="background:${P().blockColor(plan, b)}"></i>
+        <span><b>${esc(b.name)}</b>${pie ? `<em>${esc(pie)}</em>` : ''}</span>
+        <time>${esc(fechaCorta(b.start_date))} – ${esc(fechaCorta(b.end_date))}
+          <em>${P().semanasDe(b)} ${esc(t('per.wk', 'sem'))}</em></time>
+      </button></li>`;
+    }).join('') + `</ul>`;
+  }
+
+  // El nombre se muestra si entra. Medirlo es la única forma honesta de
+  // saberlo: depende del ancho de la pantalla y de cuántas semanas dura el
+  // plan, y una etapa con el nombre cortado en «A…» no dice nada.
+  function ajustarEtapas() {
+    document.querySelectorAll('#pe-body .pe-blk').forEach(el => {
+      el.classList.toggle('is-tight', el.offsetWidth < 84);
+    });
+
+    // Una temporada larga no entra en la pantalla. Si hay que desplazarse, se
+    // dice —una línea cortada sin más parece el final del plan— y se abre
+    // donde está parado el atleta, que es lo que se viene a mirar.
+    const caja = document.querySelector('#pe-body .pe-time');
+    if (!caja) return;
+    const sobra = caja.scrollWidth - caja.clientWidth;
+    const queda = () => caja.classList.toggle('is-scroll',
+      caja.scrollWidth - caja.clientWidth - caja.scrollLeft > 4);
+    caja.addEventListener('scroll', queda, { passive: true });
+    const marca = caja.querySelector('.pe-now');
+    if (sobra > 4 && marca) {
+      const x = (parseFloat(marca.style.left) / 100) * caja.scrollWidth;
+      caja.scrollLeft = Math.max(0, Math.min(sobra, x - caja.clientWidth / 3));
+    }
+    queda();
+  }
+  window.addEventListener('resize', () => { if (escala === 'year') ajustarEtapas(); });
 
   function vistaEtapa() {
     const b = bloques.find(x => x.id === etapaFoco);

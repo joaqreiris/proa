@@ -568,10 +568,14 @@
     });
   }
 
-  function legendHtml() {
+  // La misma leyenda, con la voz de quien la lee: al atleta se le habla de SU
+  // club, no del club «de él». La grilla es la misma pantalla para los dos y
+  // sin esto el atleta leía «con su club» sobre sus propios horarios.
+  function legendHtml(voice) {
+    const clave = (k) => (voice === 'athlete' && k === 'team_training') ? 'ai.k.team' : KIND_KEY[k];
     return `<div class="pr-legend wk-legend">` + Object.keys(KIND_KEY).map(k =>
       `<span class="pr-legend-item"><i style="background:${KIND_COLOR[k]}"></i>`
-      + `<span data-i18n="${KIND_KEY[k]}">${esc(t(KIND_KEY[k]))}</span></span>`).join('') + `</div>`;
+      + `<span data-i18n="${clave(k)}">${esc(t(clave(k)))}</span></span>`).join('') + `</div>`;
   }
 
   window.prWeek = {

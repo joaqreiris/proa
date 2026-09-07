@@ -271,7 +271,7 @@
 
     window.prIntake.render('form-host', 'athlete');
     document.getElementById('wk-scale').outerHTML = window.prWeek.scaleHtml();
-    document.getElementById('wk-legend').outerHTML = window.prWeek.legendHtml();
+    document.getElementById('wk-legend').outerHTML = window.prWeek.legendHtml('athlete');
     document.getElementById('s-days').innerHTML = window.prWeek.dayPickHtml();
 
     // Las reglas de acceso ya limitan al atleta a su propia fila.

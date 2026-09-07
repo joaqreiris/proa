@@ -976,5 +976,7 @@
   "per.p.other": "Outro",
   "per.title": "A temporada",
   "per.f.planPh": "Temporada 2026",
-  "per.au": "UA"
+  "per.au": "UA",
+  "per.today": "hoje",
+  "per.weeksN": "{n} semanas"
 }

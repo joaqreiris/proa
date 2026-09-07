@@ -53,6 +53,10 @@ const EVENTOS = [
   { id: 'e-6', date: '2026-09-21', type: 'gym',   au: 0,   title: 'Movilidad' },
 ];
 
+// El caso de la captura: una temporada de año y medio con una sola etapa corta.
+const PLAN_LARGO = { ...PLAN, end_date: '2027-12-26' };
+const BLOQUE_UNICO = BLOQUES[0];
+
 const FALSO = `
   window.__sql = [];
   const A = { id:'a-1', workspace_id:'w-1', first_name:'Ignacio', last_name:'Amarilla', sex:'m',
@@ -62,6 +66,9 @@ const FALSO = `
               workspaces:{ name:'Espacio', accent:'orange' } };
   window.__plan = ${JSON.stringify([PLAN])};
   window.__blocks = ${JSON.stringify(BLOQUES)};
+  // Para poder probar otra temporada sin levantar otro servidor.
+  try { const otro = JSON.parse(localStorage.getItem('__otroPlan') || 'null');
+        if (otro) { window.__plan = [otro.plan]; window.__blocks = otro.blocks; } } catch (e) {}
   window.__events = ${JSON.stringify(EVENTOS)};
   const tabla = (t) => {
     const filas = t === 'athletes' ? [A]
@@ -170,13 +177,63 @@ try {
       opacidad: i.style.opacity || '',
       alto: i.style.height,
     })));
-  is('la semana reportada muestra su carga', cargas[0].titulo, 'Semana 1 · 1200 UA');
-  is('la de sesiones sin parte lo dice', cargas[1].titulo, 'Semana 2 · sin partes cargados');
+  is('la semana reportada muestra su carga', cargas[0].titulo, 'Semana 1 · 7 sept · 1200 UA');
+  is('la de sesiones sin parte lo dice', cargas[1].titulo, 'Semana 2 · 14 sept · sin partes cargados');
   is('y se dibuja apagada', cargas[1].opacidad !== '', true);
-  is('en cambio un esfuerzo cero es cero', cargas[2].titulo, 'Semana 3 · 0 UA');
+  is('en cambio un esfuerzo cero es cero', cargas[2].titulo, 'Semana 3 · 21 sept · 0 UA');
   is('y no se apaga: es un dato', cargas[2].opacidad, '');
   is('la semana sin nada agendado también es sin dato', cargas[3].titulo,
-    'Semana 4 · sin partes cargados');
+    'Semana 4 · 28 sept · sin partes cargados');
+
+  console.log('\nLA LÍNEA DE TIEMPO DICE MESES, NO NÚMEROS DE SEMANA');
+  const tiempo = await page.evaluate(() => {
+    const meses = [...document.querySelectorAll('.pe-months span')].map((m) => ({
+      texto: m.textContent.replace(/\s+/g, ' ').trim(),
+      izq: Math.round(parseFloat(m.style.left)),
+    }));
+    const ejes = [...document.querySelectorAll('.pe-axis span')].map((s) => s.textContent.trim());
+    return { meses, ejes, divisiones: document.querySelectorAll('.pe-grid i').length };
+  });
+  // Del 7 de septiembre al 27 de diciembre: cuatro meses.
+  is('están los meses del plan', tiempo.meses.map((m) => m.texto),
+    ['sept 2026', 'oct', 'nov', 'dic']);
+  is('el año se escribe una sola vez',
+    tiempo.meses.filter((m) => m.texto.includes('2026')).length, 1);
+  is('y hay una división entre mes y mes', tiempo.divisiones, 3);
+  is('el eje da fechas de verdad, no «Semana 1»',
+    [tiempo.ejes[0], tiempo.ejes[2]], ['7 sept 2026', '27 dic 2026']);
+
+  console.log('\nY MARCA DÓNDE ESTÁ PARADO EL ATLETA');
+  // Es la primera pregunta al abrir un plan: en qué semana estamos.
+  const ahora = await page.evaluate(() => {
+    const n = document.querySelector('.pe-now');
+    return n ? { pos: parseFloat(n.style.left), rotulo: n.textContent.trim() } : null;
+  });
+  // Hoy es el 7 de septiembre, el primer día del plan: arranca en cero.
+  is('la marca está', !!ahora, true);
+  is('al principio de la primera semana', ahora && Math.round(ahora.pos), 0);
+  is('y dice qué es', ahora && ahora.rotulo, 'hoy');
+
+  console.log('\nUNA ETAPA ANGOSTA NO MUESTRA EL NOMBRE CORTADO');
+  // «A…» no dice nada. Se deja la duración, y el nombre entero va en la lista.
+  const angostas = await page.evaluate(() => {
+    const etapas = [...document.querySelectorAll('.pe-blk')];
+    return {
+      anchas: etapas.filter((e) => !e.classList.contains('is-tight')).length,
+      // Con cuatro etapas en 16 semanas hay lugar de sobra para los nombres.
+      nombreVisible: getComputedStyle(etapas[0].querySelector('span')).display !== 'none',
+      lista: [...document.querySelectorAll('.pe-stage')].map((s) => ({
+        nombre: s.querySelector('b').textContent.trim(),
+        fechas: s.querySelector('time').childNodes[0].textContent.replace(/\s+/g, ' ').trim(),
+      })),
+    };
+  });
+  is('acá entran todos', angostas.anchas, 4);
+  is('y el nombre se ve', angostas.nombreVisible, true);
+  is('la lista repite las etapas con sus fechas',
+    angostas.lista.map((s) => s.nombre + ': ' + s.fechas),
+    ['Acumulación: 7 sept – 4 oct', 'Transformación: 5 oct – 1 nov',
+     'Realización: 2 nov – 29 nov', 'Transición: 30 nov – 27 dic']);
 
   console.log('\nLO PREVISTO CONTRA LO QUE PASÓ');
   const detalle = await page.evaluate(() => {
@@ -268,6 +325,46 @@ try {
   is('y ofrece borrarlo', conDatos.borrar, true);
   await page.keyboard.press('Escape');
   await page.waitForTimeout(200);
+
+  console.log('\nUNA TEMPORADA LARGA NO SE APRIETA HASTA VOLVERSE ILEGIBLE');
+  // El caso que la rompía: 68 semanas y una etapa de cuatro. Comprimida en el
+  // ancho de la pantalla, la etapa medía 40px y el nombre quedaba en «A…».
+  await page.evaluate((datos) => localStorage.setItem('__otroPlan', JSON.stringify(datos)),
+    { plan: PLAN_LARGO, blocks: [BLOQUE_UNICO] });
+  await page.goto(`http://localhost:${PORT}/Athlete.html?id=a-1`, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('[data-tab="plan"]', { timeout: 15000 });
+  await page.click('[data-tab="plan"]');
+  await page.waitForSelector('.pe-blk', { timeout: 10000 });
+  await page.waitForTimeout(400);
+
+  const largo = await page.evaluate(() => {
+    const caja = document.querySelector('.pe-time');
+    const etapa = document.querySelector('.pe-blk');
+    return {
+      semanas: document.querySelectorAll('.pe-load i').length,
+      // Se desplaza en horizontal en vez de aplastar 68 semanas en la pantalla.
+      seDesplaza: caja.scrollWidth > caja.clientWidth + 4,
+      avisaQueSigue: caja.classList.contains('is-scroll'),
+      anchoEtapa: Math.round(etapa.getBoundingClientRect().width),
+      // Angosta: no se muestra el nombre a medias.
+      apretada: etapa.classList.contains('is-tight'),
+      nombreOculto: getComputedStyle(etapa.querySelector('span')).display === 'none',
+      duracion: etapa.querySelector('small').textContent.trim(),
+      // El nombre entero y sus fechas quedan escritos abajo.
+      enLaLista: [...document.querySelectorAll('.pe-stage')].map((x) =>
+        x.querySelector('b').textContent.trim()),
+      meses: document.querySelectorAll('.pe-months span').length,
+    };
+  });
+  is('están las 68 semanas', largo.semanas, 68);
+  is('la línea se desplaza en vez de aplastarse', largo.seDesplaza, true);
+  is('y avisa que sigue', largo.avisaQueSigue, true);
+  is('la etapa de cuatro semanas mide sus cuatro semanas', largo.anchoEtapa, 72);
+  is('como no entra el nombre, no se pone cortado', [largo.apretada, largo.nombreOculto], [true, true]);
+  is('queda la duración, que sí entra', largo.duracion, '4 sem');
+  is('y el nombre entero está en la lista', largo.enLaLista, ['Acumulación']);
+  is('los dieciséis meses están rotulados', largo.meses, 16);
+  await page.evaluate(() => localStorage.removeItem('__otroPlan'));
 
   console.log('\nLOS MODALES CIERRAN');
   // La cruz y el «Cancelar» no estaban conectados a nada en esta pantalla.

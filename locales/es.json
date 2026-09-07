@@ -364,7 +364,7 @@
   "ath.in.pending": "Pendiente",
   "in.athleteCanFill": "La puede completar él",
   "in.byAthlete": "La completó {name} el {date}.",
-  "in.emergencyNoteA": "Por si pasa algo mientras entrenás y hay que avisar a alguien.",
+  "in.emergencyNoteA": "Por si pasa algo mientras entrenas y hay que avisar a alguien.",
   "in.healthNoteA": "Cuenta todo, aunque te parezca poca cosa. Es lo que hace que tu plan sea seguro.",
   "in.historyNoteA": "Todo lo que te haya pasado, aunque haya sido hace años.",
   "in.goalNoteA": "¿Para qué estás entrenando? Cuanto más claro, mejor te va a apuntar tu entrenador.",
@@ -976,5 +976,7 @@
   "per.p.other": "Otro",
   "per.title": "La temporada",
   "per.f.planPh": "Temporada 2026",
-  "per.au": "UA"
+  "per.au": "UA",
+  "per.today": "hoy",
+  "per.weeksN": "{n} semanas"
 }
