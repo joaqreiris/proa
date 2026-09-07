@@ -916,6 +916,11 @@
   // —son el tablero de al lado—, así que acercarse del todo es ir para allá.
   const P = () => window.prPeriod;
   let plan = null, bloques = [], semanas = [], escala = 'year', etapaFoco = null, cargaEventos = [];
+  // Qué semanas están desplegadas y qué tiene adentro cada sesión. El
+  // contenido se guarda entre repintados: buscarlo dos veces es una consulta
+  // de más por cada vez que se abre y se cierra una semana.
+  const abiertas = new Set();
+  const contenido = {};
 
   async function cargarPlan(a) {
     const { data: planes } = await window.sb.from('training_plans')
@@ -929,7 +934,7 @@
       // Solo las sesiones de gimnasio y campo: la carga de un entrenamiento es
       // lo que se periodiza. Una comida no tiene carga.
       const { data: evs } = await window.sb.from('events')
-        .select('date,type,au,rpe,actual_min,title')
+        .select('id,date,start_time,type,title,status,au,rpe,actual_min')
         .eq('athlete_id', a.id).in('type', ['gym', 'field'])
         .gte('date', plan.start_date).lte('date', plan.end_date);
       cargaEventos = evs || [];
@@ -1137,22 +1142,89 @@
     if (!b) { escala = 'year'; return vistaAno(); }
     const suyas = semanas.filter(w => w.block && w.block.id === b.id);
     const color = P().blockColor(plan, b);
+    const pico = Math.max(...suyas.map(x => x.load || 0)) || 1;
 
-    const filas = suyas.map(w => `
-      <div class="pe-wk">
-        <span class="pe-wk-n">${esc(t('per.wkN', 'Semana {n}', { n: w.n }))}
-          <em>${esc(window.prWeek.parseYMD(w.start).toLocaleDateString(
-            (window.PR_I18N && window.PR_I18N.current) || 'es', { day: 'numeric', month: 'short' }))}</em></span>
-        <span class="pe-wk-s">${w.sessions} ${esc(t(w.sessions === 1 ? 'per.session' : 'per.sessions'))}</span>
-        <span class="pe-wk-l">${w.load == null
-          ? `<em>${esc(t('per.noData', 'sin partes cargados'))}</em>`
-          : w.load + ` <span>${esc(t('per.au', 'UA'))}</span>`}</span>
-        <span class="pe-wk-bar"><i style="width:${w.load == null ? 0 : Math.min(100, Math.round((w.load / (Math.max(...suyas.map(x => x.load || 0)) || 1)) * 100))}%;background:${color}"></i></span>
-      </div>`).join('');
+    const filas = suyas.map(w => {
+      const dela = sesionesDe(w);
+      return `
+      <div class="pe-wk${abiertas.has(w.start) ? ' is-open' : ''}">
+        <button type="button" class="pe-wk-row" data-week="${w.start}"
+                ${dela.length ? '' : 'disabled'}
+                aria-expanded="${abiertas.has(w.start) ? 'true' : 'false'}">
+          <span class="pe-wk-n">${esc(t('per.wkN', 'Semana {n}', { n: w.n }))}
+            <em>${esc(fechaCorta(w.start))}</em></span>
+          <span class="pe-wk-s">${dela.length
+            ? `<i class="ti ti-chevron-right"></i>` : ''}${w.sessions} ${esc(t(w.sessions === 1 ? 'per.session' : 'per.sessions'))}</span>
+          <span class="pe-wk-l">${w.load == null
+            ? `<em>${esc(t('per.noData', 'sin partes cargados'))}</em>`
+            : w.load + ` <span>${esc(t('per.au', 'UA'))}</span>`}</span>
+          <span class="pe-wk-bar"><i style="width:${w.load == null ? 0 : Math.min(100, Math.round((w.load / pico) * 100))}%;background:${color}"></i></span>
+        </button>
+        ${abiertas.has(w.start) ? listaSesiones(w, dela) : ''}
+      </div>`;
+    }).join('');
 
-    return `<p class="pr-hint" style="margin:0 0 12px">${esc(t('per.blockHint',
-        'Las semanas de esta etapa. Para ver o cambiar una sesión, la semana está en la pestaña de al lado.'))}</p>
+    return `<p class="pr-hint" style="margin:0 0 12px">${esc(t('per.blockHint2',
+        'Las semanas de esta etapa. Tocá una para ver sus sesiones y entrar a cualquiera.'))}</p>
       <div class="pe-weeks">${filas}</div>${detalleEtapa(b)}`;
+  }
+
+  const sesionesDe = (w) => cargaEventos
+    .filter(e => e.date >= w.start && e.date <= w.end)
+    .sort((a, c) => (a.date + (a.start_time || '')).localeCompare(c.date + (c.start_time || '')));
+
+  // Qué hay dentro de la semana, sin salir de acá. «3 sesiones» no dice nada:
+  // lo que se quiere saber es de qué son y si ya están armadas.
+  function listaSesiones(w, evs) {
+    const W = window.prWeek;
+    const filas = evs.map(e => {
+      const dia = t(W.DAY_KEYS[(W.parseYMD(e.date).getDay() + 6) % 7]);
+      const cont = contenido[e.id];
+      const hecha = e.au != null;
+      return `<a class="pe-ses" href="Session.html?event=${esc(e.id)}">
+        <span class="pe-ses-day"><b>${esc(dia)}</b><em>${esc(fechaCorta(e.date))}</em></span>
+        <span class="pe-ses-what">
+          <b><i class="ti ti-${esc(W.EVENT_ICON[e.type] || 'circle')}" style="color:${esc(W.EVENT_COLOR[e.type] || 'currentColor')}"></i>
+            ${esc(e.title || t(W.EVENT_KEY[e.type] || e.type, e.type))}</b>
+          ${cont === undefined ? `<em>${esc(t('per.s.loading', 'buscando…'))}</em>`
+            : cont ? `<em>${esc(cont)}</em>`
+            : `<em class="is-warn">${esc(t('per.s.empty', 'sin ejercicios cargados'))}</em>`}
+        </span>
+        <span class="pe-ses-when">${e.start_time ? esc(W.hhmm(e.start_time)) : ''}</span>
+        <span class="pe-ses-load">${hecha
+          ? `${e.au} <span>${esc(t('per.au', 'UA'))}</span>`
+          : `<em>${esc(t('per.s.planned', 'planificada'))}</em>`}</span>
+        <i class="ti ti-chevron-right pe-ses-go"></i>
+      </a>`;
+    }).join('');
+
+    return `<div class="pe-sess">${filas}
+      <button type="button" class="pe-seeweek" data-goweek="${w.start}">
+        <i class="ti ti-calendar-week"></i>${esc(t('per.s.seeWeek', 'Ver esta semana en el tablero'))}
+      </button>
+    </div>`;
+  }
+
+  // El contenido de cada sesión se busca cuando se abre la semana, no antes:
+  // en una temporada de un año son cientos de sesiones y casi ninguna se mira.
+  async function cargarContenido(evs) {
+    const faltan = evs.filter(e => contenido[e.id] === undefined).map(e => e.id);
+    if (!faltan.length) return;
+    const { data } = await window.sb.from('session_blocks')
+      .select('event_id, session_items(name, sets, reps)').in('event_id', faltan);
+    const porEvento = {};
+    (data || []).forEach(b => {
+      (porEvento[b.event_id] = porEvento[b.event_id] || []).push(...(b.session_items || []));
+    });
+    faltan.forEach(id => {
+      const items = porEvento[id] || [];
+      // Los primeros nombres y cuántos quedan: alcanza para reconocer la
+      // sesión, y la lista entera está a un clic.
+      const nombres = items.slice(0, 3).map(i => i.name).join(' · ');
+      contenido[id] = items.length
+        ? nombres + (items.length > 3 ? ' · +' + (items.length - 3) : '')
+        : '';
+    });
   }
 
   function detalleEtapa(b) {
@@ -1199,6 +1271,23 @@
       b.addEventListener('click', () => { escala = b.dataset.z; pintarPlan(); }));
     host.querySelectorAll('[data-blk]').forEach(el =>
       el.addEventListener('click', () => { etapaFoco = el.dataset.blk; escala = 'block'; pintarPlan(); }));
+    // Desplegar una semana. Se busca el contenido y se vuelve a pintar: es una
+    // lista corta y así no hay dos maneras de dibujar lo mismo.
+    host.querySelectorAll('[data-week]').forEach(el =>
+      el.addEventListener('click', async () => {
+        const ymd = el.dataset.week;
+        if (abiertas.has(ymd)) { abiertas.delete(ymd); pintarPlan(); return; }
+        abiertas.add(ymd);
+        pintarPlan();
+        const w = semanas.find(x => x.start === ymd);
+        if (!w) return;
+        await cargarContenido(sesionesDe(w));
+        if (abiertas.has(ymd)) pintarPlan();
+      }));
+
+    host.querySelectorAll('[data-goweek]').forEach(el =>
+      el.addEventListener('click', () => irALaSemana(el.dataset.goweek)));
+
     host.querySelectorAll('[data-edit-blk]').forEach(el =>
       el.addEventListener('click', () => abrirEtapa(bloques.find(b => b.id === el.dataset.editBlk))));
     host.querySelectorAll('[data-del-blk]').forEach(el =>
@@ -1457,6 +1546,15 @@
   function pintarAyudaTipo() {
     const info = P().kindInfo(plan, document.getElementById('bk-kind').value);
     document.getElementById('bk-kind-h').textContent = info ? t(info.hint, '') : '';
+  }
+
+  // Del plan al tablero, parado en la semana que se estaba mirando. Buscarla a
+  // flechazos desde la de hoy es lo que hacía que las dos pestañas no se
+  // hablaran entre ellas.
+  async function irALaSemana(ymd) {
+    const boton = document.querySelector('.ap-tabs [data-tab="week"]');
+    if (boton) boton.click();
+    if (window.prWeekBoard && window.prWeekBoard.goTo) await window.prWeekBoard.goTo(ymd);
   }
 
   document.getElementById('pe-newplan').addEventListener('click', () => abrirPlan());

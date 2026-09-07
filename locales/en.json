@@ -978,5 +978,10 @@
   "per.f.planPh": "2026 season",
   "per.au": "AU",
   "per.today": "today",
-  "per.weeksN": "{n} weeks"
+  "per.weeksN": "{n} weeks",
+  "per.blockHint2": "The weeks in this stage. Tap one to see its sessions and open any of them.",
+  "per.s.loading": "looking…",
+  "per.s.empty": "no exercises added yet",
+  "per.s.planned": "planned",
+  "per.s.seeWeek": "See this week on the board"
 }

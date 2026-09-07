@@ -1466,5 +1466,12 @@
     if (window.PR_I18N) window.PR_I18N.applyTo(host);
   }
 
-  window.prWeekBoard = { mount, reload: () => loadWeek() };
+  // Ir a una semana concreta. La usa el plan: desde una etapa se salta a la
+  // semana que se está mirando, que si no hay que buscarla a flechazos.
+  async function goTo(ymd) {
+    monday = W().mondayOf(ymd);
+    await loadWeek();
+  }
+
+  window.prWeekBoard = { mount, reload: () => loadWeek(), goTo };
 })();

@@ -45,12 +45,19 @@ const BLOQUES = [
 // Semana 3: una sesión reportada con esfuerzo cero -> cero de verdad.
 // Semana 4: nada agendado.
 const EVENTOS = [
-  { id: 'e-1', date: '2026-09-07', type: 'gym',   au: 300, title: 'Fuerza' },
-  { id: 'e-2', date: '2026-09-09', type: 'gym',   au: 400, title: 'Fuerza' },
-  { id: 'e-3', date: '2026-09-11', type: 'field', au: 500, title: 'Campo' },
-  { id: 'e-4', date: '2026-09-14', type: 'gym',   au: null, title: 'Fuerza' },
-  { id: 'e-5', date: '2026-09-16', type: 'gym',   au: null, title: 'Fuerza' },
-  { id: 'e-6', date: '2026-09-21', type: 'gym',   au: 0,   title: 'Movilidad' },
+  { id: 'e-1', date: '2026-09-07', start_time: '18:00:00', type: 'gym',   status: 'done',    au: 300, title: 'Fuerza' },
+  { id: 'e-2', date: '2026-09-09', start_time: '18:00:00', type: 'gym',   status: 'done',    au: 400, title: 'Fuerza' },
+  { id: 'e-3', date: '2026-09-11', start_time: '10:00:00', type: 'field', status: 'done',    au: 500, title: 'Campo' },
+  { id: 'e-4', date: '2026-09-14', start_time: '18:00:00', type: 'gym',   status: 'planned', au: null, title: 'Fuerza' },
+  { id: 'e-5', date: '2026-09-16', start_time: '18:00:00', type: 'gym',   status: 'planned', au: null, title: null },
+  { id: 'e-6', date: '2026-09-21', start_time: '09:00:00', type: 'gym',   status: 'planned', au: 0,   title: 'Movilidad' },
+];
+// Lo que hay dentro de cada sesión. e-2 está en el calendario pero vacía por
+// dentro: es el caso que hay que poder ver sin abrirla una por una.
+const BLOQUES_SESION = [
+  { event_id: 'e-1', session_items: [{ name: 'Sentadilla' }, { name: 'Press banca' }] },
+  { event_id: 'e-1', session_items: [{ name: 'Remo' }, { name: 'Plancha' }] },
+  { event_id: 'e-3', session_items: [{ name: 'Carrera continua' }] },
 ];
 
 // El caso de la captura: una temporada de año y medio con una sola etapa corta.
@@ -70,11 +77,13 @@ const FALSO = `
   try { const otro = JSON.parse(localStorage.getItem('__otroPlan') || 'null');
         if (otro) { window.__plan = [otro.plan]; window.__blocks = otro.blocks; } } catch (e) {}
   window.__events = ${JSON.stringify(EVENTOS)};
+  window.__sesion = ${JSON.stringify(BLOQUES_SESION)};
   const tabla = (t) => {
     const filas = t === 'athletes' ? [A]
                 : t === 'training_plans' ? window.__plan
                 : t === 'training_blocks' ? window.__blocks
                 : t === 'events' ? window.__events
+                : t === 'session_blocks' ? window.__sesion
                 : [];
     let escribe = false;
     const propios = {
@@ -262,6 +271,68 @@ try {
     ['3 sesiones', '2 sesiones', '1 sesión', '0 sesiones']);
   is('y la carga o su ausencia', semanas.map((s) => s.carga),
     ['1200 UA', 'sin partes cargados', '0 UA', 'sin partes cargados']);
+  console.log('\nDESDE LA ETAPA SE VE QUÉ HAY EN CADA SESIÓN');
+  // «3 sesiones» no dice nada: lo que se quiere saber es de qué son y si ya
+  // están armadas, sin abrirlas una por una.
+  await page.click('.pe-wk-row[data-week="2026-09-07"]');
+  await page.waitForSelector('.pe-ses', { timeout: 5000 });
+  await page.waitForTimeout(400);
+  const sesiones = await page.evaluate(() =>
+    [...document.querySelectorAll('.pe-ses')].map((a) => ({
+      dia: a.querySelector('.pe-ses-day b').textContent.trim(),
+      que: a.querySelector('.pe-ses-what b').textContent.trim(),
+      dentro: a.querySelector('.pe-ses-what em').textContent.trim(),
+      alerta: !!a.querySelector('.pe-ses-what em.is-warn'),
+      hora: a.querySelector('.pe-ses-when').textContent.trim(),
+      carga: a.querySelector('.pe-ses-load').textContent.trim(),
+      donde: a.getAttribute('href'),
+    })));
+  is('están las tres de esa semana', sesiones.length, 3);
+  is('con su día', sesiones.map((s) => s.dia), ['Lun', 'Mié', 'Vie']);
+  is('y su hora', sesiones.map((s) => s.hora), ['18:00', '18:00', '10:00']);
+  is('se ve qué tiene adentro sin abrirla',
+    sesiones[0].dentro, 'Sentadilla · Press banca · Remo · +1');
+  // Una sesión en el calendario y vacía por dentro es lo único de esta lista
+  // que pide hacer algo, así que se marca.
+  is('la que está vacía lo dice', sesiones[1].dentro, 'sin ejercicios cargados');
+  is('y lo dice avisando', sesiones[1].alerta, true);
+  is('la carga reportada se ve acá', sesiones[0].carga, '300 UA');
+  is('y se entra a la sesión de un clic', sesiones[0].donde, 'Session.html?event=e-1');
+
+  console.log('\nY SE SALTA AL TABLERO EN ESA SEMANA');
+  // Buscarla a flechazos desde la de hoy era lo que dejaba las dos pestañas
+  // sin hablarse.
+  // El tablero de verdad se carga después del falso y lo pisa, así que se
+  // espía el goTo real: es el que va a correr en producción.
+  is('el tablero sabe ir a una semana concreta',
+    await page.evaluate(() => typeof window.prWeekBoard.goTo), 'function');
+  await page.evaluate(() => {
+    window.prWeekBoard.goTo = (d) => { window.__goto = d; return Promise.resolve(); };
+  });
+  await page.click('.pe-seeweek');
+  await page.waitForTimeout(400);
+  const salto = await page.evaluate(() => ({
+    semana: window.__goto,
+    enLaSemana: !document.getElementById('pane-week').hidden,
+  }));
+  is('el tablero va al lunes de esa semana', salto.semana, '2026-09-07');
+  is('y se ve la pestaña de la semana', salto.enLaSemana, true);
+
+  await page.click('[data-tab="plan"]');
+  await page.waitForTimeout(400);
+  const sigueAbierta = await page.evaluate(() => document.querySelectorAll('.pe-ses').length);
+  is('al volver, la semana sigue desplegada', sigueAbierta, 3);
+  await page.click('.pe-wk-row[data-week="2026-09-07"]');
+  await page.waitForTimeout(300);
+  is('y se puede cerrar',
+    await page.evaluate(() => document.querySelectorAll('.pe-ses').length), 0);
+
+  console.log('\nUNA SEMANA VACÍA NO SE PUEDE DESPLEGAR');
+  // No hay nada que mostrar: un desplegable vacío es una promesa incumplida.
+  is('la fila no responde',
+    await page.evaluate(() => document.querySelector('.pe-wk-row[data-week="2026-09-28"]').disabled),
+    true);
+
   await page.click('#pe-zoom [data-z="year"]');
   await page.waitForSelector('.pe-blk', { timeout: 5000 });
   ok('se vuelve a la temporada');

@@ -978,5 +978,10 @@
   "per.f.planPh": "Temporada 2026",
   "per.au": "UA",
   "per.today": "hoje",
-  "per.weeksN": "{n} semanas"
+  "per.weeksN": "{n} semanas",
+  "per.blockHint2": "As semanas desta etapa. Toque numa para ver as sessões e abrir qualquer uma.",
+  "per.s.loading": "procurando…",
+  "per.s.empty": "sem exercícios carregados",
+  "per.s.planned": "planejada",
+  "per.s.seeWeek": "Ver esta semana no quadro"
 }

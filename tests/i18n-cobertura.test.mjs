@@ -166,6 +166,26 @@ console.log('\nLAS CLAVES QUE PIDEN LAS PANTALLAS EXISTEN');
 if (inventadas.length === 0) ok('ninguna clave inventada');
 else no(`hay ${inventadas.length} claves que no están en locales/es.json`, inventadas);
 
+// ── 3c. Una traducción con etiquetas se pide con data-i18n-html ────────────
+// data-i18n escribe en textContent: si el texto trae un <em>, la pantalla
+// muestra «<EM>» en crudo. Pasó en la invitación —lo primero que ve un atleta
+// de Proa— y no se ve en ninguna prueba de las de arriba, porque la clave
+// existe, está en los tres idiomas y no está vacía.
+const crudas = [];
+for (const rel of html()) {
+  const src = readFileSync(join(root, rel), 'utf8');
+  for (const m of src.matchAll(/data-i18n="([\w.]+)"/g)) {
+    const v = locales.es[m[1]];
+    if (typeof v === 'string' && /<[a-z][^>]*>/i.test(v)) {
+      crudas.push({ archivo: rel, clave: m[1], texto: v.slice(0, 50) });
+    }
+  }
+}
+
+console.log('\nLAS QUE LLEVAN ETIQUETAS SE PIDEN CON data-i18n-html');
+if (crudas.length === 0) ok('ninguna se mostraría en crudo');
+else no(`hay ${crudas.length} que saldrían con las etiquetas a la vista`, crudas);
+
 console.log('\nLAS TRES TABLAS DE IDIOMAS');
 const claves = Object.keys(locales.es);
 for (const lang of ['en', 'pt']) {
