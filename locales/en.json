@@ -786,6 +786,15 @@
   "ath.deleted": "{name} is gone.",
   "wk.tzNote": "These are {name}'s times, in {city}. It's {there} there; {here} for you.",
   "wk.yourTime": "For you: {time} on {day}.",
+  "am.pageTitle": "My meal — Proa",
+  "am.empty.title": "Nothing here yet",
+  "am.empty.body": "Your coach is putting this meal together.",
+  "am.dayNote": "Everything you have planned for today, this meal included.",
+  "log.titleMeal": "Did you eat this?",
+  "log.ate": "I ate it",
+  "log.didntEat": "I didn't",
+  "log.ateDone": "Eaten",
+  "log.ateSkipped": "Didn't eat it",
   "log.title": "How did it go?",
   "log.ask": "How did it go?",
   "log.did": "I did it",
@@ -983,5 +992,9 @@
   "per.s.loading": "looking…",
   "per.s.empty": "no exercises added yet",
   "per.s.planned": "planned",
-  "per.s.seeWeek": "See this week on the board"
+  "per.s.seeWeek": "See this week on the board",
+  "se.copyDown": "Copy this to the ones below",
+  "se.copyDownOk": "Copied to {n} exercise|Copied to {n} exercises",
+  "se.copyDownNone": "There is no exercise below to copy it to.",
+  "se.copyDownFail": "Could not copy. Reload the page and try again."
 }

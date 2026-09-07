@@ -39,7 +39,7 @@
   .se-items { padding: 6px 10px 10px; }
   .se-item {
     display: grid;
-    grid-template-columns: 1fr 52px 74px 84px 64px 34px;
+    grid-template-columns: 1fr 52px 74px 84px 64px 102px;
     gap: 8px; align-items: center;
     padding: 7px 8px; border-radius: var(--pr-r-3);
     transition: background var(--pr-dur-1) var(--pr-ease);
@@ -64,18 +64,27 @@
 
   .se-cols {
     display: grid;
-    grid-template-columns: 1fr 52px 74px 84px 64px 34px;
+    grid-template-columns: 1fr 52px 74px 84px 64px 102px;
     gap: 8px; padding: 4px 8px 2px;
     font: 700 10px/1 var(--pr-font-cond); letter-spacing: .16em;
     text-transform: uppercase; color: var(--pr-fg-faint);
   }
   .se-cols span:not(:first-child) { text-align: center; }
 
+  /* Los botones de la fila, dentro de su columna y no pisando el borde. */
+  .se-del { display: flex; gap: 2px; justify-content: flex-end; }
+  /* Copiar hacia abajo aparece al pasar por encima: está siempre disponible
+     pero no compite con el nombre del ejercicio cuando no hace falta. */
+  .se-down { opacity: 0; transition: opacity var(--pr-dur-1) var(--pr-ease); }
+  .se-item:hover .se-down, .se-down:focus-visible { opacity: 1; }
+  @media (hover: none) { .se-down { opacity: 1; } }
+
   @media (max-width: 720px) {
     .se-cols { display: none; }
     .se-item { grid-template-columns: 1fr 1fr; grid-auto-rows: min-content; padding: 10px 8px; }
     .se-item-name { grid-column: 1 / -1; }
     .se-item .se-del { grid-column: 2; justify-self: end; }
+    .se-down { opacity: 1; }
   }
 
   /* Método del bloque: solo aparece cuando hay algo que decir. */
@@ -373,6 +382,11 @@
             const detailed = it.session_sets.length > 0;
             const isOpen = open.has(it.id);
             const vid = it.exercises && it.exercises.video_url;
+            // Copiar hacia abajo sólo tiene sentido si hay algo que copiar y
+            // alguien debajo a quien copiárselo.
+            const hayDebajo = ii < b.session_items.length - 1;
+            const tieneAlgo = !detailed &&
+              [it.sets, it.reps, it.load, it.rest_s].some(v => v != null && v !== '');
             return `
             <div class="se-row" data-item="${it.id}">
             <div class="se-item">
@@ -394,7 +408,9 @@
               <input class="se-in" data-f="reps"   value="${esc(it.reps || '')}" placeholder="—" ${detailed ? 'disabled' : ''}>
               <input class="se-in" data-f="load"   value="${esc(it.load || '')}" placeholder="—" ${detailed ? 'disabled' : ''}>
               <input class="se-in" data-f="rest_s" value="${esc(it.rest_s == null ? '' : it.rest_s)}" inputmode="numeric" placeholder="—" ${detailed ? 'disabled' : ''}>
-              <span class="se-del" style="display:flex;gap:2px">
+              <span class="se-del">
+                ${hayDebajo && tieneAlgo ? `<button class="pr-icon-btn is-flush se-down" data-act="copy-down"
+                  aria-label="${esc(t('se.copyDown'))}" title="${esc(t('se.copyDown'))}"><i class="ti ti-arrow-bar-to-down"></i></button>` : ''}
                 <button class="pr-icon-btn is-flush" data-act="dup-item" aria-label="${esc(t('se.dupItem'))}" title="${esc(t('se.dupItem'))}"><i class="ti ti-copy"></i></button>
                 <button class="pr-icon-btn is-flush" data-act="del-item" aria-label="${esc(t('se.delItem'))}"><i class="ti ti-x"></i></button>
               </span>
@@ -593,6 +609,46 @@
           })));
         }
       }
+      await load(); return;
+    }
+
+    // Copiar la prescripción hacia abajo. Es lo que se hace a mano cada vez
+    // que un bloque son cinco ejercicios con las mismas series y la misma
+    // pausa: se escribe una vez y se baja.
+    //
+    // No toca el ejercicio con series detalladas: ahí la prescripción pareja
+    // está desactivada a propósito, y pisarla sería contradecir lo que el
+    // preparador escribió serie por serie.
+    if (act === 'copy-down') {
+      const itemEl = btn.closest('[data-item]');
+      const b = blocks.find(x => x.id === id);
+      const desde = b.session_items.findIndex(x => x.id === itemEl.dataset.item);
+      // Se leen los inputs y no la fila guardada: lo que el preparador acaba
+      // de escribir todavía puede no haber disparado su change.
+      const valores = {};
+      itemEl.querySelectorAll('.se-in[data-f]').forEach(i => { valores[i.dataset.f] = i.value.trim(); });
+
+      const destino = b.session_items.slice(desde + 1).filter(x => !x.session_sets.length);
+      if (!destino.length) {
+        window.prToast(t('se.copyDownNone', 'No hay ningún ejercicio debajo al que copiárselo.'));
+        return;
+      }
+      const fila = {
+        sets: valores.sets === '' ? null : Number(valores.sets),
+        reps: valores.reps || null,
+        load: valores.load || null,
+        rest_s: valores.rest_s === '' ? null : Number(valores.rest_s),
+      };
+      const { data, error } = await window.sb.from('session_items')
+        .update(fila).in('id', destino.map(x => x.id)).select('id');
+      if (error) { window.prToast(error.message, 'danger'); return; }
+      // PostgREST no falla cuando la RLS filtra: devuelve cero filas y hay que
+      // mirarlo, o se avisa de un guardado que no ocurrió.
+      if (!data || data.length !== destino.length) {
+        window.prToast(t('se.copyDownFail', 'No se pudo copiar. Recarga la página y prueba otra vez.'), 'danger');
+        await load(); return;
+      }
+      window.prToast(t('se.copyDownOk', '', { n: destino.length, count: destino.length }), 'success');
       await load(); return;
     }
 

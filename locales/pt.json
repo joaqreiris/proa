@@ -786,6 +786,15 @@
   "ath.deleted": "{name} não está mais aqui.",
   "wk.tzNote": "Os horários são de {name}, em {city}. Lá são {there}; para você, {here}.",
   "wk.yourTime": "Para você: {time} de {day}.",
+  "am.pageTitle": "Meu cardápio — Proa",
+  "am.empty.title": "Ainda não tem nada aqui",
+  "am.empty.body": "Seu treinador está montando esta refeição.",
+  "am.dayNote": "Tudo o que você tem para hoje, contando esta refeição.",
+  "log.titleMeal": "Você comeu isto?",
+  "log.ate": "Comi",
+  "log.didntEat": "Não comi",
+  "log.ateDone": "Comido",
+  "log.ateSkipped": "Não comeu",
   "log.title": "Como foi?",
   "log.ask": "Como foi?",
   "log.did": "Eu fiz",
@@ -983,5 +992,9 @@
   "per.s.loading": "procurando…",
   "per.s.empty": "sem exercícios carregados",
   "per.s.planned": "planejada",
-  "per.s.seeWeek": "Ver esta semana no quadro"
+  "per.s.seeWeek": "Ver esta semana no quadro",
+  "se.copyDown": "Copiar isto para os de baixo",
+  "se.copyDownOk": "Copiado para {n} exercício|Copiado para {n} exercícios",
+  "se.copyDownNone": "Não há nenhum exercício abaixo para copiar.",
+  "se.copyDownFail": "Não foi possível copiar. Recarregue a página e tente de novo."
 }
