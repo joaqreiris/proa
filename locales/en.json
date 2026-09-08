@@ -1004,5 +1004,15 @@
   "se.copyDown": "Copy this to the ones below",
   "se.copyDownOk": "Copied to {n} exercise|Copied to {n} exercises",
   "se.copyDownNone": "There is no exercise below to copy it to.",
-  "se.copyDownFail": "Could not copy. Reload the page and try again."
+  "se.copyDownFail": "Could not copy. Reload the page and try again.",
+  "se.newExercise": "New exercise",
+  "se.newExHint": "It stays in the workspace library, so next time it is right there. Paste the YouTube link and the thumbnail comes on its own.",
+  "se.newExFail": "Could not save. Reload the page and try again.",
+  "se.addToSession": "Add to the session",
+  "se.allMuscles": "All muscles",
+  "se.allEquip": "All equipment",
+  "se.noCat": "No category",
+  "se.nFound": "{n} exercise|{n} exercises",
+  "se.videoOther": "This video is not from YouTube.",
+  "se.openOut": "Open it separately"
 }

@@ -13,6 +13,7 @@
 <script src="assets/week-grid.js" defer></script>
 <script src="assets/block-types.js" defer></script>
 <script src="assets/sortable.js"></script>
+<script src="assets/ex-media.js"></script>
 <style>
   .se { max-width: 900px; }
 
@@ -139,6 +140,38 @@
   }
   .px-cat:hover { border-color: var(--pr-border-strong); color: var(--pr-fg-strong); }
   .px-cat.is-on { background: var(--pr-accent); border-color: var(--pr-accent); color: var(--pr-fg-on-accent); }
+  .px-searchrow { display: flex; gap: 10px; align-items: center; }
+  .px-searchrow .pr-input-affix { flex: 1; min-width: 0; }
+  .px-facets { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .px-facets select {
+    height: 30px; padding: 0 8px; border-radius: var(--pr-r-2);
+    border: var(--pr-bw) solid var(--pr-border); background: var(--pr-surface); color: var(--pr-fg);
+    font: 600 12px/1 var(--pr-font-sans); cursor: pointer; outline: none; max-width: 170px;
+  }
+  .px-facets select:hover { border-color: var(--pr-border-strong); }
+  .px-facets select:focus { border-color: var(--pr-accent); }
+  .px-count { font: var(--pr-body-sm); color: var(--pr-fg-muted); font-variant-numeric: tabular-nums; }
+
+  /* La miniatura: se reconoce un ejercicio por cómo se ve mucho antes que por
+     su nombre, sobre todo entre veinte variantes de sentadilla. */
+  .px-thumb {
+    width: 52px; height: 38px; border-radius: var(--pr-r-2); overflow: hidden; flex: none;
+    background: var(--pr-bg-sunk); display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .px-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .px-thumb .ti { font-size: 16px; color: var(--pr-fg-faint); }
+  .px-play {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,.34); color: #fff; font-size: 16px;
+    opacity: 0; transition: opacity var(--pr-dur-1) var(--pr-ease);
+  }
+  .px-row:hover .px-play, .px-play:focus-visible { opacity: 1; }
+  @media (hover: none) { .px-play { opacity: 1; } }
+
+  .px-video { aspect-ratio: 16 / 9; background: #000; border-radius: var(--pr-r-3); overflow: hidden; }
+  .px-video iframe { width: 100%; height: 100%; border: 0; display: block; }
+
   .px-list { display: flex; flex-direction: column; gap: 2px; }
   .px-row {
     display: flex; align-items: center; gap: 11px;
@@ -149,6 +182,10 @@
   .px-row:hover { background: var(--pr-bg-soft); }
   .px-dot { width: 9px; height: 9px; border-radius: 3px; flex: none; }
   .px-name { font: 600 14px/1.25 var(--pr-font-sans); color: var(--pr-fg-strong); flex: 1; min-width: 0; }
+  .px-name em {
+    display: block; margin-top: 3px; font: var(--pr-meta); font-style: normal;
+    color: var(--pr-fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
   .px-tag { font: var(--pr-meta); color: var(--pr-fg-faint); white-space: nowrap; }
   .px-none { padding: 22px 10px; text-align: center; font: var(--pr-body-sm); color: var(--pr-fg-faint); }
 </style>
@@ -222,19 +259,81 @@
     </div>
     <div class="pr-modal-body">
       <div class="px-search">
-        <div class="pr-input-affix">
-          <i class="ti ti-search"></i>
-          <input id="px-q" data-i18n-ph="se.searchPh" placeholder="Buscar por nombre, músculo o material…" autocomplete="off">
+        <div class="px-searchrow">
+          <div class="pr-input-affix">
+            <i class="ti ti-search"></i>
+            <input id="px-q" data-i18n-ph="se.searchPh" placeholder="Buscar por nombre, músculo o material…" autocomplete="off">
+          </div>
+          <button class="pr-btn is-sm is-primary" type="button" id="px-new"
+                  data-i18n-attr="title:se.newExercise" title="Nuevo ejercicio"><i class="ti ti-plus"></i><span data-i18n="se.newExercise">Nuevo ejercicio</span></button>
         </div>
         <div class="px-cats" id="px-cats"></div>
+        <div class="px-facets" id="px-facets"></div>
       </div>
       <div class="px-list" id="px-list"></div>
     </div>
     <div class="pr-modal-foot">
       <button class="pr-btn is-ghost" type="button" id="px-custom"><i class="ti ti-pencil-plus"></i><span data-i18n="se.freeText">Escribir uno suelto</span></button>
+      <span class="px-count" id="px-count"></span>
       <span class="pr-grow"></span>
       <button class="pr-btn is-secondary" type="button" data-close data-i18n="common.close">Cerrar</button>
     </div>
+  </div>
+</div>
+
+<div class="pr-modal-backdrop" id="m-vid" hidden>
+  <div class="pr-modal is-wide" role="dialog" aria-modal="true" aria-labelledby="m-vid-title">
+    <div class="pr-modal-head">
+      <h2 id="m-vid-title">—</h2>
+      <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar" data-i18n-attr="aria-label:common.close"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="pr-modal-body"><div class="px-video" id="vid-body"></div></div>
+  </div>
+</div>
+
+<div class="pr-modal-backdrop" id="m-newex" hidden>
+  <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-newex-title">
+    <div class="pr-modal-head">
+      <h2 id="m-newex-title" data-i18n="se.newExercise">Nuevo ejercicio</h2>
+      <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar" data-i18n-attr="aria-label:common.close"><i class="ti ti-x"></i></button>
+    </div>
+    <form id="f-newex">
+      <div class="pr-modal-body">
+        <div class="pr-field">
+          <label class="pr-label" for="nx-name" data-i18n="ex.name">Nombre</label>
+          <input class="pr-input" id="nx-name" required maxlength="80" autocomplete="off">
+        </div>
+        <div class="pr-modal-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="nx-cat" data-i18n="ex.category">Categoría</label>
+            <select class="pr-input" id="nx-cat"></select>
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="nx-muscle" data-i18n="ex.muscle">Músculo</label>
+            <input class="pr-input" id="nx-muscle" list="nx-muscles" maxlength="60" autocomplete="off">
+            <datalist id="nx-muscles"></datalist>
+          </div>
+        </div>
+        <div class="pr-modal-grid">
+          <div class="pr-field">
+            <label class="pr-label" for="nx-equip" data-i18n="ex.equipment">Material</label>
+            <input class="pr-input" id="nx-equip" list="nx-equips" maxlength="60" autocomplete="off">
+            <datalist id="nx-equips"></datalist>
+          </div>
+          <div class="pr-field">
+            <label class="pr-label" for="nx-video" data-i18n="ex.video">Video</label>
+            <input class="pr-input" id="nx-video" type="url" placeholder="https://youtube.com/…" autocomplete="off">
+          </div>
+        </div>
+        <p class="pr-hint" data-i18n="se.newExHint">Queda en la biblioteca del espacio, así la próxima vez está a mano. Si pones el video de YouTube, la miniatura sale sola.</p>
+        <p class="auth-msg" id="nx-msg" role="alert" hidden style="margin:0;color:var(--pr-danger);font:600 13px/1.45 var(--pr-font-sans)"></p>
+      </div>
+      <div class="pr-modal-foot">
+        <span class="pr-grow"></span>
+        <button class="pr-btn is-ghost" type="button" data-close data-i18n="common.cancel">Cancelar</button>
+        <button class="pr-btn is-primary" type="submit"><i class="ti ti-check"></i><span data-i18n="se.addToSession">Añadir a la sesión</span></button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -246,7 +345,7 @@
   const W = () => window.prWeek;
 
   const eventId = new URLSearchParams(location.search).get('event');
-  let ev = null, blocks = [], catalog = [], pickBlockId = null, cat = '', wsId = null;
+  let ev = null, blocks = [], catalog = [], pickBlockId = null, cat = '', muscle = '', equip = '', wsId = null;
   let topUses = {};   // exercise_id → veces que lo usó este entrenador
 
 
@@ -542,8 +641,12 @@
 
     if (act === 'add-item') { openPicker(id); return; }
 
-    // El video se abre aparte: en el gimnasio, el atleta mira y vuelve.
-    if (act === 'video') { window.open(btn.dataset.url, '_blank', 'noopener'); return; }
+    // El video se ve sin salir de la sesión, igual que en el buscador.
+    if (act === 'video') {
+      const it = blocks.flatMap(x => x.session_items).find(x => x.id === btn.closest('[data-item]').dataset.item);
+      verVideo(btn.dataset.url, it && it.name);
+      return;
+    }
 
     if (act === 'more') {
       const itemId = btn.closest('[data-item]').dataset.item;
@@ -969,8 +1072,9 @@
   function openPicker(blockId) {
     pickBlockId = blockId;
     document.getElementById('px-q').value = '';
-    cat = '';
+    cat = ''; muscle = ''; equip = '';
     paintCats();
+    paintFacets();
     paintList();
     document.getElementById('m-pick').hidden = false;
     document.getElementById('px-q').focus();
@@ -983,12 +1087,30 @@
       + cats.map(c => `<button type="button" class="px-cat${cat === c ? ' is-on' : ''}" data-cat="${c}">${esc(t('se.c.' + c, c))}</button>`).join('');
   }
 
+  // Los filtros se arman con lo que hay en la biblioteca del espacio, no con
+  // una lista fija: cada preparador etiqueta lo suyo a su manera, y una opción
+  // que no filtra nada es una opción que estorba.
+  function paintFacets() {
+    const dentro = catalog.filter(e => !cat || e.category === cat);
+    const opciones = (campo) => [...new Set(dentro.map(e => e[campo]).filter(Boolean))].sort();
+    const sel = (f, cur, todos, opts) => {
+      if (opts.length < 2) return '';
+      return `<select data-f="${f}"><option value="">${esc(todos)}</option>` + opts.map(o =>
+        `<option value="${esc(o)}"${cur === o ? ' selected' : ''}>${esc(o)}</option>`).join('') + `</select>`;
+    };
+    document.getElementById('px-facets').innerHTML =
+      sel('muscle', muscle, t('se.allMuscles', 'Todos los músculos'), opciones('muscle_group')) +
+      sel('equip', equip, t('se.allEquip', 'Todo el material'), opciones('equipment'));
+  }
+
   function paintList() {
     const q = document.getElementById('px-q').value.trim().toLowerCase();
     // Se busca en los tres idiomas y también en músculo y material: un
     // preparador escribe «banda» o «isquios», no el nombre exacto.
     const hit = catalog.filter(e => {
       if (cat && e.category !== cat) return false;
+      if (muscle && e.muscle_group !== muscle) return false;
+      if (equip && e.equipment !== equip) return false;
       if (!q) return true;
       return [e.name, e.name_es, e.name_pt, e.muscle_group, e.equipment]
         .filter(Boolean).some(v => v.toLowerCase().includes(q));
@@ -999,30 +1121,138 @@
     .slice(0, 80);
 
     const host = document.getElementById('px-list');
+    const pie = document.getElementById('px-count');
+    pie.textContent = hit.length
+      ? t('se.nFound', '', { n: hit.length, count: hit.length })
+      : '';
     if (!hit.length) { host.innerHTML = `<p class="px-none">${esc(t('se.noHits', 'Nada con eso. Puedes escribirlo suelto abajo.'))}</p>`; return; }
 
-    host.innerHTML = hit.map(e => `
+    host.innerHTML = hit.map(e => {
+      const M = window.prExMedia;
+      const src = M.thumb(e.video_url);
+      const meta = [e.muscle_group, e.equipment].filter(Boolean).join(' · ');
+      return `
       <button type="button" class="px-row" data-ex="${e.id}">
+        <span class="px-thumb" data-thumb data-cat="${esc(e.category || '')}">
+          ${src ? `<img src="${esc(src)}" alt="" loading="lazy">`
+                : `<i class="ti ti-${esc(M.icon(e.category))}"></i>`}
+          ${e.video_url ? `<span class="px-play" data-play="${e.id}" role="button" tabindex="0"
+             aria-label="${esc(t('se.watch'))}" title="${esc(t('se.watch'))}"><i class="ti ti-player-play-filled"></i></span>` : ''}
+        </span>
         <span class="px-dot" style="background:${CAT_COLOR[e.category] || 'var(--pr-ev-commit)'}"></span>
-        <span class="px-name">${esc(exName(e))}</span>
-        <span class="px-tag">${esc([e.muscle_group, e.equipment].filter(Boolean).join(' · '))}</span>
-        ${e.video_url ? '<i class="ti ti-brand-youtube" style="color:var(--pr-fg-faint)"></i>' : ''}
-      </button>`).join('');
+        <span class="px-name">${esc(exName(e))}${meta ? `<em>${esc(meta)}</em>` : ''}</span>
+        <span class="px-tag">${esc([
+          e.category ? t('se.c.' + e.category, e.category) : '',
+          e.complexity ? t('ex.cx.' + e.complexity, e.complexity) : ''
+        ].filter(Boolean).join(' · '))}</span>
+      </button>`;
+    }).join('');
+  }
+
+  // El video se ve acá adentro y no en otra pestaña: desde el buscador, irse a
+  // YouTube es perder el modal y volver a empezar.
+  function verVideo(url, titulo) {
+    const src = window.prExMedia.embed(url);
+    document.getElementById('m-vid-title').textContent = titulo || t('se.watch');
+    document.getElementById('vid-body').innerHTML = src
+      ? `<iframe src="${esc(src)}"
+           allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`
+      : `<p class="px-none">${esc(t('se.videoOther', 'Este video no es de YouTube.'))}
+         <a href="${esc(url)}" target="_blank" rel="noopener">${esc(t('se.openOut', 'Abrirlo aparte'))}</a></p>`;
+    document.getElementById('m-vid').hidden = false;
+  }
+
+  // Al cerrar hay que vaciar el iframe: si no, el video sigue sonando detrás.
+  function cerrarVideo() {
+    document.getElementById('vid-body').innerHTML = '';
+    document.getElementById('m-vid').hidden = true;
   }
 
   document.getElementById('px-q').addEventListener('input', paintList);
   document.getElementById('px-cats').addEventListener('click', (e) => {
     const b = e.target.closest('[data-cat]');
     if (!b) return;
-    cat = b.dataset.cat;
-    paintCats(); paintList();
+    // Al cambiar de categoría, un músculo que ya no existe dentro dejaría la
+    // lista vacía sin motivo visible.
+    cat = b.dataset.cat; muscle = ''; equip = '';
+    paintCats(); paintFacets(); paintList();
+  });
+
+  document.getElementById('px-facets').addEventListener('change', (e) => {
+    const sel = e.target.closest('[data-f]');
+    if (!sel) return;
+    if (sel.dataset.f === 'muscle') muscle = sel.value; else equip = sel.value;
+    paintList();
   });
 
   document.getElementById('px-list').addEventListener('click', async (e) => {
+    // El play no elige el ejercicio: sólo lo muestra.
+    const play = e.target.closest('[data-play]');
+    if (play) {
+      e.stopPropagation();
+      const ex = catalog.find(x => x.id === play.dataset.play);
+      if (ex) verVideo(ex.video_url, exName(ex));
+      return;
+    }
     const b = e.target.closest('[data-ex]');
     if (!b) return;
     const ex = catalog.find(x => x.id === b.dataset.ex);
     await addItem({ exercise_id: ex.id, name: exName(ex) });
+  });
+
+  document.getElementById('px-list').addEventListener('keydown', (e) => {
+    const play = e.target.closest('[data-play]');
+    if (!play || (e.key !== 'Enter' && e.key !== ' ')) return;
+    e.preventDefault(); e.stopPropagation();
+    const ex = catalog.find(x => x.id === play.dataset.play);
+    if (ex) verVideo(ex.video_url, exName(ex));
+  });
+
+  // ── Un ejercicio nuevo, sin salir de acá ──────────────────────────────────
+  // Antes esto era un prompt() que sólo guardaba el nombre suelto en la sesión:
+  // al día siguiente había que volver a escribirlo, y sin video ni etiquetas.
+  document.getElementById('px-new').addEventListener('click', () => {
+    const cats = [...new Set(catalog.map(e => e.category).filter(Boolean))].sort();
+    document.getElementById('nx-cat').innerHTML =
+      `<option value="">${esc(t('se.noCat', 'Sin categoría'))}</option>` +
+      cats.map(c => `<option value="${esc(c)}"${c === cat ? ' selected' : ''}>${esc(t('se.c.' + c, c))}</option>`).join('');
+    const lista = (campo, id) => {
+      document.getElementById(id).innerHTML =
+        [...new Set(catalog.map(e => e[campo]).filter(Boolean))].sort()
+          .map(v => `<option value="${esc(v)}"></option>`).join('');
+    };
+    lista('muscle_group', 'nx-muscles');
+    lista('equipment', 'nx-equips');
+    document.getElementById('nx-name').value = document.getElementById('px-q').value.trim();
+    ['nx-muscle', 'nx-equip', 'nx-video'].forEach(k => { document.getElementById(k).value = ''; });
+    document.getElementById('nx-msg').hidden = true;
+    document.getElementById('m-newex').hidden = false;
+    document.getElementById('nx-name').focus();
+  });
+
+  document.getElementById('f-newex').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('nx-msg');
+    const url = document.getElementById('nx-video').value.trim();
+    const fila = {
+      workspace_id: wsId,
+      name: document.getElementById('nx-name').value.trim(),
+      category: document.getElementById('nx-cat').value || null,
+      muscle_group: document.getElementById('nx-muscle').value.trim() || null,
+      equipment: document.getElementById('nx-equip').value.trim() || null,
+      video_url: url || null,
+    };
+    const { data, error } = await window.sb.from('exercises').insert(fila).select('*').single();
+    if (error) { msg.textContent = error.message; msg.hidden = false; return; }
+    if (!data) {
+      msg.textContent = t('se.newExFail', 'No se pudo guardar. Recarga la página y prueba otra vez.');
+      msg.hidden = false; return;
+    }
+    // Queda en la biblioteca y entra a la sesión de una vez: crearlo para
+    // después tener que buscarlo sería la mitad del trabajo.
+    catalog.push(data);
+    document.getElementById('m-newex').hidden = true;
+    await addItem({ exercise_id: data.id, name: exName(data) });
   });
 
   document.getElementById('px-custom').addEventListener('click', async () => {
@@ -1040,14 +1270,26 @@
     await load();
   }
 
+  // Se cierra UNO, el de arriba, y no todos: el video se abre encima del
+  // buscador, y cerrarlo tenía que devolver el buscador, no tragárselo.
+  function cerrarModal(m) {
+    if (!m) return;
+    if (m.id === 'm-vid') { cerrarVideo(); return; }
+    m.hidden = true;
+  }
   document.addEventListener('click', (e) => {
     if (e.target.closest('[data-close]') || e.target.classList.contains('pr-modal-backdrop')) {
-      document.querySelectorAll('.pr-modal-backdrop').forEach(m => m.hidden = true);
+      cerrarModal(e.target.closest('.pr-modal-backdrop'));
     }
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') document.querySelectorAll('.pr-modal-backdrop').forEach(m => m.hidden = true);
+    if (e.key !== 'Escape') return;
+    cerrarModal([...document.querySelectorAll('.pr-modal-backdrop:not([hidden])')].pop());
   });
+
+  // Un video borrado deja una miniatura que no carga: se cambia por el icono
+  // de su familia en vez de dejar el roto del navegador.
+  window.prExMedia.watchBroken(document);
 
   // ── Arranque ─────────────────────────────────────────────────────────────
   async function boot() {

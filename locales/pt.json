@@ -1004,5 +1004,15 @@
   "se.copyDown": "Copiar isto para os de baixo",
   "se.copyDownOk": "Copiado para {n} exercício|Copiado para {n} exercícios",
   "se.copyDownNone": "Não há nenhum exercício abaixo para copiar.",
-  "se.copyDownFail": "Não foi possível copiar. Recarregue a página e tente de novo."
+  "se.copyDownFail": "Não foi possível copiar. Recarregue a página e tente de novo.",
+  "se.newExercise": "Novo exercício",
+  "se.newExHint": "Fica na biblioteca do espaço, então da próxima vez já está à mão. Se colocar o vídeo do YouTube, a miniatura sai sozinha.",
+  "se.newExFail": "Não foi possível salvar. Recarregue a página e tente de novo.",
+  "se.addToSession": "Adicionar à sessão",
+  "se.allMuscles": "Todos os músculos",
+  "se.allEquip": "Todo o material",
+  "se.noCat": "Sem categoria",
+  "se.nFound": "{n} exercício|{n} exercícios",
+  "se.videoOther": "Este vídeo não é do YouTube.",
+  "se.openOut": "Abrir separadamente"
 }

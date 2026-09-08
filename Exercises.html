@@ -9,6 +9,7 @@
 <script src="assets/brand.js"></script>
 <script src="assets/vendor/supabase-js-2.112.4.min.js"></script>
 <script src="assets/supabase-init.js"></script>
+<script src="assets/ex-media.js"></script>
 <script src="assets/i18n.js" defer></script>
 <style>
   .ex-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
@@ -27,6 +28,25 @@
 
   .ex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
   .ex-card { position: relative; padding: 15px 16px 13px 18px; overflow: hidden; }
+  /* La miniatura, arriba de todo: la tarjeta se reconoce de un vistazo en vez
+     de leerse. */
+  .ex-thumb {
+    position: relative; margin: -15px -16px 12px -18px; padding-left: 4px;
+    aspect-ratio: 16 / 7; background: var(--pr-bg-sunk);
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+  }
+  .ex-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ex-thumb > .ti { font-size: 22px; color: var(--pr-fg-faint); }
+  .ex-play {
+    position: absolute; inset: 0; width: 100%; border: 0; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,.34); color: #fff; font-size: 22px;
+    opacity: 0; transition: opacity var(--pr-dur-1) var(--pr-ease);
+  }
+  .ex-card:hover .ex-play, .ex-play:focus-visible { opacity: 1; }
+  @media (hover: none) { .ex-play { opacity: 1; } }
+  .ex-video { aspect-ratio: 16 / 9; background: #000; border-radius: var(--pr-r-3); overflow: hidden; }
+  .ex-video iframe { width: 100%; height: 100%; border: 0; display: block; }
   .ex-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--c, var(--pr-ev-commit)); }
   .ex-name { font: 700 14.5px/1.25 var(--pr-font-sans); color: var(--pr-fg-strong); }
   .ex-alt { font: var(--pr-meta); color: var(--pr-fg-faint); margin-top: 3px; }
@@ -77,6 +97,16 @@
 </div>
 
 <!-- Alta y edición -->
+<div class="pr-modal-backdrop" id="m-vid" hidden>
+  <div class="pr-modal is-wide" role="dialog" aria-modal="true" aria-labelledby="m-vid-title">
+    <div class="pr-modal-head">
+      <h2 id="m-vid-title">—</h2>
+      <button class="pr-icon-btn is-flush" data-close aria-label="Cerrar" data-i18n-attr="aria-label:common.close"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="pr-modal-body"><div class="ex-video" id="vid-body"></div></div>
+  </div>
+</div>
+
 <div class="pr-modal-backdrop" id="m-ex" hidden>
   <div class="pr-modal" role="dialog" aria-modal="true" aria-labelledby="m-ex-title">
     <div class="pr-modal-head">
@@ -206,8 +236,16 @@
 
     host.innerHTML = list.map((e, i) => {
       const mine = !!e.workspace_id;
+      const M = window.prExMedia;
+      const src = M.thumb(e.video_url);
       return `<article class="pr-card ex-card pr-rise" style="--c:${CAT_COLOR[e.category] || 'var(--pr-ev-commit)'};--i:${Math.min(i, 8)}" data-id="${e.id}">
         ${mine ? `<span class="pr-pill is-accent ex-mine">${esc(t('ex.mineTag'))}</span>` : ''}
+        <div class="ex-thumb" data-thumb data-cat="${esc(e.category || '')}">
+          ${src ? `<img src="${esc(src)}" alt="" loading="lazy">`
+                : `<i class="ti ti-${esc(M.icon(e.category))}"></i>`}
+          ${e.video_url ? `<button class="ex-play" data-play="${e.id}"
+              aria-label="${esc(t('se.watch'))}" title="${esc(t('se.watch'))}"><i class="ti ti-player-play-filled"></i></button>` : ''}
+        </div>
         <div class="ex-name">${esc(name(e))}</div>
         ${alt(e) ? `<div class="ex-alt">${esc(alt(e))}</div>` : ''}
         <div class="ex-tags">
@@ -216,7 +254,6 @@
           ${e.equipment ? `<span class="pr-pill">${esc(e.equipment)}</span>` : ''}
         </div>
         <div class="ex-actions">
-          ${e.video_url ? `<a class="pr-btn is-sm is-ghost" href="${esc(e.video_url)}" target="_blank" rel="noopener"><i class="ti ti-brand-youtube"></i><span>${esc(t('se.watch'))}</span></a>` : ''}
           ${mine ? `<button class="pr-btn is-sm is-ghost" data-edit="${e.id}"><i class="ti ti-pencil"></i><span>${esc(t('ex.edit'))}</span></button>`
                  : `<button class="pr-btn is-sm is-ghost" data-copy="${e.id}" title="${esc(t('ex.copyHint'))}"><i class="ti ti-copy"></i><span>${esc(t('ex.copy'))}</span></button>`}
         </div>
@@ -243,7 +280,33 @@
 
   document.getElementById('btn-new').addEventListener('click', () => openEx(null));
 
+  // El video se mira acá y no en otra pestaña: en la biblioteca uno compara
+  // varios seguidos, e irse a YouTube en cada uno es perder el hilo.
+  function verVideo(url, titulo) {
+    const src = window.prExMedia.embed(url);
+    document.getElementById('m-vid-title').textContent = titulo || t('se.watch');
+    document.getElementById('vid-body').innerHTML = src
+      ? `<iframe src="${esc(src)}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`
+      : `<p class="pr-hint" style="padding:18px;color:#fff">${esc(t('se.videoOther', 'Este video no es de YouTube.'))}
+         <a href="${esc(url)}" target="_blank" rel="noopener">${esc(t('se.openOut', 'Abrirlo aparte'))}</a></p>`;
+    document.getElementById('m-vid').hidden = false;
+  }
+
+  // Vaciar el iframe al cerrar, o el video sigue sonando detrás.
+  function cerrarVideo() {
+    document.getElementById('vid-body').innerHTML = '';
+    document.getElementById('m-vid').hidden = true;
+  }
+
+  window.prExMedia.watchBroken(document);
+
   document.getElementById('grid').addEventListener('click', (e) => {
+    const pl = e.target.closest('[data-play]');
+    if (pl) {
+      const ex = all.find(x => x.id === pl.dataset.play);
+      if (ex) verVideo(ex.video_url, name(ex));
+      return;
+    }
     const ed = e.target.closest('[data-edit]');
     if (ed) { openEx(all.find(x => x.id === ed.dataset.edit)); return; }
     // Copiar uno del catálogo para poder cambiarlo: el catálogo es de todos y
@@ -315,13 +378,20 @@
     cat = ''; paint();
   });
 
+  // Se cierra el de arriba y no todos: el video se abre sobre la ficha.
+  function cerrarModal(m) {
+    if (!m) return;
+    if (m.id === 'm-vid') { cerrarVideo(); return; }
+    m.hidden = true;
+  }
   document.addEventListener('click', (e) => {
     if (e.target.closest('[data-close]') || e.target.classList.contains('pr-modal-backdrop')) {
-      document.querySelectorAll('.pr-modal-backdrop').forEach(m => m.hidden = true);
+      cerrarModal(e.target.closest('.pr-modal-backdrop'));
     }
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') document.querySelectorAll('.pr-modal-backdrop').forEach(m => m.hidden = true);
+    if (e.key !== 'Escape') return;
+    cerrarModal([...document.querySelectorAll('.pr-modal-backdrop:not([hidden])')].pop());
   });
 
   // ── Arranque ─────────────────────────────────────────────────────────────
