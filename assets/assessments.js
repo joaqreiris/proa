@@ -44,29 +44,32 @@
   // es sólo el número sino la diferencia entre lados.
   const TESTS = [
     // ── Saltos ───────────────────────────────────────────────────────────────
-    { k: 'cmj', fam: 'jump', unidad: 'cm', decimales: 1, mas: true, fatiga: true,
-      label: 'as.t.cmj', como: 'as.t.cmj.h', min: 5, max: 90 },
-    { k: 'sj', fam: 'jump', unidad: 'cm', decimales: 1, mas: true, fatiga: true,
-      label: 'as.t.sj', como: 'as.t.sj.h', min: 5, max: 90 },
-    { k: 'slcmj', fam: 'jump', unidad: 'cm', decimales: 1, mas: true, fatiga: true, porLado: true,
-      label: 'as.t.slcmj', como: 'as.t.slcmj.h', min: 3, max: 70 },
+    // `vuelo` marca los que se pueden cargar como tiempo de vuelo, que es lo
+    // que devuelve MyJump: la altura sale de ahí y no se guardan las dos, o
+    // habría dos números para la misma cosa y algún día no coincidirían.
+    { k: 'cmj', fam: 'jump', unidad: 'cm', decimales: 1, mas: true, fatiga: true, vuelo: true,
+      label: 'as.t.cmj', como: 'as.t.cmj.h', min: 5, max: 90, ref: 'as.r.cmj' },
+    { k: 'sj', fam: 'jump', unidad: 'cm', decimales: 1, mas: true, fatiga: true, vuelo: true,
+      label: 'as.t.sj', como: 'as.t.sj.h', min: 5, max: 90, ref: 'as.r.myjump' },
+    { k: 'slcmj', fam: 'jump', unidad: 'cm', decimales: 1, mas: true, fatiga: true, porLado: true, vuelo: true,
+      label: 'as.t.slcmj', como: 'as.t.slcmj.h', min: 3, max: 70, ref: 'as.r.myjump' },
     { k: 'broad_jump', fam: 'jump', unidad: 'cm', decimales: 0, mas: true, fatiga: true,
       label: 'as.t.broad_jump', como: 'as.t.broad_jump.h', min: 60, max: 380 },
     { k: 'triple_hop', fam: 'jump', unidad: 'cm', decimales: 0, mas: true, porLado: true,
-      label: 'as.t.triple_hop', como: 'as.t.triple_hop.h', min: 100, max: 900 },
+      label: 'as.t.triple_hop', como: 'as.t.triple_hop.h', min: 100, max: 900, ref: 'as.r.hop' },
 
     // ── Velocidad ────────────────────────────────────────────────────────────
-    // Tres claves y no una: los 10 metros hablan de aceleración y los 30 de
-    // velocidad máxima. Son dos cualidades distintas y se entrenan distinto,
-    // así que tienen que poder verse por separado.
-    { k: 'sprint_10', fam: 'speed', unidad: 's', decimales: 2, mas: false, fatiga: true,
-      label: 'as.t.sprint_10', como: 'as.t.sprint.h', min: 1, max: 5 },
-    { k: 'sprint_20', fam: 'speed', unidad: 's', decimales: 2, mas: false, fatiga: true,
-      label: 'as.t.sprint_20', como: 'as.t.sprint.h', min: 2, max: 8 },
-    { k: 'sprint_30', fam: 'speed', unidad: 's', decimales: 2, mas: false, fatiga: true,
-      label: 'as.t.sprint_30', como: 'as.t.sprint.h', min: 3, max: 12 },
+    // El sprint NO son tres tests sueltos. Los parciales son la entrada de uno
+    // solo: de ellos sale el perfil fuerza-velocidad, que es lo que separa al
+    // que empuja fuerte y se apaga del que arranca flojo y vuela al final.
+    // Dos atletas pueden hacer el mismo tiempo en 30 m con perfiles opuestos,
+    // y se entrenan distinto.
+    { k: 'sprint', fam: 'speed', unidad: 's', decimales: 2, mas: false, fatiga: true,
+      label: 'as.t.sprint', como: 'as.t.sprint.h', min: 0.5, max: 15,
+      parciales: [5, 10, 15, 20, 30, 40],
+      ref: 'as.r.samozino', perfil: true },
     { k: 'cod_505', fam: 'speed', unidad: 's', decimales: 2, mas: false, porLado: true,
-      label: 'as.t.cod_505', como: 'as.t.cod_505.h', min: 1.5, max: 6 },
+      label: 'as.t.cod_505', como: 'as.t.cod_505.h', min: 1.5, max: 6, ref: 'as.r.cod' },
 
     // ── Fuerza ───────────────────────────────────────────────────────────────
     { k: 'pushups', fam: 'strength', unidad: 'reps', decimales: 0, mas: true,
@@ -79,7 +82,7 @@
       label: 'as.t.calf_raise', como: 'as.t.calf_raise.h', min: 0, max: 80 },
 
     // ── Resistencia ──────────────────────────────────────────────────────────
-    { k: 'cooper', fam: 'endurance', unidad: 'm', decimales: 0, mas: true,
+    { k: 'cooper', fam: 'endurance', unidad: 'm', decimales: 0, mas: true, ref: 'as.r.cooper',
       label: 'as.t.cooper', como: 'as.t.cooper.h', min: 800, max: 4200 },
     { k: 'run_1000', fam: 'endurance', unidad: 's', decimales: 0, mas: false,
       label: 'as.t.run_1000', como: 'as.t.run_1000.h', min: 120, max: 900 },
@@ -102,6 +105,30 @@
   const def = (key) => byKey[key] || null;
   const label = (key) => { const d = def(key); return d ? t(d.label, key) : key; };
   const famLabel = (k) => { const f = FAMILIAS.find(x => x.k === k); return f ? t(f.label, k) : k; };
+
+  // ── Del tiempo de vuelo a la altura ────────────────────────────────────────
+  //
+  //   h = g · t² / 8
+  //
+  // Sale de que subir y bajar tardan lo mismo: el tiempo en el aire es dos
+  // veces el de subida, y con caída libre h = g·(t/2)²/2. Es lo que calcula
+  // MyJump por dentro (Balsalobre-Fernández et al., 2015), y el mismo método
+  // de la alfombra de contacto de toda la vida (Bosco et al., 1983).
+  //
+  // Un aviso que vale la pena: el método asume que el atleta despega y aterriza
+  // en la misma posición. Si recoge las piernas en el aire o cae con las
+  // rodillas más flexionadas, el tiempo de vuelo se estira y la altura sale
+  // más alta de lo que fue. Por eso el test dice que hay que caer igual que se
+  // despegó — no es un detalle de forma, es de dónde sale el número.
+  const G = 9.81;
+  const alturaDeVuelo = (ms) => {
+    const t = Number(ms) / 1000;
+    return isFinite(t) && t > 0 ? (G * t * t / 8) * 100 : null;   // cm
+  };
+  const vueloDeAltura = (cm) => {
+    const h = Number(cm) / 100;
+    return isFinite(h) && h > 0 ? Math.sqrt(8 * h / G) * 1000 : null;  // ms
+  };
 
   // Formatear con los decimales del test: un salto en 41.3 cm y un sprint en
   // 1.87 s no se escriben igual, y «41.30 cm» sugiere una precisión que la
@@ -173,5 +200,10 @@
   window.prAssess = {
     TESTS, FAMILIAS, CAIDA_VIGILAR, CAIDA_ALERTA, MINIMO_BASAL,
     def, label, famLabel, fmt, baseline, readingOn, asymmetry,
+    alturaDeVuelo, vueloDeAltura,
+    // Los parciales de un sprint se guardan con una clave por distancia, pero
+    // son UN test: la pantalla los junta y de ahí sale el perfil.
+    claveParcial: (m) => 'sprint_' + m,
+    distanciaDe: (key) => (/^sprint_(\d+)$/.test(key) ? Number(RegExp.$1) : null),
   };
 })();

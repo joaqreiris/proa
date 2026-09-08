@@ -40,10 +40,12 @@ const M = [
   { id: 'm-4', athlete_id: 'a-1', test_key: 'cmj', date: '2026-08-17', value: 40, side: null, notes: null },
   { id: 'm-5', athlete_id: 'a-1', test_key: 'cmj', date: '2026-09-07', value: 34, side: null, notes: null },
 
-  { id: 'm-6',  athlete_id: 'a-1', test_key: 'sprint_30', date: '2026-07-06', value: 4.30, side: null, notes: null },
-  { id: 'm-7',  athlete_id: 'a-1', test_key: 'sprint_30', date: '2026-08-03', value: 4.30, side: null, notes: null },
-  { id: 'm-8',  athlete_id: 'a-1', test_key: 'sprint_30', date: '2026-08-17', value: 4.30, side: null, notes: null },
-  { id: 'm-9',  athlete_id: 'a-1', test_key: 'sprint_30', date: '2026-09-07', value: 4.10, side: null, notes: null },
+  // Un sprint de verdad: los parciales de una misma carrera, generados desde
+  // el modelo con vmax 9.0 y tau 1.10, que es un futbolista razonable.
+  { id: 'm-6', athlete_id: 'a-1', test_key: 'sprint_5',  date: '2026-09-07', value: 1.33, side: null, notes: null },
+  { id: 'm-7', athlete_id: 'a-1', test_key: 'sprint_10', date: '2026-09-07', value: 2.04, side: null, notes: null },
+  { id: 'm-8', athlete_id: 'a-1', test_key: 'sprint_20', date: '2026-09-07', value: 3.27, side: null, notes: null },
+  { id: 'm-9', athlete_id: 'a-1', test_key: 'sprint_30', date: '2026-09-07', value: 4.41, side: null, notes: null },
 
   { id: 'm-10', athlete_id: 'a-1', test_key: 'slcmj', date: '2026-09-07', value: 30, side: 'L', notes: null },
   { id: 'm-11', athlete_id: 'a-1', test_key: 'slcmj', date: '2026-09-07', value: 24, side: 'R', notes: null },
@@ -69,6 +71,7 @@ const FALSO = `
   const tabla = (t) => {
     const filas = t === 'athletes' ? [A]
                 : t === 'assessments' ? window.__mediciones
+                : t === 'body_weights' ? [{ date:'2026-09-01', weight_kg:78 }]
                 : [];
     let escribe = false;
     const propios = {
@@ -153,18 +156,46 @@ try {
     tarjetas.cmj.deltas[0].txt, '−15.0% de su nivel');
   is('y una caída de ese tamaño se marca en rojo', tarjetas.cmj.deltas[0].estado, 'is-alert');
 
-  // 4.30 → 4.10 son 0.2 s MENOS: en un sprint eso es mejor, no peor.
-  is('un sprint más rápido se lee como mejora, no como caída',
-    tarjetas.sprint_30.deltas[0].txt.startsWith('+4.7%'), true);
-  // Y queda neutro, no en verde: por debajo del 10% la diferencia se la come
-  // el error de medir, y pintar de verde una mejora que puede ser el
-  // cronómetro es tan mentiroso como pintar de rojo una caída que no existe.
-  is('sin alarma, y sin cantar una mejora que puede ser ruido',
-    tarjetas.sprint_30.deltas[0].estado, 'is-ok');
 
   is('una mejora que sí supera el ruido se marca',
     [tarjetas.pushups.deltas[0].txt, tarjetas.pushups.deltas[0].estado],
     ['+30.0% de su nivel', 'is-up']);
+
+  console.log('\nEL SPRINT NO ES UN TIEMPO, ES UN PERFIL');
+  // Dos atletas pueden hacer el mismo tiempo en 30 m con perfiles opuestos:
+  // uno que empuja fuerte y se apaga, otro que arranca flojo y vuela al final.
+  // Se entrenan distinto, y tres tiempos sueltos no los distinguen.
+  const sprint = await page.evaluate(() => {
+    const c = document.querySelector('[data-test-hist="sprint"]');
+    if (!c) return null;
+    return {
+      parciales: [...c.querySelectorAll('.as-splits span')].map((s) => s.textContent.trim()),
+      metricas: [...c.querySelectorAll('.as-metric')].map((m) => ({
+        rot: m.querySelector('em').textContent.trim(),
+        val: Number(m.querySelector('b').textContent),
+        uni: m.querySelector('span').textContent.trim(),
+      })),
+      grafico: !!c.querySelector('.ch-svg.is-fv'),
+      aviso: (c.querySelector('.as-warn') || {}).textContent,
+      // Y NO aparece como tres tests sueltos de 10, 20 y 30.
+      sueltos: [...document.querySelectorAll('[data-test-hist]')].map((x) => x.dataset.testHist)
+        .filter((k) => /^sprint_/.test(k)).length,
+    };
+  });
+  is('los parciales se ven juntos, como la carrera que son',
+    sprint.parciales, ['5 m1.33 s', '10 m2.04 s', '20 m3.27 s', '30 m4.41 s']);
+  is('y no como tests sueltos por distancia', sprint.sueltos, 0);
+  is('están las cinco métricas del perfil',
+    sprint.metricas.map((m) => m.rot),
+    ['Fuerza', 'Velocidad', 'Potencia', 'Orientación', 'Caída']);
+  is('con sus unidades', sprint.metricas.map((m) => m.uni), ['N/kg', 'm/s', 'W/kg', '%', '']);
+  // Los rangos que reporta la literatura para futbolistas.
+  const porRot = Object.fromEntries(sprint.metricas.map((m) => [m.rot, m.val]));
+  console.log('        (perfil calculado: ' + JSON.stringify(porRot) + ')');
+  is('la fuerza cae donde la literatura dice', porRot['Fuerza'] > 6 && porRot['Fuerza'] < 9.5, true);
+  is('y la potencia también', porRot['Potencia'] > 15 && porRot['Potencia'] < 25, true);
+  is('se dibuja la recta fuerza-velocidad', sprint.grafico, true);
+  is('y sin avisos, porque los parciales encajan', sprint.aviso, undefined);
 
   console.log('\nCON UNA SOLA TOMA NO SE OPINA');
   // «Bajó un 12%» con un solo antecedente puede ser que la primera vez se
@@ -226,12 +257,64 @@ try {
     rechazo.aviso, 'Para este test se espera un valor entre 5 y 90 cm. Revisa el número.');
   is('y no lo guarda', rechazo.guardo, false);
 
+  console.log('\nEL SALTO SE PUEDE CARGAR COMO LO DA MYJUMP');
+  // La app devuelve el tiempo de vuelo. La altura sale de h = g·t²/8, y se
+  // guarda SOLO la altura: dos formas del mismo dato en la misma serie no se
+  // pueden ni comparar ni promediar.
+  await page.evaluate(() => { window.__sql = []; });
+  await page.selectOption('#as-test', 'cmj');
+  await page.waitForTimeout(300);
+  await page.selectOption('#as-mode', 'tv');
+  await page.fill('#as-v', '540');
+  await page.waitForTimeout(300);
+  // 0.540 s de vuelo → 9.81·0.540²/8 = 0.3576 m = 35.8 cm.
+  is('dice en qué se va a convertir antes de guardar',
+    await page.evaluate(() => document.getElementById('as-conv').textContent.trim()),
+    'Se guarda como 35.8 cm.');
+  await page.click('#f-as button[type="submit"]');
+  await page.waitForTimeout(400);
+  const salto = await page.evaluate(() => window.__sql.find((x) => x.op === 'upsert'));
+  is('y guarda la altura, no el tiempo', salto && salto.row[0].value, 35.8);
+  is('en la misma serie del salto', salto && salto.row[0].test_key, 'cmj');
+
+  console.log('\nUN SPRINT SE CARGA POR PARCIALES, DE UNA VEZ');
+  await page.evaluate(() => { window.__sql = []; });
+  await page.click('#as-add');
+  await page.waitForTimeout(300);
+  await page.selectOption('#as-test', 'sprint');
+  await page.waitForTimeout(300);
+  is('aparece un campo por distancia',
+    await page.evaluate(() => [...document.querySelectorAll('#as-fields input')].map((i) => i.id)),
+    ['as-sp-5', 'as-sp-10', 'as-sp-15', 'as-sp-20', 'as-sp-30', 'as-sp-40']);
+  // Un tiempo que no crece con la distancia es un error de carga, y si entra,
+  // el ajuste devuelve un perfil imposible sin decir nada.
+  await page.fill('#as-sp-10', '2.10');
+  await page.fill('#as-sp-20', '1.90');
+  await page.click('#f-as button[type="submit"]');
+  await page.waitForTimeout(300);
+  is('un tiempo que va para atrás se rechaza',
+    await page.evaluate(() => document.getElementById('as-msg').textContent),
+    'El tiempo de 20 m tiene que ser mayor que el de 10 m.');
+  is('y no se guarda nada', await page.evaluate(() => window.__sql.length), 0);
+
+  await page.fill('#as-sp-20', '3.30');
+  await page.fill('#as-sp-30', '4.45');
+  await page.click('#f-as button[type="submit"]');
+  await page.waitForTimeout(400);
+  const carrera = await page.evaluate(() => window.__sql.find((x) => x.op === 'upsert'));
+  is('los parciales cargados van juntos, uno por distancia',
+    carrera && carrera.row.map((r) => [r.test_key, r.value]),
+    [['sprint_10', 2.10], ['sprint_20', 3.30], ['sprint_30', 4.45]]);
+
   console.log('\nUN TEST DE A UN LADO PIDE LOS DOS CAMPOS');
+  await page.click('#as-add');
+  await page.waitForTimeout(300);
   await page.selectOption('#as-test', 'slcmj');
   await page.waitForTimeout(300);
   is('aparecen izquierda y derecha',
     await page.evaluate(() => [!!document.getElementById('as-v-L'), !!document.getElementById('as-v-R')]),
     [true, true]);
+  await page.evaluate(() => { window.__sql = []; });
   await page.fill('#as-v-L', '31');
   await page.fill('#as-v-R', '29');
   await page.click('#f-as button[type="submit"]');

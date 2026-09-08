@@ -17,6 +17,8 @@
 <script src="assets/nutrition-calc.js"></script>
 <script src="assets/periodization.js"></script>
 <script src="assets/assessments.js"></script>
+<script src="assets/sprint-profile.js"></script>
+<script src="assets/charts.js"></script>
 <script src="assets/week-drag.js"></script>
 <script src="assets/week-board.js" defer></script>
 <style>
@@ -278,6 +280,7 @@
         </div>
         <p class="pr-hint" id="as-how" style="margin:-4px 0 0"></p>
         <div id="as-fields"></div>
+        <p class="as-ref" id="as-ref" hidden></p>
         <div class="pr-field">
           <label class="pr-label" for="as-notes" data-i18n="as.notes">Nota</label>
           <input class="pr-input" id="as-notes" maxlength="160" data-i18n-attr="placeholder:as.notesPh" placeholder="Cancha mojada, zapatillas nuevas…">
@@ -986,6 +989,13 @@
     const { data } = await window.sb.from('assessments')
       .select('*').eq('athlete_id', a.id).order('date');
     mediciones = data || [];
+    // El perfil de sprint se calcula con la masa del día en que corrió, y esta
+    // pestaña se puede abrir sin haber pasado por la ficha.
+    if (!pesos.length) {
+      const { data: bw } = await window.sb.from('body_weights')
+        .select('date,weight_kg').eq('athlete_id', a.id).order('date', { ascending: false }).limit(60);
+      pesos = (bw || []).slice().reverse();
+    }
   }
 
   // La serie de un test, en orden. El lado se separa: comparar el salto del
@@ -1008,16 +1018,92 @@
     // Se agrupa por familia y no por fecha: lo que se compara es un salto con
     // otro salto, no todo lo del martes.
     const claves = [...new Set(mediciones.map(m => m.test_key))];
+    const haySprint = claves.some(k => A().distanciaDe(k) != null);
     const html = A().FAMILIAS.map(f => {
-      const suyas = A().TESTS.filter(x => x.fam === f.k && claves.includes(x.k));
-      if (!suyas.length) return '';
+      const suyas = A().TESTS.filter(x => x.fam === f.k && !x.parciales && claves.includes(x.k));
+      const sprint = f.k === 'speed' && haySprint ? tarjetaSprint() : '';
+      if (!suyas.length && !sprint) return '';
       return `<div class="as-fam"><h3>${esc(A().famLabel(f.k))}</h3>
-        ${suyas.map(tarjetaTest).join('')}</div>`;
+        ${sprint}${suyas.map(tarjetaTest).join('')}</div>`;
     }).join('');
 
     host.innerHTML = html;
     host.querySelectorAll('[data-test-hist]').forEach(el =>
       el.addEventListener('click', () => abrirHistoria(el.dataset.testHist)));
+  }
+
+  // ── El sprint ─────────────────────────────────────────────────────────────
+  // Los parciales de una misma fecha son una carrera. De ahí sale el perfil,
+  // que es lo que dice de qué lado está el atleta: fuerza o velocidad.
+  function carreras() {
+    const porFecha = {};
+    mediciones.forEach(m => {
+      const d = A().distanciaDe(m.test_key);
+      if (d == null) return;
+      (porFecha[m.date] = porFecha[m.date] || []).push({ distancia: d, tiempo: Number(m.value) });
+    });
+    return Object.keys(porFecha).sort().map(fecha => ({
+      fecha,
+      parciales: porFecha[fecha].sort((a, b) => a.distancia - b.distancia),
+    }));
+  }
+
+  // El peso del día del test, no el de hoy: el perfil se calcula con la masa
+  // que el atleta tenía cuando corrió.
+  function pesoEn(ymd) {
+    const antes = pesos.filter(p => p.date <= ymd);
+    if (antes.length) return Number(antes[antes.length - 1].weight_kg);
+    return nutIntake && nutIntake.weight_kg ? Number(nutIntake.weight_kg) : null;
+  }
+
+  function perfilDe(carrera) {
+    const masa = pesoEn(carrera.fecha);
+    const altura = nutIntake && nutIntake.height_cm ? Number(nutIntake.height_cm) / 100 : null;
+    if (!masa || !altura || carrera.parciales.length < 4) return null;
+    return window.prSprint.perfil(carrera.parciales, masa, altura);
+  }
+
+  function tarjetaSprint() {
+    const cs = carreras();
+    if (!cs.length) return '';
+    const ultima = cs[cs.length - 1];
+    const P = perfilDe(ultima);
+    const tr = window.prSprint.tramos(ultima.parciales);
+    const masa = pesoEn(ultima.fecha);
+
+    // Sin perfil se dice POR QUÉ. «No se puede calcular» a secas obliga a
+    // adivinar si falta un dato o el test está mal cargado.
+    const falta = !P ? (
+      ultima.parciales.length < 4 ? t('as.sp.needSplits', '', { n: 4 - ultima.parciales.length, count: 4 - ultima.parciales.length })
+      : !masa ? t('as.sp.needWeight', 'Falta el peso del atleta para calcular el perfil.')
+      : t('as.sp.needHeight', 'Falta la altura del atleta para calcular el perfil.')) : '';
+
+    const dato = (v, u, rot, ayuda) => `<div class="as-metric" title="${esc(ayuda || '')}">
+      <b>${esc(v)}</b><span>${esc(u)}</span><em>${esc(rot)}</em></div>`;
+
+    return `<article class="as-card is-wide" data-test-hist="sprint">
+      <div class="as-card-head">
+        <b>${esc(A().label('sprint'))}</b>
+        <span class="as-when">${esc(fechaCorta(ultima.fecha))}</span>
+      </div>
+      <div class="as-splits">${ultima.parciales.map(p =>
+        `<span><i>${p.distancia} m</i>${p.tiempo.toFixed(2)} s</span>`).join('')}</div>
+      ${P ? `
+        <div class="as-metrics">
+          ${dato(P.F0_rel.toFixed(1), 'N/kg', t('as.sp.f0'), t('as.sp.f0.h'))}
+          ${dato(P.V0.toFixed(2), 'm/s', t('as.sp.v0'), t('as.sp.v0.h'))}
+          ${dato(P.Pmax_rel.toFixed(1), 'W/kg', t('as.sp.pmax'), t('as.sp.pmax.h'))}
+          ${dato((P.RFmax * 100).toFixed(1), '%', t('as.sp.rfmax'), t('as.sp.rfmax.h'))}
+          ${dato(P.DRF.toFixed(3), '', t('as.sp.drf'), t('as.sp.drf.h'))}
+        </div>
+        ${window.prChart.fuerzaVelocidad(P, { masa,
+            ejeY: t('as.sp.force', 'Fuerza N/kg'), ejeX: t('as.sp.speed', 'Velocidad m/s'),
+            pie: t('as.sp.vmax', '', { v: P.vmax.toFixed(2) }) })}
+        ${P.confiable ? '' : `<p class="as-warn"><i class="ti ti-alert-triangle"></i>
+          ${esc(t('as.sp.badFit', '', { e: (P.rmse * 100).toFixed(0) }))}</p>`}`
+      : `<p class="as-warn"><i class="ti ti-info-circle"></i>${esc(falta)}
+         ${tr ? ' ' + esc(t('as.sp.meanwhile', '', { v: (tr.vmax.v * 3.6).toFixed(1) })) : ''}</p>`}
+    </article>`;
   }
 
   function tarjetaTest(d) {
@@ -1056,7 +1142,7 @@
           <em>${esc(asim.lado ? t('as.higher.' + asim.lado) : t('as.even', 'parejos'))}</em>
         </div>` : ''}
       </div>
-      ${chispa(d, filas[0].serie)}
+      ${grafico(d, filas[0].serie, filas[0].lec)}
     </article>`;
   }
 
@@ -1074,25 +1160,22 @@
       <span>${esc(t('as.vsBase', 'de su nivel'))}</span></em>`;
   }
 
-  // Una línea con la serie. No es un gráfico con ejes: es la forma, que es lo
-  // que se mira de reojo para saber si va para arriba o para abajo.
-  function chispa(d, serie) {
+  // La evolución. El eje horizontal es el TIEMPO REAL y no el número de toma:
+  // cuatro tomas en una semana y cuatro en un año no son la misma historia, y
+  // repartidas parejo se dibujarían igual.
+  function grafico(d, serie, lec) {
     if (serie.length < 2) return '';
-    const vals = serie.map(m => Number(m.value));
-    const min = Math.min(...vals), max = Math.max(...vals);
-    const rango = (max - min) || 1;
-    const pts = vals.map((v, i) => {
-      const x = (i / (vals.length - 1)) * 100;
-      // Arriba es siempre mejor, también cuando menos es mejor: si no, una
-      // mejora de sprint se dibujaría bajando.
-      const norm = (v - min) / rango;
-      const y = 24 - (d.mas ? norm : 1 - norm) * 22 - 1;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(' ');
-    return `<svg class="as-spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true">
-      <polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="1.6"
-                vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/>
-    </svg>`;
+    const dia = (ymd) => window.prWeek.parseYMD(ymd).getTime() / 86400000;
+    const puntos = serie.map(m => ({
+      x: dia(m.date), y: Number(m.value),
+      rotulo: fechaCorta(m.date) + ' · ' + A().fmt(d.k, m.value),
+    }));
+    return window.prChart.serie(puntos, {
+      decimales: d.decimales, masEsMejor: d.mas, unidad: t('as.u.' + d.unidad, d.unidad),
+      basal: lec && lec.base != null ? lec.base : null,
+      desde: fechaCorta(serie[0].date), hasta: fechaCorta(serie[serie.length - 1].date),
+      titulo: A().label(d.k),
+    });
   }
 
   function abrirHistoria(key) {
@@ -1782,19 +1865,57 @@
     const d = A().def(key);
     if (!d) return '';
     const uni = t('as.u.' + d.unidad, d.unidad);
-    const campo = (id, rotulo) => `
+    const campo = (id, rotulo, ph) => `
       <div class="pr-field">
         <label class="pr-label" for="${id}">${esc(rotulo)}</label>
-        <input class="pr-input" id="${id}" inputmode="decimal" placeholder="${esc(uni)}">
+        <input class="pr-input" id="${id}" inputmode="decimal" placeholder="${esc(ph || uni)}">
       </div>`;
-    // De a un lado por vez: se pueden cargar los dos de una, o sólo uno si ese
-    // día se midió uno solo.
-    return d.porLado
+
+    // El sprint se carga por parciales: son la entrada del perfil, no seis
+    // tests distintos. Se completan los que se hayan tomado.
+    if (d.parciales) {
+      return `<div class="as-grid">${d.parciales.map(m =>
+        campo('as-sp-' + m, m + ' m', 's')).join('')}</div>
+        <p class="pr-hint" style="margin:8px 0 0">${esc(t('as.sp.hint',
+          'Los tiempos son acumulados desde la salida. Con cuatro o más sale el perfil; con menos, sólo las velocidades por tramo.'))}</p>`;
+    }
+
+    // Los saltos: MyJump devuelve el tiempo de vuelo, y de ahí sale la altura.
+    // Se guarda una sola cosa —la altura— o habría dos números para lo mismo.
+    const selVuelo = d.vuelo ? `
+      <div class="pr-field">
+        <label class="pr-label" for="as-mode" data-i18n="as.howMeasured">Se midió como</label>
+        <select class="pr-input" id="as-mode">
+          <option value="h">${esc(t('as.mode.h', 'Altura (cm)'))}</option>
+          <option value="tv">${esc(t('as.mode.tv', 'Tiempo de vuelo (ms)'))}</option>
+        </select>
+      </div>` : '';
+
+    const cuerpo = d.porLado
       ? `<div class="pr-modal-grid">${campo('as-v-L', t('as.side.L'))}${campo('as-v-R', t('as.side.R'))}</div>`
       : `<div class="pr-field">
            <label class="pr-label" for="as-v" data-i18n="as.value">Resultado</label>
            <input class="pr-input" id="as-v" inputmode="decimal" required placeholder="${esc(uni)}">
          </div>`;
+    return selVuelo + cuerpo + `<p class="pr-hint" id="as-conv" hidden style="margin:8px 0 0"></p>`;
+  }
+
+  // Lo que se va a guardar, dicho mientras se escribe: el que carga 540 ms
+  // tiene que poder ver que eso son 35.8 cm antes de darle a guardar.
+  function pintarConversion() {
+    const aviso = document.getElementById('as-conv');
+    if (!aviso) return;
+    const modo = document.getElementById('as-mode');
+    if (!modo || modo.value !== 'tv') { aviso.hidden = true; return; }
+    const ids = document.getElementById('as-v') ? ['as-v'] : ['as-v-L', 'as-v-R'];
+    const trozos = ids.map(id => {
+      const el = document.getElementById(id);
+      if (!el || !el.value.trim()) return null;
+      const cm = A().alturaDeVuelo(el.value.trim().replace(',', '.'));
+      return cm == null ? null : (ids.length > 1 ? t('as.side.' + id.slice(-1)) + ': ' : '') + cm.toFixed(1) + ' cm';
+    }).filter(Boolean);
+    aviso.hidden = !trozos.length;
+    aviso.textContent = trozos.length ? t('as.willSave', '', { v: trozos.join(' · ') }) : '';
   }
 
   function pintarCamposTest() {
@@ -1802,6 +1923,14 @@
     const d = A().def(key);
     document.getElementById('as-how').textContent = d ? t(d.como, '') : '';
     document.getElementById('as-fields').innerHTML = camposDe(key);
+    // De dónde sale el método: un test sin su fuente es una receta.
+    const cita = document.getElementById('as-ref');
+    cita.hidden = !(d && d.ref);
+    cita.textContent = d && d.ref ? t(d.ref, '') : '';
+
+    const modo = document.getElementById('as-mode');
+    if (modo) modo.addEventListener('change', pintarConversion);
+    document.getElementById('as-fields').addEventListener('input', pintarConversion);
   }
 
   document.getElementById('as-add').addEventListener('click', () => {
@@ -1828,32 +1957,68 @@
     const fecha = document.getElementById('as-date').value;
     const nota = document.getElementById('as-notes').value.trim() || null;
 
-    const leer = (id, lado) => {
+    const leer = (id) => {
       const el = document.getElementById(id);
       if (!el || el.value.trim() === '') return null;
       const v = Number(el.value.trim().replace(',', '.'));
-      return isFinite(v) ? { value: v, side: lado } : NaN;
+      return isFinite(v) ? v : NaN;
     };
-    const crudos = d.porLado ? [leer('as-v-L', 'L'), leer('as-v-R', 'R')] : [leer('as-v', null)];
-    if (crudos.some(x => Number.isNaN(x))) {
-      msg.textContent = t('as.errNum', 'El resultado tiene que ser un número.');
-      msg.hidden = false; return;
+
+    // Cada parcial es una fila con su propia clave, pero se cargan de una: son
+    // una carrera, no seis tests.
+    let filas;
+    if (d.parciales) {
+      const leidos = d.parciales.map(m => ({ m, v: leer('as-sp-' + m) }));
+      if (leidos.some(x => Number.isNaN(x.v))) {
+        msg.textContent = t('as.errNum', 'El resultado tiene que ser un número.');
+        msg.hidden = false; return;
+      }
+      const puestos = leidos.filter(x => x.v != null);
+      if (!puestos.length) {
+        msg.textContent = t('as.errEmpty', 'Falta el resultado.');
+        msg.hidden = false; return;
+      }
+      // Un tiempo que no crece con la distancia es un error de carga, y si
+      // entra, el ajuste devuelve un perfil imposible sin decir nada.
+      for (let i = 1; i < puestos.length; i++) {
+        if (puestos[i].v <= puestos[i - 1].v) {
+          msg.textContent = t('as.errOrder', '', { a: puestos[i - 1].m, b: puestos[i].m });
+          msg.hidden = false; return;
+        }
+      }
+      filas = puestos.map(x => ({ key: A().claveParcial(x.m), value: x.v, side: null }));
+    } else {
+      const modo = document.getElementById('as-mode');
+      const desdeVuelo = modo && modo.value === 'tv';
+      const conv = (v) => {
+        if (v == null || Number.isNaN(v)) return v;
+        // Se guarda la altura siempre, venga como venga: dos formas del mismo
+        // dato en la misma serie no se pueden ni comparar ni promediar.
+        return desdeVuelo ? Math.round(A().alturaDeVuelo(v) * 10) / 10 : v;
+      };
+      const crudos = d.porLado
+        ? [{ v: conv(leer('as-v-L')), side: 'L' }, { v: conv(leer('as-v-R')), side: 'R' }]
+        : [{ v: conv(leer('as-v')), side: null }];
+      if (crudos.some(x => Number.isNaN(x.v))) {
+        msg.textContent = t('as.errNum', 'El resultado tiene que ser un número.');
+        msg.hidden = false; return;
+      }
+      filas = crudos.filter(x => x.v != null).map(x => ({ key, value: x.v, side: x.side }));
+      if (!filas.length) {
+        msg.textContent = t('as.errEmpty', 'Falta el resultado.');
+        msg.hidden = false; return;
+      }
     }
-    const filas = crudos.filter(Boolean);
-    if (!filas.length) {
-      msg.textContent = t('as.errEmpty', 'Falta el resultado.');
-      msg.hidden = false; return;
-    }
+
     // Un salto de 400 cm o un sprint de 40 segundos es un dedo que se corrió
     // de tecla, y entra a la serie arruinando el basal de todo lo que sigue.
-    const fuera = filas.find(f => f.value < d.min || f.value > d.max);
-    if (fuera) {
+    if (filas.some(f => f.value < d.min || f.value > d.max)) {
       msg.textContent = t('as.errRange', '', { min: d.min, max: d.max, u: t('as.u.' + d.unidad, d.unidad) });
       msg.hidden = false; return;
     }
 
     const { data, error } = await window.sb.from('assessments').upsert(
-      filas.map(f => ({ athlete_id: nutAthlete.id, test_key: key, date: fecha,
+      filas.map(f => ({ athlete_id: nutAthlete.id, test_key: f.key, date: fecha,
                         value: f.value, side: f.side, notes: nota })),
       { onConflict: 'athlete_id,test_key,date,side' }).select('id');
     if (error) { msg.textContent = error.message; msg.hidden = false; return; }
