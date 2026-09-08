@@ -80,9 +80,49 @@
   .aw-wl-sleep span { font: var(--pr-body-sm); color: var(--pr-fg-muted); }
   .aw-wl-done { display: flex; align-items: center; gap: 8px; font: var(--pr-body-sm); color: var(--pr-success); }
 
-  .aw-weekwrap { margin-top: 4px; }
-  .aw-weekwrap .wk-day.is-date { width: 46px; }
-  .aw-weekwrap .wk-track-cal { height: 34px; }
+  /* Los siete días como tira. Reemplaza a la grilla de la semana, que es una
+     herramienta de PLANIFICACIÓN: sirve para ver huecos y comparar días, y eso
+     lo hace el entrenador. El atleta no planifica, ejecuta — y con diez bloques
+     en un día (seis comidas, el club, el gimnasio, la siesta, el liceo) la
+     línea de tiempo de dieciocho horas le deja astillas de tres píxeles. */
+  .aw-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 4px; }
+  .aw-day {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 9px 2px 8px; min-width: 0;
+    border: var(--pr-bw) solid var(--pr-border);
+    border-radius: var(--pr-r-3);
+    background: var(--pr-surface); cursor: pointer;
+    transition: all var(--pr-dur-1) var(--pr-ease);
+  }
+  .aw-day em {
+    font-style: normal; font: 700 9.5px/1 var(--pr-font-cond);
+    letter-spacing: .1em; text-transform: uppercase; color: var(--pr-fg-faint);
+  }
+  .aw-day b { font: 700 17px/1 var(--pr-font-cond); font-variant-numeric: tabular-nums; color: var(--pr-fg-strong); }
+  .aw-day:hover { border-color: var(--pr-border-strong); }
+  .aw-day.is-on { background: var(--pr-accent); border-color: var(--pr-accent); }
+  .aw-day.is-on em, .aw-day.is-on b { color: var(--pr-fg-on-accent); }
+  .aw-day.is-today:not(.is-on) { border-color: var(--pr-accent); }
+  .aw-day:focus-visible { outline: var(--pr-bw-2) solid var(--pr-accent); outline-offset: 2px; }
+  /* Un punto por lo que queda sin contestar ese día: sin abrirlo se ve dónde
+     hay algo pendiente. */
+  .aw-day i {
+    width: 5px; height: 5px; border-radius: 50%; display: block;
+    background: var(--pr-accent); margin-top: 1px;
+  }
+  .aw-day.is-on i { background: var(--pr-fg-on-accent); }
+  .aw-day i.is-clear { background: transparent; }
+
+  .aw-dayname {
+    font: 700 11px/1 var(--pr-font-cond); letter-spacing: .14em; text-transform: uppercase;
+    color: var(--pr-fg-muted); display: block; margin: 16px 0 0;
+  }
+
+  /* El «¿cómo amaneciste?» es de la mañana: contestado, se pliega a una línea
+     y deja de ocupar media pantalla el resto del día. */
+  .aw-wl-sum { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .aw-wl-sum .pr-btn { margin-left: auto; }
 
   .aw-foot { margin-top: 28px; display: flex; justify-content: center; }
 </style>
@@ -110,32 +150,30 @@
       <span class="aw-arrow"><span id="intake-cta"></span><i class="ti ti-arrow-right"></i></span>
     </a>
 
-    <section class="pr-card pr-rise" style="--i:1" id="today-card" hidden>
-      <h3 data-i18n="aw.todayTitle">Hoy</h3>
+    <section class="pr-card pr-rise" style="--i:1" id="wl-card" hidden>
+      <div id="wl-open">
+        <h3 data-i18n="wl.title">¿Cómo amaneciste?</h3>
+        <p data-i18n="wl.sub">Cinco toques. Le sirve a tu entrenador para saber cuánto exigirte hoy.</p>
+        <div class="aw-wl" id="wl-form"></div>
+        <div class="pr-modal-foot" style="padding:14px 0 0;border:0">
+          <span class="pr-grow"></span>
+          <button class="pr-btn is-primary is-sm" id="wl-save"><i class="ti ti-check"></i><span data-i18n="common.save">Guardar</span></button>
+        </div>
+      </div>
+      <div class="aw-wl-sum" id="wl-sum" hidden>
+        <span class="aw-wl-done"><i class="ti ti-check"></i><span data-i18n="wl.saved">Anotado</span></span>
+        <span class="pr-mono" id="wl-sum-t"></span>
+        <button class="pr-btn is-ghost is-sm" id="wl-edit" data-i18n="wl.change">Cambiar</button>
+      </div>
+    </section>
+
+    <section class="pr-card pr-rise" style="--i:2" id="week-card" hidden>
+      <h3 data-i18n="aw.weekTitle">Tu semana</h3>
+      <div class="aw-days" id="days"></div>
+      <span class="aw-dayname" id="day-name"></span>
       <div class="aw-today" id="today-list"></div>
-    </section>
-
-    <section class="pr-card pr-rise" style="--i:2" id="wl-card" hidden>
-      <h3 data-i18n="wl.title">¿Cómo amaneciste?</h3>
-      <p data-i18n="wl.sub">Cinco toques. Le sirve a tu entrenador para saber cuánto exigirte hoy.</p>
-      <div class="aw-wl" id="wl-form"></div>
-      <div class="pr-modal-foot" style="padding:14px 0 0;border:0">
-        <span class="aw-wl-done" id="wl-done" hidden><i class="ti ti-check"></i><span data-i18n="wl.saved">Anotado</span></span>
-        <span class="pr-grow"></span>
-        <button class="pr-btn is-primary is-sm" id="wl-save"><i class="ti ti-check"></i><span data-i18n="common.save">Guardar</span></button>
-      </div>
-    </section>
-
-    <section class="pr-card pr-rise" style="--i:3" id="week-card" hidden>
-      <div class="aw-week-head">
-        <h3 data-i18n="aw.weekTitle">Tu semana</h3>
-        <span id="wk-flip"></span>
-      </div>
-      <div class="wk aw-weekwrap">
-        <div id="wk-scale"></div>
-        <div id="wk-rows"></div>
-      </div>
-      <div id="wk-legend"></div>
+      <p id="day-empty" hidden data-i18n="aw.dayEmpty">Ese día no tienes nada cargado.</p>
+      <div id="wk-legend" style="margin-top:16px"></div>
     </section>
 
     <!-- Lo que toma, con la dosis y el momento. Lo indica el entrenador; acá
@@ -167,15 +205,42 @@
   document.getElementById('theme').addEventListener('click', () => window.prBrand.toggleTheme());
   document.getElementById('logout').addEventListener('click', () => window.logout('../Login.html'));
 
+  // Qué día se está mirando. Arranca en hoy, que es lo que se abre la app a
+  // buscar, pero se puede mirar el jueves: comprar la comida del jueves el
+  // jueves a la mañana no sirve de nada.
+  let diaVisto = null;
+
+  function paintDays(events) {
+    const hoy = window.prToday();
+    const dates = W().weekDates(W().mondayOf(hoy));
+    if (!diaVisto || dates.indexOf(diaVisto) < 0) diaVisto = hoy;
+
+    document.getElementById('days').innerHTML = dates.map((ymd, i) => {
+      const d = W().parseYMD(ymd);
+      // Un punto por lo que queda sin contestar: sin abrir el día se ve dónde
+      // hay algo pendiente.
+      const pend = events.some(e => e.date === ymd && e.status === 'planned');
+      return `<button type="button" class="aw-day${ymd === diaVisto ? ' is-on' : ''}${ymd === hoy ? ' is-today' : ''}"
+        data-day="${ymd}" aria-pressed="${ymd === diaVisto ? 'true' : 'false'}">
+        <em data-i18n="${W().DAY_KEYS[i]}">${esc(t(W().DAY_KEYS[i], ''))}</em>
+        <b>${d.getDate()}</b>
+        <i class="${pend ? '' : 'is-clear'}"></i>
+      </button>`;
+    }).join('');
+
+    const lang = (window.PR_I18N && window.PR_I18N.current) || 'es';
+    document.getElementById('day-name').textContent = diaVisto === hoy
+      ? t('aw.todayTitle', 'Hoy')
+      : W().parseYMD(diaVisto).toLocaleDateString(lang, { weekday: 'long', day: 'numeric', month: 'long' });
+  }
+
   function paintToday(events) {
-    const today = window.prToday();
-    const mine = events.filter(e => e.date === today)
+    paintDays(events);
+    const mine = events.filter(e => e.date === diaVisto)
       .sort((a, b) => W().toMin(a.start_time || '00:00') - W().toMin(b.start_time || '00:00'));
 
-    document.getElementById('today-card').hidden = !mine.length;
-    if (!mine.length) return;
-
-    document.getElementById('today-list').innerHTML = mine.map(e => {
+    document.getElementById('day-empty').hidden = !!mine.length;
+    document.getElementById('today-list').innerHTML = !mine.length ? '' : mine.map(e => {
       const name = e.title || t(W().EVENT_KEY[e.type] || 'ev.other', '');
       const time = e.start_time
         ? W().hhmm(e.start_time) + (e.end_time ? '–' + W().hhmm(e.end_time) : '')
@@ -214,9 +279,11 @@
         </div>
       </button>`;
     }).join('');
+
+    if (window.PR_I18N) window.PR_I18N.applyTo(document.getElementById('week-card'));
   }
 
-  let allEvents = [], athleteId = null, mySlots = [];
+  let allEvents = [], athleteId = null;
 
   // Un bloque con algo que leer abre su pantalla —y ahí abajo está el parte—;
   // lo que no tiene nada que leer abre el parte directamente.
@@ -241,13 +308,11 @@
     abrir(allEvents.find(x => x.id === b.dataset.ev));
   });
 
-  // Y desde la semana entera, no solo desde hoy. El atleta ya tocaba los
-  // bloques del jueves esperando que se abrieran: comprar la comida del jueves
-  // el jueves a la mañana no sirve de nada.
-  document.getElementById('wk-rows').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-event]');
-    if (!b) return;
-    abrir(allEvents.find(x => x.id === b.dataset.event));
+  document.getElementById('days').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-day]');
+    if (!b || b.dataset.day === diaVisto) return;
+    diaVisto = b.dataset.day;
+    paintToday(allEvents);
   });
 
   // Después de guardar se vuelve a leer: lo que se ve tiene que ser lo que
@@ -260,17 +325,6 @@
       .order('start_time');
     allEvents = data || [];
     paintToday(allEvents);
-    paintWeekGrid(allEvents);
-  }
-
-  // La grilla también dice qué está hecho, así que después de un parte hay que
-  // repintarla: si no, el bloque que se acaba de marcar sigue viéndose pendiente.
-  function paintWeekGrid(events) {
-    if (!events.length) return;
-    const dates = W().weekDates(W().mondayOf(window.prToday()));
-    W().render({ host: 'wk-rows', dates, slots: mySlots, events, openable: true });
-    document.getElementById('wk-flip').innerHTML = W().layoutToggleHtml();
-    document.getElementById('week-card').hidden = false;
   }
 
   const EV_COLS = 'id,date,start_time,end_time,type,color,title,notes,location,status,rpe,actual_min,athlete_note,au,recovery_items(position,method,duration_min,temp_c,temp_hot_c,cycles,pressure)';
@@ -306,8 +360,24 @@
         <label class="pr-label" for="wl-note" data-i18n="wl.note">Algo más</label>
         <input class="pr-input" id="wl-note" value="${esc(wl.note || '')}" data-i18n-ph="wl.notePh" placeholder="Molestias, cómo dormiste…">
       </div>`;
-    document.getElementById('wl-done').hidden = !wl.created_at;
+    paintWlState();
     if (window.PR_I18N) window.PR_I18N.applyTo(document.getElementById('wl-form'));
+  }
+
+  // Contestado, se pliega: es una pregunta de la mañana y a las ocho de la
+  // noche ocupa media pantalla para no pedir nada. Queda la línea con lo que
+  // contestó, que además le sirve para acordarse de cómo se levantó.
+  let wlAbierto = false;
+
+  function paintWlState() {
+    const listo = !!wl.created_at && !wlAbierto;
+    document.getElementById('wl-open').hidden = listo;
+    document.getElementById('wl-sum').hidden = !listo;
+    if (!listo) return;
+    const partes = [];
+    if (wl.score != null) partes.push(t('wl.scoreOf', wl.score + ' de 25', { n: wl.score }));
+    if (wl.sleep_h != null) partes.push(wl.sleep_h + ' h');
+    document.getElementById('wl-sum-t').textContent = partes.join(' · ');
   }
 
   document.getElementById('wl-form').addEventListener('click', (e) => {
@@ -336,16 +406,25 @@
     const { error } = await window.sb.from('wellness').upsert(row, { onConflict: 'athlete_id,date' });
     if (error) { window.prToast(error.message, 'danger'); return; }
     wl = Object.assign(wl, row, { created_at: wl.created_at || new Date().toISOString() });
-    document.getElementById('wl-done').hidden = false;
+    // La suma la calcula la base; acá se arma igual para no pedir la fila otra
+    // vez solo para mostrar un número que ya se conoce.
+    const completo = WL.every(([k]) => row[k] != null);
+    wl.score = completo ? WL.reduce((a, [k]) => a + row[k], 0) : null;
+    wlAbierto = false;
+    paintWlState();
     window.prToast(t('wl.thanks', 'Anotado. Gracias.'), 'success');
+  });
+
+  document.getElementById('wl-edit').addEventListener('click', () => {
+    wlAbierto = true;
+    paintWlState();
   });
 
   async function boot() {
     if (!(await window.requireAthlete())) return;
     if (window.PR_I18N && window.PR_I18N.ready) { try { await window.PR_I18N.ready; } catch (e) {} }
 
-    document.getElementById('wk-scale').outerHTML = W().scaleHtml() + W().scaleColsHtml();
-    document.getElementById('wk-legend').outerHTML = W().eventLegendHtml();
+
 
     // Las reglas de acceso ya limitan al atleta a su propia fila.
     const { data } = await window.sb.from('athletes')
@@ -374,9 +453,8 @@
 
     athleteId = data.id;
 
-    const [intakeQ, slotQ, evQ, wlQ] = await Promise.all([
+    const [intakeQ, evQ, wlQ] = await Promise.all([
       window.sb.from('athlete_intake').select('completed_at').eq('athlete_id', data.id).maybeSingle(),
-      window.sb.from('availability_slots').select('weekday,start_time,end_time,kind,label').eq('athlete_id', data.id),
       window.sb.from('events').select(EV_COLS)
         .eq('athlete_id', data.id).gte('date', monday).lte('date', dates[6]).order('start_time'),
       window.sb.from('wellness').select('*').eq('athlete_id', data.id).eq('date', window.prToday()).maybeSingle()
@@ -397,12 +475,14 @@
     if (done) card.style.setProperty('--pr-strip', 'var(--pr-ev-field)');
     card.hidden = false;
 
-    paintToday(events);
     await pintarSuples(data.id);
 
-    mySlots = slotQ.data || [];
     if (events.length) {
-      paintWeekGrid(events);
+      paintToday(events);
+      // La leyenda, solo con los tipos que tiene esta semana.
+      const tipos = [...new Set(events.map(e => e.type))];
+      document.getElementById('wk-legend').outerHTML = W().eventLegendHtml(tipos);
+      document.getElementById('week-card').hidden = false;
     } else {
       document.getElementById('soon-card').hidden = false;
     }

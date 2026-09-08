@@ -85,6 +85,7 @@ const FALSO = `
                 : t === 'nutrition_targets' ? (window.__sinObjetivo ? [] : [OBJETIVO])
                 : t === 'availability_slots' ? []
                 : t === 'athlete_intake' ? [{ completed_at: '2026-03-01T10:00:00Z' }]
+                : t === 'wellness' ? (window.__wl ? [window.__wl] : [])
                 : [];
     const propios = {
       __id: null,
@@ -231,31 +232,52 @@ try {
   is('ni un «falta» inventado', sin.some((d) => d.falta), false);
 
   // ── La semana ─────────────────────────────────────────────────────────────
-  console.log('\nLA SEMANA ENTERA SE ABRE, NO SOLO HOY');
+  console.log('\nLA SEMANA SE MIRA POR DÍAS, NO EN UNA GRILLA');
+  // La línea de tiempo de dieciocho horas es una herramienta de planificación:
+  // con diez bloques en un día quedaban astillas de tres píxeles. El atleta
+  // ejecuta, así que ve un día y puede saltar a otro.
   await page.goto(`http://localhost:${PORT}/athlete/Week.html`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('#wk-rows .wk-ev', { timeout: 15000 });
-  is('los bloques de la grilla son botones', await page.evaluate(() =>
-    [...document.querySelectorAll('#wk-rows .wk-ev')].every((b) => b.tagName === 'BUTTON')), true);
-  is('y no le aparece un «+» para crear', await page.evaluate(() =>
-    document.querySelectorAll('#wk-rows .wk-add').length), 0);
+  await page.waitForSelector('.aw-day', { timeout: 15000 });
+  is('están los siete días', await page.evaluate(() => document.querySelectorAll('.aw-day').length), 7);
+  is('y arranca en hoy', await page.evaluate(() =>
+    document.querySelector('.aw-day.is-on').dataset.day), '2026-03-02');
+  is('ya no hay grilla', await page.evaluate(() => !document.getElementById('wk-rows')), true);
+  is('el lunes se ve entero', await page.evaluate(() =>
+    [...document.querySelectorAll('#today-list [data-ev]')].map((b) => b.dataset.ev)),
+    ['ev-meal', 'ev-siesta']);
+  // Un punto por día con algo sin contestar: dónde queda pendiente algo se ve
+  // sin abrir el día.
+  is('los días con algo pendiente se marcan', await page.evaluate(() =>
+    [...document.querySelectorAll('.aw-day')].map((d) => !d.querySelector('i').classList.contains('is-clear'))),
+    [true, false, false, true, false, false, false]);
+
+  console.log('\nY SE PUEDE MIRAR OTRO DÍA');
+  await page.click('.aw-day[data-day="2026-03-05"]');
+  await page.waitForTimeout(300);
+  is('la lista pasa a ser la del jueves', await page.evaluate(() =>
+    [...document.querySelectorAll('#today-list [data-ev]')].map((b) => b.dataset.ev)),
+    ['ev-gym', 'ev-cena']);
+  is('y el título lo dice', (await page.textContent('#day-name')).toLowerCase().includes('jueves'), true);
 
   // La cena del jueves: antes había que esperar al jueves para leerla.
-  await page.click('#wk-rows .wk-ev[data-event="ev-cena"]');
+  await page.click('#today-list [data-ev="ev-cena"]');
   await page.waitForURL(/Meal\.html\?event=ev-cena/, { timeout: 5000 });
   ok('la comida del jueves abre su menú');
 
   await page.goBack({ waitUntil: 'networkidle' });
-  await page.waitForSelector('#wk-rows .wk-ev', { timeout: 15000 });
-  await page.click('#wk-rows .wk-ev[data-event="ev-gym"]');
+  await page.waitForSelector('.aw-day', { timeout: 15000 });
+  await page.click('.aw-day[data-day="2026-03-05"]');
+  await page.waitForTimeout(300);
+  await page.click('#today-list [data-ev="ev-gym"]');
   await page.waitForURL(/Session\.html\?event=ev-gym/, { timeout: 5000 });
   ok('y el gimnasio del jueves, su sesión');
 
   console.log('\nLA SIESTA TAMPOCO PREGUNTA NADA');
   // Se viene de la sesión del gimnasio: hay que volver a la semana.
   await page.goto(`http://localhost:${PORT}/athlete/Week.html`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('#wk-rows .wk-ev', { timeout: 15000 });
+  await page.waitForSelector('#today-list [data-ev]', { timeout: 15000 });
   await page.evaluate(() => { window.__sql = []; });
-  await page.click('#wk-rows .wk-ev[data-event="ev-siesta"]');
+  await page.click('#today-list [data-ev="ev-siesta"]');
   await page.waitForTimeout(500);
   is('no abre formulario',
      await page.evaluate(() => !document.getElementById('m-log') || document.getElementById('m-log').hidden), true);
@@ -266,7 +288,9 @@ try {
   // Es la mitad que da sentido a todo: sin RPE no hay carga. Aparece al decir
   // que sí lo hizo, no antes — a quien no lo hizo no se le pregunta cuánto le
   // costó.
-  await page.click('#wk-rows .wk-ev[data-event="ev-gym"]');
+  await page.click('.aw-day[data-day="2026-03-05"]');
+  await page.waitForTimeout(300);
+  await page.click('#today-list [data-ev="ev-gym"]');
   await page.waitForURL(/Session\.html\?event=ev-gym/, { timeout: 5000 });
   await page.click('#log');
   await page.waitForSelector('#m-log:not([hidden])', { timeout: 5000 });
@@ -289,6 +313,34 @@ try {
   const gym = await page.evaluate(() => window.__sql.find((x) => x.n === 'athlete_log_event'));
   is('el esfuerzo se guarda', gym && gym.args.p_rpe, 8);
   is('y los minutos también', gym && gym.args.p_min, 60);
+
+  console.log('\nEL «¿CÓMO AMANECISTE?» SE PLIEGA UNA VEZ CONTESTADO');
+  // Es una pregunta de la mañana: a las ocho de la noche ocuparía media
+  // pantalla para no pedir nada.
+  await page.goto(`http://localhost:${PORT}/athlete/Week.html`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('.aw-day', { timeout: 15000 });
+  is('sin contestar, se ve entero', await page.evaluate(() => ({
+    formulario: !document.getElementById('wl-open').hidden,
+    resumen: document.getElementById('wl-sum').hidden,
+  })), { formulario: true, resumen: true });
+
+  await page.addInitScript(() => {
+    window.__wl = { athlete_id: 'a-1', date: '2026-03-02', sleep_h: 7.5,
+      sleep_quality: 4, legs: 3, energy: 4, mood: 4, calm: 3, score: 18,
+      created_at: '2026-03-02T08:00:00Z' };
+  });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('.aw-day', { timeout: 15000 });
+  is('contestado, queda una línea', await page.evaluate(() => ({
+    formulario: document.getElementById('wl-open').hidden,
+    resumen: !document.getElementById('wl-sum').hidden,
+    dice: document.getElementById('wl-sum-t').textContent,
+  })), { formulario: true, resumen: true, dice: '18 de 25 · 7.5 h' });
+
+  await page.click('#wl-edit');
+  await page.waitForTimeout(200);
+  is('y se puede volver a abrir', await page.evaluate(() =>
+    !document.getElementById('wl-open').hidden), true);
 
   console.log(`\nRESULTADO: ${pass} bien, ${fail} mal`);
 } finally {

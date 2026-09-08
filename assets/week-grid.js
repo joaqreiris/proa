@@ -489,8 +489,14 @@
     ).join('');
   }
 
-  function eventLegendHtml() {
-    return `<div class="pr-legend wk-legend">` + EVENT_TYPES.filter(k => k !== 'other').map(k =>
+  // Con `solo` se acota a los tipos que de verdad están en pantalla. Al atleta
+  // se le mostraban los ocho aunque su semana no tuviera ni un partido: una
+  // leyenda que explica lo que no está no ayuda a leer, ocupa lugar.
+  function eventLegendHtml(solo) {
+    const tipos = solo && solo.length
+      ? EVENT_TYPES.filter(k => solo.indexOf(k) >= 0)
+      : EVENT_TYPES.filter(k => k !== 'other');
+    return `<div class="pr-legend wk-legend">` + tipos.map(k =>
       `<span class="pr-legend-item"><i class="ti ti-${EVENT_ICON[k]} wk-legend-ico" style="background:${EVENT_COLOR[k]}" aria-hidden="true"></i>`
       + `<span data-i18n="${EVENT_KEY[k]}">${esc(t(EVENT_KEY[k]))}</span></span>`).join('') + `</div>`;
   }
