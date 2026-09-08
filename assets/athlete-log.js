@@ -227,5 +227,32 @@
     if (window.PR_I18N) window.PR_I18N.applyTo($('m-log'));
   }
 
-  window.prLog = { open, RPE };
+  // ── Lo que no se pregunta ─────────────────────────────────────────────────
+  // Una comida y una siesta no tienen esfuerzo, ni duración que corregir, ni
+  // nada que contar: se hicieron o no se hicieron. Abrirles un formulario de
+  // tres campos para contestar una sola cosa es la clase de fricción que hace
+  // que al tercer día nadie marque nada — y sin partes, el entrenador vuelve a
+  // no enterarse, que es justo lo que este módulo vino a arreglar.
+  //
+  // El mismo toque desmarca: marcar sin querer tiene que costar lo mismo que
+  // arreglarlo.
+  const SIN_PARTE = ['meal', 'rest'];
+  const sinParte = (e) => SIN_PARTE.indexOf(e && e.type) >= 0;
+
+  async function quick(e, cb) {
+    const hecho = e.status === 'done';
+    const { error } = await window.sb.rpc('athlete_log_event', {
+      p_event: e.id,
+      p_status: hecho ? 'planned' : 'done',
+      p_rpe: null, p_min: null,
+      // La nota que ya hubiera escrito no se pierde por marcar un bloque.
+      p_note: hecho ? null : (e.athlete_note || null)
+    });
+    if (error) { window.prToast(error.message, 'danger'); return; }
+    window.prToast(t(hecho ? 'log.unmarked' : 'log.marked',
+      hecho ? 'Sin marcar.' : 'Anotado.'), 'success');
+    if (cb) await cb();
+  }
+
+  window.prLog = { open, quick, sinParte, RPE };
 })();

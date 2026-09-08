@@ -57,6 +57,11 @@ const GYM = {
   type: 'gym', title: 'Fuerza', notes: null, location: null, color: null,
   status: 'planned', rpe: null, actual_min: null, athlete_note: null, au: null, meal_items: [],
 };
+const SIESTA = {
+  id: 'ev-siesta', athlete_id: 'a-1', date: '2026-03-02', start_time: '14:00', end_time: '15:00',
+  type: 'rest', title: 'SIESTA', notes: null, location: null, color: null,
+  status: 'planned', rpe: null, actual_min: null, athlete_note: null, au: null, meal_items: [],
+};
 // Una comida del JUEVES: el caso que antes no se podía abrir.
 const CENA_JUE = {
   id: 'ev-cena', athlete_id: 'a-1', date: '2026-03-05', start_time: '21:00', end_time: '21:30',
@@ -67,7 +72,7 @@ const CENA_JUE = {
 const FALSO = `
   window.__sql = [];
   const ATLETA = ${JSON.stringify(ATLETA)};
-  const EVENTOS = ${JSON.stringify([ALMUERZO, GYM, CENA_JUE])};
+  const EVENTOS = ${JSON.stringify([ALMUERZO, GYM, SIESTA, CENA_JUE])};
   const DIA = ${JSON.stringify(ALMUERZO.meal_items.map(i =>
     ({ kcal: i.kcal, protein_g: i.protein_g, carbs_g: i.carbs_g, fats_g: i.fats_g, fiber_g: i.fiber_g })))};
   const OBJETIVO = { kcal: 2600, protein_g: 150, carbs_g: 300, fats_g: 80 };
@@ -184,10 +189,21 @@ try {
      ['500', '/ 2600', 'Falta 2100']);
   is('con barra, porque hay objetivo', dia.every((d) => d.barra), true);
 
-  console.log('\nEL PARTE DE UNA COMIDA NO PREGUNTA ESFUERZO');
-  // Un plato no dura cuarenta minutos ni sale «8 de 10»: si lo preguntara,
-  // además ensuciaría la carga, que es minutos por RPE.
+  console.log('\nUNA COMIDA SE MARCA DE UN TOQUE');
+  // Sin formulario: una comida se comió o no se comió. El que quiera contar
+  // algo tiene el botón de al lado.
+  await page.evaluate(() => { window.__sql = []; });
   await page.click('#log');
+  await page.waitForTimeout(400);
+  is('no abre ningún formulario',
+     await page.evaluate(() => !document.getElementById('m-log') || document.getElementById('m-log').hidden), true);
+  const toque = await page.evaluate(() => window.__sql.find((x) => x.n === 'athlete_log_event'));
+  is('y ya queda comido', toque && toque.args.p_status, 'done');
+  is('sin RPE', toque && toque.args.p_rpe, null);
+  is('y sin minutos', toque && toque.args.p_min, null);
+
+  console.log('\nY SI QUIERE CONTAR ALGO, AHÍ ESTÁ');
+  await page.click('#say');
   await page.waitForSelector('#m-log:not([hidden])', { timeout: 5000 });
   is('pregunta si lo comió', await page.textContent('#m-log-title'), '¿Comiste esto?');
   is('con las palabras de comer', await page.evaluate(() =>
@@ -195,16 +211,10 @@ try {
     ['Lo comí', 'No lo comí']);
   await page.click('#m-log [data-did="done"]');
   await page.waitForTimeout(200);
-  is('y nunca muestra el esfuerzo ni los minutos',
+  is('y ahí tampoco pide esfuerzo ni minutos',
      await page.evaluate(() => document.getElementById('log-detail').hidden), true);
-
-  await page.evaluate(() => { window.__sql = []; });
-  await page.click('#log-save');
-  await page.waitForTimeout(400);
-  const parte = await page.evaluate(() => window.__sql.find((x) => x.n === 'athlete_log_event'));
-  is('se guarda como hecho', parte && parte.args.p_status, 'done');
-  is('sin RPE', parte && parte.args.p_rpe, null);
-  is('y sin minutos', parte && parte.args.p_min, null);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
 
   console.log('\nSIN OBJETIVO CARGADO, LOS NÚMEROS IGUAL SE VEN');
   await page.addInitScript(() => { window.__sinObjetivo = true; });
@@ -239,6 +249,46 @@ try {
   await page.click('#wk-rows .wk-ev[data-event="ev-gym"]');
   await page.waitForURL(/Session\.html\?event=ev-gym/, { timeout: 5000 });
   ok('y el gimnasio del jueves, su sesión');
+
+  console.log('\nLA SIESTA TAMPOCO PREGUNTA NADA');
+  // Se viene de la sesión del gimnasio: hay que volver a la semana.
+  await page.goto(`http://localhost:${PORT}/athlete/Week.html`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('#wk-rows .wk-ev', { timeout: 15000 });
+  await page.evaluate(() => { window.__sql = []; });
+  await page.click('#wk-rows .wk-ev[data-event="ev-siesta"]');
+  await page.waitForTimeout(500);
+  is('no abre formulario',
+     await page.evaluate(() => !document.getElementById('m-log') || document.getElementById('m-log').hidden), true);
+  const siesta = await page.evaluate(() => window.__sql.find((x) => x.n === 'athlete_log_event'));
+  is('la marca de un toque', siesta && [siesta.args.p_event, siesta.args.p_status], ['ev-siesta', 'done']);
+
+  console.log('\nPERO EL ENTRENAMIENTO SÍ PIDE EL ESFUERZO');
+  // Es la mitad que da sentido a todo: sin RPE no hay carga. Aparece al decir
+  // que sí lo hizo, no antes — a quien no lo hizo no se le pregunta cuánto le
+  // costó.
+  await page.click('#wk-rows .wk-ev[data-event="ev-gym"]');
+  await page.waitForURL(/Session\.html\?event=ev-gym/, { timeout: 5000 });
+  await page.click('#log');
+  await page.waitForSelector('#m-log:not([hidden])', { timeout: 5000 });
+  is('primero pregunta si lo hizo', await page.evaluate(() =>
+    document.getElementById('log-detail').hidden), true);
+  await page.click('#m-log [data-did="done"]');
+  await page.waitForTimeout(250);
+  is('y al decir que sí, aparece', await page.evaluate(() =>
+    document.getElementById('log-detail').hidden), false);
+  is('con los diez números del esfuerzo', await page.evaluate(() =>
+    document.querySelectorAll('#log-rpe [data-rpe]').length), 10);
+  await page.click('#log-rpe [data-rpe="8"]');
+  await page.waitForTimeout(200);
+  is('y cada número dice lo que significa',
+     (await page.textContent('#log-rpe-word')).trim().length > 0, true);
+
+  await page.evaluate(() => { window.__sql = []; });
+  await page.click('#log-save');
+  await page.waitForTimeout(400);
+  const gym = await page.evaluate(() => window.__sql.find((x) => x.n === 'athlete_log_event'));
+  is('el esfuerzo se guarda', gym && gym.args.p_rpe, 8);
+  is('y los minutos también', gym && gym.args.p_min, 60);
 
   console.log(`\nRESULTADO: ${pass} bien, ${fail} mal`);
 } finally {

@@ -127,7 +127,10 @@
 <div class="am-foot" id="foot" hidden>
   <div class="am-foot-in">
     <span class="pr-pill" id="state" hidden></span>
-    <button class="pr-btn is-primary" id="log"><i class="ti ti-flag"></i><span data-i18n="log.titleMeal">¿Comiste esto?</span></button>
+    <!-- Un toque y listo. Contarle algo es para el que quiera, no un paso del
+         camino: una comida se comió o no se comió. -->
+    <button class="pr-btn is-ghost is-sm" id="say"><i class="ti ti-message"></i><span data-i18n="log.sayMeal">Contarle algo</span></button>
+    <button class="pr-btn is-primary" id="log"><i class="ti ti-check"></i><span id="log-t" data-i18n="log.ate">Lo comí</span></button>
   </div>
 </div>
 
@@ -288,10 +291,22 @@
       st.textContent = t('log.ateSkipped', 'No lo comió');
       st.hidden = false;
     } else { st.hidden = true; }
+
+    // Marcado, el botón deshace: el mismo toque para las dos cosas.
+    const b = document.getElementById('log');
+    const txt = document.getElementById('log-t');
+    const hecho = ev.status === 'done';
+    b.classList.toggle('is-primary', !hecho);
+    b.classList.toggle('is-secondary', hecho);
+    b.querySelector('i').className = hecho ? 'ti ti-arrow-back-up' : 'ti ti-check';
+    txt.setAttribute('data-i18n', hecho ? 'log.undoAte' : 'log.ate');
+    txt.textContent = t(hecho ? 'log.undoAte' : 'log.ate', hecho ? 'No lo comí' : 'Lo comí');
+
     document.getElementById('foot').hidden = false;
   }
 
-  document.getElementById('log').addEventListener('click', () => window.prLog.open(ev, load));
+  document.getElementById('log').addEventListener('click', () => window.prLog.quick(ev, load));
+  document.getElementById('say').addEventListener('click', () => window.prLog.open(ev, load));
 
   async function boot() {
     if (!(await window.requireAthlete())) return;
