@@ -2056,6 +2056,71 @@ button.wk-ev:hover { filter: brightness(1.15); }
   .pe-wk-bar { grid-column: 1 / -1; }
 }
 
+/* ============================================================
+   Los tests — el número de hoy contra el nivel propio.
+   ============================================================ */
+.as-fam { margin-bottom: 22px; }
+.as-fam:last-child { margin-bottom: 0; }
+.as-fam h3 {
+  margin: 0 0 10px; font: 600 11px/1 var(--pr-font-sans);
+  letter-spacing: .08em; text-transform: uppercase; color: var(--pr-fg-muted);
+}
+.as-card {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  border: var(--pr-bw) solid var(--pr-border); border-radius: var(--pr-r-3);
+  padding: 12px 14px; margin-bottom: 8px; background: var(--pr-surface);
+  transition: border-color var(--pr-dur-1) var(--pr-ease), background var(--pr-dur-1) var(--pr-ease);
+}
+.as-card:hover { border-color: var(--pr-border-strong); background: var(--pr-bg-soft); }
+.as-card-head { display: flex; align-items: baseline; gap: 10px; }
+.as-card-head b { font: 600 14px/1.25 var(--pr-font-sans); color: var(--pr-fg-strong); flex: 1; min-width: 0; }
+.as-when { font: var(--pr-meta); color: var(--pr-fg-faint); font-variant-numeric: tabular-nums; }
+
+.as-vals { display: flex; flex-wrap: wrap; gap: 8px 26px; margin-top: 8px; align-items: baseline; }
+.as-val { display: flex; align-items: baseline; gap: 8px; }
+.as-val > b { font: 600 20px/1.1 var(--pr-font-sans); color: var(--pr-fg-strong); font-variant-numeric: tabular-nums; }
+.as-side {
+  font: 600 10.5px/1 var(--pr-font-sans); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--pr-fg-muted);
+}
+.as-nobase { font: var(--pr-meta); font-style: normal; color: var(--pr-fg-faint); }
+
+/* El cambio contra el basal: el color es la lectura, y por eso vale sólo en
+   los tests que de verdad hablan de fatiga. */
+.as-delta {
+  font: 600 12.5px/1 var(--pr-font-sans); font-style: normal;
+  font-variant-numeric: tabular-nums; color: var(--pr-fg-muted);
+}
+.as-delta span { font-weight: 500; color: var(--pr-fg-faint); }
+.as-delta.is-up { color: var(--pr-success); }
+.as-delta.is-watch { color: var(--pr-warning); }
+.as-delta.is-alert { color: var(--pr-danger); }
+.as-asym.is-watch b { color: var(--pr-warning); }
+.as-asym.is-alert b { color: var(--pr-danger); }
+.as-asym em { font: var(--pr-meta); font-style: normal; color: var(--pr-fg-muted); }
+
+.as-spark { display: block; width: 100%; height: 26px; margin-top: 10px; color: var(--pr-accent); }
+
+.as-hist-side {
+  margin: 16px 0 6px; font: 600 11px/1 var(--pr-font-sans);
+  letter-spacing: .06em; text-transform: uppercase; color: var(--pr-fg-muted);
+}
+.as-hist-side:first-child { margin-top: 0; }
+.as-hist-row {
+  display: grid; grid-template-columns: 1fr auto minmax(120px, auto) 32px;
+  align-items: center; gap: 12px;
+  padding: 9px 2px; border-bottom: 1px solid var(--pr-border);
+  font: 500 13px/1.3 var(--pr-font-sans); color: var(--pr-fg-muted);
+}
+.as-hist-row:last-child { border-bottom: 0; }
+.as-hist-row > b { font: 600 14px/1 var(--pr-font-sans); color: var(--pr-fg-strong); font-variant-numeric: tabular-nums; }
+.as-hist-row .as-delta, .as-hist-row .as-nobase { text-align: right; }
+
+@media (max-width: 560px) {
+  .as-hist-row { grid-template-columns: 1fr auto 32px; }
+  .as-hist-row .as-delta, .as-hist-row .as-nobase { grid-column: 1 / -1; text-align: left; }
+}
+
 @media print {
   @page { size: A4; margin: 12mm; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; box-shadow: none !important; }
