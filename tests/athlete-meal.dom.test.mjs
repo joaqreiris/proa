@@ -179,16 +179,12 @@ try {
     [...document.querySelectorAll('#meal-macros span')].map((s) => s.textContent.replace(/\s+/g, ' ').trim())),
     ['22 Prot', '70.1 Carb', '14.5 Gras']);
 
-  const dia = await page.evaluate(() =>
-    [...document.querySelectorAll('#day > div')].map((d) => ({
-      valor: d.querySelector('b').textContent,
-      objetivo: d.querySelector('em').textContent,
-      falta: (d.querySelector('.am-left') || {}).textContent || '',
-      barra: !!d.querySelector('.am-bar'),
-    })));
-  is('el día va contra el objetivo', [dia[0].valor, dia[0].objetivo, dia[0].falta],
-     ['500', '/ 2600', 'Falta 2100']);
-  is('con barra, porque hay objetivo', dia.every((d) => d.barra), true);
+  // El total del día NO se le muestra: ver «falta 1324» y «se pasó 20» todos
+  // los días es contar calorías contra una meta, y eso no se le pone delante a
+  // un deportista joven sin necesidad. El entrenador lo sigue viendo entero.
+  is('no hay total del día', await page.evaluate(() => !document.getElementById('day-card')), true);
+  is('ni barras contra un objetivo', await page.evaluate(() =>
+    document.querySelectorAll('.am-bar').length), 0);
 
   console.log('\nUNA COMIDA SE MARCA DE UN TOQUE');
   // Sin formulario: una comida se comió o no se comió. El que quiera contar
@@ -216,20 +212,6 @@ try {
      await page.evaluate(() => document.getElementById('log-detail').hidden), true);
   await page.keyboard.press('Escape');
   await page.waitForTimeout(200);
-
-  console.log('\nSIN OBJETIVO CARGADO, LOS NÚMEROS IGUAL SE VEN');
-  await page.addInitScript(() => { window.__sinObjetivo = true; });
-  await page.reload({ waitUntil: 'networkidle' });
-  await page.waitForSelector('.am-it', { timeout: 15000 });
-  const sin = await page.evaluate(() =>
-    [...document.querySelectorAll('#day > div')].map((d) => ({
-      valor: d.querySelector('b').textContent,
-      barra: !!d.querySelector('.am-bar'),
-      falta: !!d.querySelector('.am-left'),
-    })));
-  is('el total del día sigue estando', sin[0].valor, '500');
-  is('sin barra vacía que no mide nada', sin.some((d) => d.barra), false);
-  is('ni un «falta» inventado', sin.some((d) => d.falta), false);
 
   // ── La semana ─────────────────────────────────────────────────────────────
   console.log('\nLA SEMANA SE MIRA POR DÍAS, NO EN UNA GRILLA');

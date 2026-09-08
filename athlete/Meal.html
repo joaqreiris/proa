@@ -63,21 +63,6 @@
   }
   .am-macros b { color: var(--pr-fg-strong); }
 
-  /* El total del día. Las barras son contra el objetivo; sin objetivo van los
-     números solos, que es información igual. */
-  .am-day { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-  .am-day-top { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
-  .am-day-top b { font: 700 19px/1 var(--pr-font-cond); font-variant-numeric: tabular-nums; color: var(--pr-fg-strong); }
-  .am-day-top em { font-style: normal; font: var(--pr-meta); color: var(--pr-fg-faint); font-variant-numeric: tabular-nums; }
-  .am-bar { height: 7px; background: var(--pr-bg-sunk); border-radius: var(--pr-r-1); overflow: hidden; }
-  .am-bar i { display: block; height: 100%; }
-  .am-day-k {
-    font: 700 10px/1 var(--pr-font-cond); letter-spacing: .14em; text-transform: uppercase;
-    color: var(--pr-fg-muted); display: block; margin-top: 6px;
-  }
-  .am-left { font: 600 10.5px/1 var(--pr-font-cond); letter-spacing: .06em; color: var(--pr-fg-faint); display: block; margin-top: 4px; }
-  .am-left.is-over { color: var(--pr-warning); }
-
   /* El parte queda pegado abajo, igual que en la sesión. */
   .am-foot {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
@@ -128,12 +113,6 @@
     <p data-i18n="am.empty.body">Tu entrenador está armando esta comida.</p>
   </section>
 
-  <section class="pr-card" id="day-card" style="margin-top:14px" hidden>
-    <h3 data-i18n="ml.dayTotal">Total del día</h3>
-    <p class="pr-hint" data-i18n="am.dayNote">Todo lo que tienes cargado para hoy, contando esta comida.</p>
-    <div class="am-day" id="day" style="margin-top:14px"></div>
-  </section>
-
 </div>
 
 <div class="am-foot" id="foot" hidden>
@@ -153,8 +132,22 @@
   const W = () => window.prWeek;
   const r1 = (n) => Math.round((Number(n) || 0) * 10) / 10;
 
+  // EL TOTAL DEL DÍA NO VA ACÁ, y no es un olvido.
+  //
+  // Estuvo: las cuatro barras contra el objetivo, con «falta 1324» y «se pasó
+  // 20». Se sacó por lo mismo que se sacaron del catálogo el alcohol y la
+  // azúcar suelta: Proa es una app de salud y lo que se le pone delante a
+  // alguien es una forma de recomendárselo. Contar calorías contra una meta,
+  // todos los días, es el terreno donde empiezan las conductas alimentarias
+  // desordenadas, y un deportista joven ya es población de riesgo.
+  //
+  // Además el número engañaba: «falta 1324» al mediodía solo quiere decir que
+  // todavía no cenó, pero se lee como que va mal.
+  //
+  // El entrenador lo sigue viendo entero en Meal.html, que es quien decide la
+  // nutrición. Acá va lo accionable: qué comer y cuánto de cada cosa.
   const eventId = new URLSearchParams(location.search).get('event');
-  let ev = null, items = [], dayTotals = null, target = null;
+  let ev = null, items = [];
 
   async function load() {
     // El join con foods es de conveniencia, no de necesidad: los macros y la
@@ -170,18 +163,6 @@
     if (!data) { window.location.replace('Week.html'); return; }
     ev = data;
     items = (data.meal_items || []).sort((a, b) => a.position - b.position);
-
-    // El total del día son TODAS las comidas de esa fecha, no solo esta: comer
-    // bien es una cuenta del día, no de un plato.
-    const [dia, obj] = await Promise.all([
-      window.sb.from('meal_items')
-        .select('kcal,protein_g,carbs_g,fats_g,fiber_g,events!inner(date,athlete_id)')
-        .eq('events.athlete_id', ev.athlete_id).eq('events.date', ev.date),
-      window.sb.from('nutrition_targets')
-        .select('kcal,protein_g,carbs_g,fats_g').eq('athlete_id', ev.athlete_id).maybeSingle()
-    ]);
-    dayTotals = window.prNutri.sumMacros(dia.data || []);
-    target = obj.data || null;
 
     paint();
   }
@@ -261,35 +242,8 @@
       ].map(([k, v]) => `<span><b>${r1(v)}</b> ${esc(t(k, ''))}</span>`).join('');
     }
 
-    paintDay();
     paintState();
     if (window.PR_I18N) window.PR_I18N.applyTo(document);
-  }
-
-  function paintDay() {
-    const d = dayTotals || { kcal: 0, protein_g: 0, carbs_g: 0, fats_g: 0 };
-    document.getElementById('day-card').hidden = !d.kcal && !items.length;
-
-    const filas = [
-      ['kcal', d.kcal, target && target.kcal, 'var(--pr-accent)'],
-      ['ml.p', d.protein_g, target && target.protein_g, 'var(--pr-bt-str)'],
-      ['ml.c', d.carbs_g, target && target.carbs_g, 'var(--pr-bt-plyo)'],
-      ['ml.f', d.fats_g, target && target.fats_g, 'var(--pr-bt-mob)']
-    ];
-    document.getElementById('day').innerHTML = filas.map(([k, val, goal, color]) => {
-      const pct = goal ? Math.min(100, Math.round((val / goal) * 100)) : 0;
-      // Cuánto falta, que es la pregunta de quien mira esto antes de cenar. Y
-      // si se pasó se dice también: llegar y pasarse no son lo mismo.
-      const dif = goal ? Math.round(goal - val) : null;
-      const pasado = dif != null && dif < 0;
-      return `<div>
-        <div class="am-day-top"><b>${Math.round(val)}</b><em>${goal ? '/ ' + goal : ''}</em></div>
-        ${goal ? `<div class="am-bar"><i style="width:${pct}%;background:${pasado ? 'var(--pr-warning)' : color}"></i></div>` : ''}
-        <span class="am-day-k">${esc(k === 'kcal' ? 'kcal' : t(k, ''))}</span>
-        ${dif == null ? '' : `<span class="am-left${pasado ? ' is-over' : ''}">${
-          esc(t(pasado ? 'nt.over' : 'nt.left', pasado ? 'Se pasó' : 'Falta'))} ${Math.abs(dif)}</span>`}
-      </div>`;
-    }).join('');
   }
 
   function paintState() {
