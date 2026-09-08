@@ -169,7 +169,7 @@
     const h = window.prWeek.freeHours(slots);
     document.getElementById('free').innerHTML = slots.length
       ? t('ai.free', `Te quedan <b>${h} h</b> libres en la semana.`, { hours: h })
-      : `<span style="color:var(--pr-fg-faint)">${esc(t('ai.weekEmpty', 'Tocá el + de cada día para cargar tus horarios.'))}</span>`;
+      : `<span style="color:var(--pr-fg-faint)">${esc(t('ai.weekEmpty', 'Toca el + de un día para cargar tus horarios. Puedes marcar varios de una.'))}</span>`;
   }
 
   async function loadSlots() {

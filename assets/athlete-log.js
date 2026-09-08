@@ -170,7 +170,7 @@
     msg.hidden = true;
 
     if (!clear && !did) {
-      msg.textContent = t('log.pickDid', 'Decime primero si lo hiciste.');
+      msg.textContent = t('log.pickDid', 'Dime primero si lo hiciste.');
       msg.hidden = false; return;
     }
 

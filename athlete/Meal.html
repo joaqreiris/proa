@@ -18,6 +18,7 @@
      sesión: si las dos pantallas del atleta se leyeran distinto, tendría que
      aprender dos. */
   .am { max-width: 560px; margin: 0 auto; padding: 0 18px 96px; }
+  @media (min-width: 700px) { .am { padding-bottom: 40px; } }
   .am-top { display: flex; align-items: center; gap: 11px; padding: 18px 0 16px; }
   .am-top .pr-grow { min-width: 0; }
   .am-when { font: 700 10px/1 var(--pr-font-cond); letter-spacing: .18em; text-transform: uppercase; color: var(--pr-fg-muted); display: block; }
@@ -85,6 +86,17 @@
   }
   .am-foot-in { max-width: 560px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
   .am-foot .pr-btn { flex: 1; }
+
+  @media (min-width: 700px) {
+    .am-foot {
+      position: static; z-index: auto;
+      background: none; border-top: 0;
+      padding: 22px 0 0;
+    }
+    .am-foot-in { justify-content: flex-end; }
+    .am-foot .pr-btn { flex: 0 0 auto; }
+  }
+
 </style>
 </head>
 <body class="pr">

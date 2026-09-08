@@ -186,6 +186,48 @@ console.log('\nLAS QUE LLEVAN ETIQUETAS SE PIDEN CON data-i18n-html');
 if (crudas.length === 0) ok('ninguna se mostraría en crudo');
 else no(`hay ${crudas.length} que saldrían con las etiquetas a la vista`, crudas);
 
+// ── 5. El español de Proa es de «tú» ───────────────────────────────────────
+// Está escrito en las reglas del proyecto y se coló igual cuatro veces, siempre
+// por la misma puerta: el TEXTO DE RESERVA que va en el código al lado de la
+// clave. Como casi nunca se ve —solo si el motor de idiomas no cargó—, nadie lo
+// relee, y el que copia esa línea para una pantalla nueva se lleva el voseo.
+//
+// El límite de palabra va a mano: en JavaScript la «á» no cuenta como carácter
+// de palabra, así que \b«pará» encontraría «Parámetros».
+const VOSEO = [
+  'sos', 'tenés', 'podés', 'querés', 'hacés', 'sabés', 'debés', 'decís', 'venís',
+  'salís', 'elegís', 'preferís', 'vivís', 'sentís', 'pedís', 'seguís', 'conocés', 'ponés', 'creés',
+  'mirá', 'tocá', 'cargá', 'poné', 'pasá', 'fijate', 'acordate', 'contame', 'decime',
+  'mandame', 'escribime', 'elegí', 'sumá', 'probá', 'guardá', 'marcá', 'anotá', 'entrá',
+  'andá', 'dejá', 'volvé', 'hacé', 'vení', 'ponete', 'quedate', 'llevá', 'traé', 'buscá',
+  'abrí', 'cerrá', 'borrá', 'editá', 'copiá', 'revisá', 'completá', 'respondé', 'apretá',
+  'deslizá', 'tené', 'sentate', 'mové', 'agregá', 'escribí', 'subí', 'bajá', 'empezá',
+  'terminá', 'avisá', 'contá', 'mostrá', 'usá', 'vos',
+];
+const LETRA = 'a-záéíóúüñ';
+const RE_VOSEO = new RegExp(`(?<![${LETRA}])(${VOSEO.join('|')})(?![${LETRA}])`, 'i');
+
+const voseo = [];
+for (const [k, v] of Object.entries(locales.es)) {
+  const m = typeof v === 'string' && v.match(RE_VOSEO);
+  if (m) voseo.push({ donde: 'locales/es.json', clave: k, palabra: m[0], texto: v.slice(0, 60) });
+}
+for (const rel of [...html(), ...readdirSync(join(root, 'assets')).filter((f) => f.endsWith('.js')).map((f) => 'assets/' + f)]) {
+  readFileSync(join(root, rel), 'utf8').split('\n').forEach((linea, i) => {
+    // Solo los textos entre comillas: un comentario en voseo no lo lee nadie
+    // más que quien programa.
+    for (const m of linea.matchAll(/'([^'\n]{4,})'|"([^"\n]{4,})"|`([^`\n]{4,})`/g)) {
+      const txt = m[1] || m[2] || m[3];
+      const v = txt.match(RE_VOSEO);
+      if (v) voseo.push({ donde: rel + ':' + (i + 1), palabra: v[0], texto: txt.slice(0, 60) });
+    }
+  });
+}
+
+console.log('\nEL ESPAÑOL ES DE «TÚ», TAMBIÉN EN LOS TEXTOS DE RESERVA');
+if (voseo.length === 0) ok('sin voseo');
+else no(`hay ${voseo.length} textos con voseo`, voseo);
+
 console.log('\nLAS TRES TABLAS DE IDIOMAS');
 const claves = Object.keys(locales.es);
 for (const lang of ['en', 'pt']) {

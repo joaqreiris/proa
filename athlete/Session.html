@@ -16,6 +16,7 @@
 <style>
   /* Se lee de parado, entre serie y serie, con el teléfono en una mano. */
   .as { max-width: 560px; margin: 0 auto; padding: 0 18px 96px; }
+  @media (min-width: 700px) { .as { padding-bottom: 40px; } }
   .as-top { display: flex; align-items: center; gap: 11px; padding: 18px 0 16px; }
   .as-top .pr-grow { min-width: 0; }
   .as-when { font: 700 10px/1 var(--pr-font-cond); letter-spacing: .18em; text-transform: uppercase; color: var(--pr-fg-muted); display: block; }
@@ -72,6 +73,17 @@
   }
   .as-foot-in { max-width: 560px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
   .as-foot .pr-btn { flex: 1; }
+
+  @media (min-width: 700px) {
+    .as-foot {
+      position: static; z-index: auto;
+      background: none; border-top: 0;
+      padding: 22px 0 0;
+    }
+    .as-foot-in { justify-content: flex-end; }
+    .as-foot .pr-btn { flex: 0 0 auto; }
+  }
+
 </style>
 </head>
 <body class="pr">

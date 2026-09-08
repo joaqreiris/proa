@@ -815,7 +815,7 @@
   function wizExercises() {
     const bt = window.prBlockTypes.get(wiz.type);
     return `
-      <p class="pr-hint" style="margin:0 0 12px">${esc(t('se.pickHint', 'Elegí los ejercicios. Podés sumar más después.'))}
+      <p class="pr-hint" style="margin:0 0 12px">${esc(t('se.pickHint', 'Elige los ejercicios. Puedes sumar más después.'))}
         ${wiz.picked.length ? '' : `<b>${esc(t('se.suggested', 'Sugerido: ' + bt.ex, { n: bt.ex }))}</b>`}</p>
       <div class="pr-input-affix" style="margin-bottom:10px">
         <i class="ti ti-search"></i>
@@ -999,7 +999,7 @@
     .slice(0, 80);
 
     const host = document.getElementById('px-list');
-    if (!hit.length) { host.innerHTML = `<p class="px-none">${esc(t('se.noHits', 'Nada con eso. Podés escribirlo suelto abajo.'))}</p>`; return; }
+    if (!hit.length) { host.innerHTML = `<p class="px-none">${esc(t('se.noHits', 'Nada con eso. Puedes escribirlo suelto abajo.'))}</p>`; return; }
 
     host.innerHTML = hit.map(e => `
       <button type="button" class="px-row" data-ex="${e.id}">
