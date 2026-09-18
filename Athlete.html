@@ -606,11 +606,11 @@
     if (window.prSidebar) window.prSidebar.mount('athletes');
 
     const { data: a } = await window.sb.from('athletes')
-      .select('*, athlete_accounts(user_id), athlete_intake(*)')
+      .select('*, athlete_accounts(user_id), athlete_intake(*), athlete_invites(accepted_at,expires_at)')
       .eq('id', id).maybeSingle();
     if (!a) { window.location.replace('Athletes.html'); return; }
 
-    const intake = Array.isArray(a.athlete_intake) ? a.athlete_intake[0] : a.athlete_intake;
+    const intake = window.prOne(a.athlete_intake);
     const full = `${a.first_name} ${a.last_name || ''}`.trim();
 
     document.title = full + ' — Proa';
@@ -623,11 +623,19 @@
     // de que se separen; el listado sabe abrirlo solo con ?edit=.
     document.getElementById('btn-edit').href = 'Athletes.html?edit=' + id;
 
-    const linked = a.athlete_accounts && a.athlete_accounts.length;
+    // Los mismos tres estados que el listado, y no dos: una invitación mandada
+    // y todavía sin aceptar se leía acá como si no hubieras hecho nada.
+    const invitePend = (a.athlete_invites || [])
+      .some(i => !i.accepted_at && new Date(i.expires_at) > new Date());
+    const cuenta = window.prOne(a.athlete_accounts) ? 'linked' : invitePend ? 'pending' : 'none';
+    const cuentaPill = {
+      linked:  `<span class="pr-pill is-success"><i class="ti ti-check"></i>${esc(t('ath.st.linked'))}</span>`,
+      pending: `<span class="pr-pill is-accent"><i class="ti ti-link"></i>${esc(t('ath.st.pending'))}</span>`,
+      none:    `<span class="pr-pill">${esc(t('ath.st.none'))}</span>`,
+    };
     document.getElementById('meta').innerHTML = [
       `<span class="pr-pill ${a.status === 'active' ? 'is-success' : a.status === 'paused' ? 'is-warning' : ''}">${esc(t('ath.f.' + a.status))}</span>`,
-      linked ? `<span class="pr-pill is-success"><i class="ti ti-check"></i>${esc(t('ath.st.linked'))}</span>`
-             : `<span class="pr-pill">${esc(t('ath.st.none'))}</span>`,
+      cuentaPill[cuenta],
       a.club_name ? `<span class="pr-pill">${esc(a.club_name)}</span>` : ''
     ].join('');
 

@@ -86,6 +86,7 @@ const FALSO = `
   window.getSeatUsage = () => Promise.resolve({ used: 1, limit: 10, left: 9 });
   window.applyWorkspaceTheme = () => {};
   window.prToast = (m) => { (window.__toasts = window.__toasts || []).push(m); };
+  window.prOne = (v) => Array.isArray(v) ? (v[0] || null) : (v || null);
   window.prEsc = (s) => String(s == null ? '' : s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   window.prInitials = (n) => String(n||'').trim().split(/\\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase();

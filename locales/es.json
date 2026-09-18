@@ -152,6 +152,7 @@
   "ath.invite.title": "Invitar al atleta",
   "ath.invite.lead": "Este es el enlace de {name}.",
   "ath.invite.leadNew": "{name} ya está dado de alta. Pásale este enlace para que entre con su cuenta.",
+  "ath.invite.already": "{name} ya tiene cuenta: no necesita invitación.",
   "ath.invite.copy": "Copiar",
   "ath.invite.copied": "Enlace copiado.",
   "ath.invite.regen": "Generar otro",

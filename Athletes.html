@@ -289,13 +289,13 @@
 
   // ¿Tiene la anamnesis cargada? Es lo que decide si se puede planificar.
   function intakeDone(a) {
-    const i = Array.isArray(a.athlete_intake) ? a.athlete_intake[0] : a.athlete_intake;
+    const i = window.prOne(a.athlete_intake);
     return !!(i && i.completed_at);
   }
 
   // Estado de la cuenta del atleta: vinculada, invitación pendiente, o nada.
   function linkState(a) {
-    if (a.athlete_accounts && a.athlete_accounts.length) return 'linked';
+    if (window.prOne(a.athlete_accounts)) return 'linked';
     const live = (a.athlete_invites || []).some(i => !i.accepted_at && new Date(i.expires_at) > new Date());
     return live ? 'pending' : 'none';
   }
@@ -597,6 +597,16 @@
     }
     if (!token) {
       const { data, error } = await window.sb.rpc('create_athlete_invite', { p_athlete_id: athleteId });
+      // `already_linked` no es un fallo: es que el atleta ya entró. Mostrar la
+      // excepción cruda de Postgres dejaba al entrenador con un «already_linked»
+      // en rojo y sin saber si tenía que hacer algo. Como el listado se pinta
+      // una sola vez, la fila que tiene delante puede ser de antes de que el
+      // atleta aceptara, así que además se recarga.
+      if (error && String(error.message).includes('already_linked')) {
+        window.prToast(t('ath.invite.already', `${name} ya tiene cuenta: no necesita invitación.`, { name }), 'success');
+        await load();
+        return;
+      }
       if (error) { window.prToast(error.message, 'danger'); return; }
       token = data;
     }

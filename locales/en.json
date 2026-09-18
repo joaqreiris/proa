@@ -152,6 +152,7 @@
   "ath.invite.title": "Invite the athlete",
   "ath.invite.lead": "This is {name}'s link.",
   "ath.invite.leadNew": "{name} is in. Send them this link so they can sign in with their own account.",
+  "ath.invite.already": "{name} already has an account — no invitation needed.",
   "ath.invite.copy": "Copy",
   "ath.invite.copied": "Link copied.",
   "ath.invite.regen": "Generate another",

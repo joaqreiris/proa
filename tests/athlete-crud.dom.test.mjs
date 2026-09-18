@@ -35,14 +35,28 @@ const ATLETA = {
   position: 'Volante', level: 'pro', dominant_side: 'right',
   club_name: 'Nacional', email: 'martin@ejemplo.com', phone: '+59899123456',
   timezone: 'America/Montevideo', status: 'active', created_at: '2026-01-01T00:00:00Z',
-  athlete_accounts: [], athlete_intake: [], athlete_invites: [],
+  // La FORMA importa tanto como el contenido. PostgREST devuelve un embebido de
+  // uno a uno como objeto o null —athlete_accounts y athlete_intake tienen
+  // athlete_id de clave primaria—, y solo athlete_invites es una lista. El doble
+  // devolvía `[]` en los tres, y con eso la pantalla pasaba la prueba mientras
+  // en producción leía la cuenta al revés: ver prOne en supabase-init.
+  athlete_accounts: null, athlete_intake: null, athlete_invites: [],
 };
+
+// El que ya entró. Es el caso que no se probaba: sin él, leer mal el embebido
+// no rompe nada: un atleta sin cuenta se ve igual con la lectura buena o la mala.
+const VINCULADO = Object.assign({}, ATLETA, {
+  id: 'a-2', first_name: 'Ignacio', last_name: 'Amarilla',
+  athlete_accounts: { user_id: 'u-9' },
+  athlete_invites: [{ id: 'i-1', accepted_at: '2026-09-07T21:42:18Z', expires_at: '2026-10-07T00:00:00Z' }],
+});
 
 const FALSO_SUPABASE = `
   window.__llamadas = [];
   const registrar = (op, tabla, extra) => window.__llamadas.push(Object.assign({ op, tabla }, extra || {}));
   const ATLETA = ${JSON.stringify(ATLETA)};
-  let filas = [ATLETA];
+  const VINCULADO = ${JSON.stringify(VINCULADO)};
+  let filas = [ATLETA, VINCULADO];
 
   function consulta(tabla) {
     const q = {
@@ -79,6 +93,7 @@ const FALSO_SUPABASE = `
   window.prYMD = (d) => [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
   window.prToday = () => window.prYMD(new Date());
   window.prToast = (m) => { (window.__toasts = window.__toasts || []).push(m); };
+  window.prOne = (v) => Array.isArray(v) ? (v[0] || null) : (v || null);
   window.prEsc = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   window.prInitials = (n) => String(n || '').trim().split(/\\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
@@ -117,6 +132,21 @@ try {
 
   await page.goto(`http://localhost:${PORT}/Athletes.html`, { waitUntil: 'networkidle' });
   await page.waitForSelector('tr[data-id="a-1"]');
+
+  // ── El estado de la cuenta ───────────────────────────────────────────────
+  // Un atleta con cuenta se leía como «Sin invitar», y el entrenador le pedía
+  // una invitación que la base rechazaba con `already_linked`.
+  console.log('\nESTADO DE LA CUENTA');
+  const cuentas = await page.evaluate(() => ({
+    conCuenta:    document.querySelector('tr[data-id="a-2"]').textContent.includes('Con cuenta'),
+    sinInvitar:   document.querySelector('tr[data-id="a-1"]').textContent.includes('Sin invitar'),
+    botonEnA2: !!document.querySelector('tr[data-id="a-2"] [data-act="invite"]'),
+    botonEnA1: !!document.querySelector('tr[data-id="a-1"] [data-act="invite"]'),
+  }));
+  is('el que ya entró dice «Con cuenta»', cuentas.conCuenta, true);
+  is('el que no, dice «Sin invitar»', cuentas.sinInvitar, true);
+  is('al vinculado no se le ofrece invitación', cuentas.botonEnA2, false);
+  is('al otro sí', cuentas.botonEnA1, true);
 
   // ── El editor trae los datos que ya estaban ──────────────────────────────
   console.log('\nEDITAR LA FICHA');

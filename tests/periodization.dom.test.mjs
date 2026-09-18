@@ -114,6 +114,7 @@ const FALSO = `
   window.intakeDone=()=>Promise.resolve(true);
   window.applyWorkspaceTheme=()=>{};
   window.prToast=()=>{};
+  window.prOne=(v)=>Array.isArray(v)?(v[0]||null):(v||null);
   window.prEsc=(s)=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   window.prInitials=(n)=>String(n||'').trim().slice(0,2).toUpperCase();
   window.prYMD=(d)=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');

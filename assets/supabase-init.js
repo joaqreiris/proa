@@ -28,6 +28,24 @@
   };
   window.prToday = function () { return window.prYMD(new Date()); };
 
+  // ── Tablas embebidas de una sola fila ─────────────────────────────────────
+  // PostgREST decide la FORMA de un embebido mirando las claves de la tabla
+  // embebida: si `athlete_id` es su clave primaria — athlete_accounts,
+  // athlete_intake — la relación es de uno a uno y devuelve un OBJETO. Si no,
+  // devuelve un array. O sea que `athlete_accounts(user_id)` NO es una lista, y
+  // preguntarle `.length` da `undefined`, que es falso.
+  //
+  // Eso tuvo el chip de la ficha diciendo «Sin invitar» sobre un atleta que ya
+  // tenía cuenta desde hacía días, y al entrenador pidiendo una invitación que
+  // la base rechazaba con `already_linked`. El error no se ve: no hay excepción
+  // ni fila vacía, solo un dato que se lee al revés.
+  //
+  // Se normaliza siempre antes de mirar, porque la forma puede cambiar sola: el
+  // día que se quite esa clave primaria, lo que hoy es objeto pasa a ser array.
+  window.prOne = function (embedded) {
+    return Array.isArray(embedded) ? (embedded[0] || null) : (embedded || null);
+  };
+
   // ── Lectura paginada ──────────────────────────────────────────────────────
   // PostgREST corta cualquier consulta en ~1000 filas sin avisar, y .limit()
   // del lado del cliente NO lo evita. Esta es la única forma robusta de leer

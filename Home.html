@@ -229,7 +229,7 @@
       return Object.assign({}, e, { _tz: tz, _same: tz === myTz, _ymd: s.ymd, _hhmm: s.hhmm, _end: en ? en.hhmm : null });
     }).filter(e => e._ymd === today);
     const pending = athletes.filter(a => {
-      const i = Array.isArray(a.athlete_intake) ? a.athlete_intake[0] : a.athlete_intake;
+      const i = window.prOne(a.athlete_intake);
       return !(i && i.completed_at);
     }).length;
 
